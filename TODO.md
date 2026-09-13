@@ -336,9 +336,8 @@ Everything below this line in the top class is waiting on something.
 day and a half while the work had not started*
 
 **Re-verified at `7ee6c67` on 2026-09-13, and reopened the same day.** GitHub
-closed this issue on
-2026-09-11 at 08:13:19Z, **one second after #26** and by the same gesture, on the
-day PR #363 landed — and #363's own body opens *"Closes #26. **Does not close
+closed this issue on 2026-09-11 at 08:13:19Z, **one second after #26** and by
+the same gesture, on the day PR #363 landed — and #363's own body opens *"Closes #26. **Does not close
 #362**"*. No successor issue was filed. What the binary says: `tests/usingreloc.s`
 gives **1 statement flagged, severity 8, rc 8** against the recorded IFOX00 run's
 **3 flagged, severity 12, 4 × `IFO217`**, and the deck body is already identical,
