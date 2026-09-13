@@ -1854,6 +1854,16 @@ variants) and — now that #99 is in — the `__premain()` hook that closes #10.
 not rank those here; the sequence table above is the place that keeps them in
 step.
 
+**#37's tail is libc370's, and it is `mvslovers/libc370#169` (2026-09-13).** Five
+of its recipes pack a bare `.lm` and now draw the warning #368 added; they are
+correct today only because a `@@CRT0`-entered probe has its entry at 0, which is
+an accident of link order rather than a property of the recipe. Five more places
+carry the half of #37 that was measured **not** to reproduce — `cc370` does pass
+`-Wl,--ac,N` through — including one whose wording, *"the output is byte-identical
+to a link without it"*, is the member-versus-directory trap that had to be
+corrected twice inside #37 itself. Ours is closed; that is theirs, and it is
+documentation rather than code.
+
 **Settled the same day it was raised, and the answer is worth more than the
 identity it recovered.** `mvs38src`'s `25679ba` put `work/macros/amaclib-live` at
 the head of the gate's `-I` path, on the argument that `SYS1.AMACLIB` is first in
