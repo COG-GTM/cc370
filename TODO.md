@@ -10,9 +10,23 @@ owner — the issue thread, the PR, a reference document — this file points at
 and stops. A copy of a tracker is wrong the first time someone closes something,
 and the only defence that works is to hold nothing worth going stale.
 
-*2026-09-12 — `as370 == IFOX00` stands at **5,433 of 5,528 (98.3 %)** at
-`1146d58`, 96 modules still differing; #364 took the last one in `SYS1.LPALIB`
-that was ours rather than the source's — the largest target library, 2,343
+*2026-09-13 — **#37 is closed** (PR #368 merged 2026-09-12, the issue on
+2026-09-13), and what is left of it is `mvslovers/libc370#169`: documentation,
+and theirs. **#26 and #362 were re-verified against the binary at `7ee6c67`, and
+they do not end the same way.** #26 is genuinely done — `tests/relocerr.s` is
+wired into `run.sh`, as370 answers rc 12 with one `IFO217` and three `IFO213`,
+four instructions zeroed, deck body identical to IFOX00. **#362's work is not
+started**, which its own section below now measures rather than asserts, while
+the tracker had the issue closed since 2026-09-11 — one second after #26,
+against the closing PR's own body, and with no successor filed. **#362 was
+reopened on 2026-09-13**, because a ranking row may not point at a closed issue
+and the thread is the record: re-filing the `USING` half would have copied it,
+and #26's remaining half is named in the same thread. The section numbers below
+were pulled onto the table in the same pass — they had run one high since #37
+left it. Before that, 2026-09-12 — `as370 == IFOX00` stands at **5,433 of
+5,528 (98.3 %)** at `1146d58`, 96 modules still differing; #364 took the last
+one in `SYS1.LPALIB` that was ours rather than the source's — the largest
+target library, 2,343
 CSECTs, and of its 2,061 CSECTs carrying a finding that was the only place the
 two assemblers disagreed. **And `mvs38src` now quotes a second number over a
 narrower population — 4,590 of 4,595 — which is not this one and does not
@@ -114,7 +128,7 @@ front of you, the second is nineteen-twentieths unattributable.
 | 1 | #97 | as370 | silent — a different object module | nothing |
 | 2 | #104 | as370 | silent — a swallowed build option | nothing |
 | 3 | #342 | as370 | silent — a DSECT symbol recorded absolute | nothing |
-| 4 | #362 | as370 | silent under-reporting — 155 `USING` operands | nothing |
+| 4 | #362 | as370 | silent under-reporting — 155 `USING` operands | nothing — reopened 2026-09-13 |
 | 5 | #89 | as370 | silent — a wrong value in the deck | **one corpus measurement** |
 | 6 | #100 | ld370 | silent — inverted attribute default | **a decision**, after one survey |
 | 7 | #86 | as370 | silent under-reporting, ×11 recorders | nothing |
@@ -122,7 +136,8 @@ front of you, the second is nineteen-twentieths unattributable.
 | 9 | #241 | as370 | silent — twenty modules, one of them readable | nothing |
 | 10 | #23 | tests | the gate that would have caught most of this | **a decision** (where decks come from) |
 
-**#37 left the table on 2026-09-12** (PR #368, open). Its own header here —
+**#37 left the table on 2026-09-12** (PR #368, merged that day; the issue
+closed 2026-09-13). Its own header here —
 *the AC does not survive `--pack`* — was a mis-description, and measuring it is
 what showed that: the AC **does** survive a bare pack when the flag is repeated
 there, which is how libc370's authorized probes are built. The half that cannot
@@ -132,9 +147,10 @@ being accepted and silently dropped by `--pack` on top of it. See the entry in
 
 Eleven: **#26 closed on 2026-09-11**, fifteen hours after this file put it at
 rank 1 — and the split that preceded it is the entry worth reading, because the
-reason for it was wrong twice before it was right. **#362 moves UP to rank 5**,
-not because it grew but because measuring it showed what it is: 155 `USING`
-operands, not a diagnostic detail. **#290 leaves on 2026-09-11**, closed by #360 — it entered this table on
+reason for it was wrong twice before it was right. **#362 moves UP** — to rank
+5 as this pass wrote it, rank 4 since #37 left the table — not because it grew
+but because measuring it showed what it is: 155 `USING` operands, not a
+diagnostic detail. **#290 leaves on 2026-09-11**, closed by #360 — it entered this table on
 2026-09-10 and was the first item the ranking produced work for. #39 and #35 left
 before it; #342, #184 and #241 arrived because this file had never listed them.
 
@@ -237,7 +253,7 @@ not.
 
 ---
 
-### ~~1~~ · #37 — a bare `.lm` pack loses the entry point, not the AC — **PR #368, open**
+### ~~#37~~ — a bare `.lm` pack loses the entry point, not the AC — **closed 2026-09-13, PR #368**
 
 *half of this issue did not reproduce, the half that did was silent, and naming
 it "the AC" was wrong in a way only measuring it could show*
@@ -280,7 +296,7 @@ And `--entry` was the same defect one flag further along — the parser accepts 
 the `--pack` block returns before entry resolution, so `--pack --entry NOSUCHSY`
 packed at rc 0 in silence.
 
-### 2 · #97 — an undeclared SET symbol produces a different object module
+### 1 · #97 — an undeclared SET symbol produces a different object module
 
 The risk of enforcing it was measured before the issue was filed and it is nil:
 an instrumented build found **0 modules** with an undeclared SET symbol across
@@ -292,7 +308,7 @@ the reference unsubstituted and the statement generates nothing — is the large
 half, because the substitution path has to distinguish "undeclared" from
 "declared but null", which today it does not.
 
-### 3 · #104 — an unrecognised option becomes the source filename
+### 2 · #104 — an unrecognised option becomes the source filename
 
 The argument loop ends in `else src = argv[ai];` with no validation, so a typo,
 an option from a build script, or an IFOX00 option as370 does not implement is
@@ -304,7 +320,7 @@ debug build.
 Cheapest fix in either tool, and it must not wait for `SYSPARM` — adding that
 later does not help anyone who mistyped it in the meantime.
 
-### 4 · #342 — a symbol from a macro-generated DSECT is recorded absolute
+### 3 · #342 — a symbol from a macro-generated DSECT is recorded absolute
 
 In `IEDQWIE` a symbol defined inside a DSECT that a macro generated comes out
 absolute rather than relocatable, so an SS operand written with an explicit
@@ -314,9 +330,32 @@ It sits this high because no measurement is owed before the work can start: the
 mechanism is one bookkeeping decision and the witness is a single named module.
 Everything below this line in the top class is waiting on something.
 
-### 5 · #362 — the relocatability rule is not applied to `USING`
+### 4 · #362 — the relocatability rule is not applied to `USING`
 
-*measured into a different issue than the one that was filed*
+*measured into a different issue than the one that was filed — and closed for a
+day and a half while the work had not started*
+
+**Re-verified at `7ee6c67` on 2026-09-13, and reopened the same day.** GitHub
+closed this issue on
+2026-09-11 at 08:13:19Z, **one second after #26** and by the same gesture, on the
+day PR #363 landed — and #363's own body opens *"Closes #26. **Does not close
+#362**"*. No successor issue was filed. What the binary says: `tests/usingreloc.s`
+gives **1 statement flagged, severity 8, rc 8** against the recorded IFOX00 run's
+**3 flagged, severity 12, 4 × `IFO217`**, and the deck body is already identical,
+so the diagnostics are the whole of the difference. The fixture is still not
+wired into `run.sh`, for the reason its own commit gives: as370 raises none of
+them yet.
+
+**The population re-derives exactly, and its split does not.** From the 926
+recorded diagnostic files: **193 `IFO217` sites in 75 modules**, and **`IFO213` in
+0 of the 926** — both figures reproduced here rather than carried. All **75 are
+rc 8 against IFOX00's 12**, measured through `tools/gate-worker.sh`; measure it
+any other way at your peril, because an unquoted `$MACFLAGS` in zsh reaches as370
+as ONE argument, the macro path is then empty, and the run manufactures a wrong
+rc *and* diagnostics no macro-fed assembly would raise. The **155 `USING` against
+roughly ten machine instructions is NOT re-derived** — no IFOX00 listing for
+these 75 is kept on this host, only their diagnostics — so it keeps the
+crude-extractor caveat it was filed with.
 
 IFOX00 raises `IFO217` on **155 `USING` operands** in the corpus and as370 raises
 nothing. It was filed as a diagnostic that never fires, and both things measuring
@@ -343,11 +382,14 @@ unchanged would put `IFO213` there: right severity, right behaviour, wrong
 message, and **nothing could catch it** — `IFO213` appears in 0 of the 926
 recorded corpus diagnostics.
 
-The 75 modules stay at rc 8 against IFOX00's 12 until this lands, and all 75
-already have byte-identical decks, so the return code is the only thing that will
-move.
+The 75 modules stay at rc 8 against IFOX00's 12 until this lands, and **71 of
+the 75** already have a byte-identical deck, so for those the return code is the
+only thing that will move. *(Corrected 2026-09-13: this read "all 75".)* The other
+four — `IEAVTPER`, `IECIOSAM`, `IECVMAP`, `IECVXURT` — carry a byte difference of
+their own, same length and already counted among the 96 still differing, and this
+fix does not touch it.
 
-### 6 · #89 — a forward reference in EQU resolves to 0
+### 5 · #89 — a forward reference in EQU resolves to 0
 
 `A EQU B` before `B EQU 4` gives `A = 0`, RC 0, no diagnostic, and pass 2 does not
 repair it — the wrong value reaches the deck. IFOX00 flags IFO188, the message
@@ -358,7 +400,7 @@ be, so it cannot cover this.
 known — the #82 probe counted pass-2 lookups only and says nothing about it. A
 corpus that quietly depends on this would move decks.
 
-### 7 · #100 — every module is marked RENT+REUS, IEWL marks neither
+### 6 · #100 — every module is marked RENT+REUS, IEWL marks neither
 
 *the decision is which default*
 
@@ -383,7 +425,7 @@ mbt v2 links every ecosystem module through ld370, so how many of them actually
 want RENT decides whether inverting is a one-line change or a sweep across every
 `project.toml`. Do the survey before the decision.
 
-### 8 · #86 — the diagnostic recorders drop everything past 128 entries
+### 7 · #86 — the diagnostic recorders drop everything past 128 entries
 
 200 undefined opcodes in one module report 128 and state the truncated number as
 fact. #85 already fixed this for the continuation recorder after nsf370 hit it and
@@ -400,7 +442,7 @@ defect that remains is the shared-buffer cap itself and the silence about what i
 dropped; the sentence that demonstrates it needs replacing before the issue is
 quoted. In one recorder (`note_operr`) the cap can also mis-state the severity.
 
-### 9 · #184 — the attribute apostrophe, in the scans that decide diagnostics
+### 8 · #184 — the attribute apostrophe, in the scans that decide diagnostics
 
 *the last live member of the #35/#149/#218 family, and the one PR #347 says it
 did not close*
@@ -417,7 +459,7 @@ a correct diagnostic from a suppressed one on those three paths. Until one
 exists, a fix here is unfalsifiable by every instrument this project owns — the
 tree gate included.
 
-### 10 · #241 — twenty modules longer than IFOX00, one of them readable
+### 9 · #241 — twenty modules longer than IFOX00, one of them readable
 
 *the largest remaining population, and the number depends on which length you
 count*
@@ -441,7 +483,7 @@ not a reference. The one that did finish is `BLSR3270`: `+8` on section
 `BLSR327A`, IFOX00 rc 4, as370 rc 0, first divergence at `0x00513`. That is the
 whole workable surface of this issue today, and it is one module.
 
-### 11 · #23 — the corpus gate has an oracle-shaped hole
+### 10 · #23 — the corpus gate has an oracle-shaped hole
 
 *#48 delivered half of it; the other half needs a decision*
 
@@ -904,10 +946,10 @@ at the cost of one more dimension in which two objects can disagree.
 
 Pointers only. The reasoning lives in the issues and their PRs.
 
-- **2026-09-12, second — #37, open in PR #368, not yet merged.** `ld370 --pack`
-  of a **bare** `.lm` wrote entry 0 and this command's attributes and said
-  nothing; it now says so, and packing the `-iebcopy` form stays silent because
-  nothing is lost there. `--entry` is fixed with it: the parser accepted it and
+- **2026-09-12, second — #37, PR #368 merged that day; the issue closed
+  2026-09-13.** `ld370 --pack` of a **bare** `.lm` wrote entry 0 and this
+  command's attributes and said nothing; it now says so, and packing the
+  `-iebcopy` form stays silent because nothing is lost there. `--entry` is fixed with it: the parser accepted it and
   the pack path returned before entry resolution, so `--pack --entry NOSUCHSY`
   packed at rc 0 without a word — and a warning reading *"entry 0"* while that
   flag stayed silently dropped would send the reader straight to the thing that
