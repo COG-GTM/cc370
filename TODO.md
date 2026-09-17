@@ -694,6 +694,45 @@ locate the first difference **earlier** than the anchor column on 557 of the 832
 than a location, which `--anchors=report` says of itself. Both columns are kept
 and each is named for what it is.
 
+**2026-09-17, second half — #396 and the refusal fix are in; the 772 census
+inverts what the 30 said.**
+
+**#408 `--labels sequential` (`b338904`).** A generated label named after the
+offset it sits at is **wrong the moment a statement is inserted above it, and it
+still assembles** — invisible to the round trip, `cmplmd370`, `reachgate.py` and
+`--align-diff` alike, which is every instrument this project has. The acceptance
+is the only kind that can see it: edit the disassembly the way a repair would,
+then ask **as370's own symbol table** where each label landed. 4 of 4 on the
+fixture, **26 of 26** on `BLSCAMER` when the caller built it independently. Names
+change, object does not.
+
+**#409, the refusal that names what it found (`d650ae6`).** `dasm370` had stored
+every `LR` and every ESD name before printing *"no section named X"* — so when it
+refused `AHLDMPMD` it already knew that is an entry point owned by `AHLWTO` in
+that very member, and said none of it. **The refusal asserted less than the tool
+knew**, and that omission is what sent the caller to write 124 modules up as an
+unresolved corpus. Split by the CESD **type byte**: 0 sections missed, **93 entry
+points whose owning section is in the same member**, 29 deleted (null) entries, 2
+genuinely absent. Both sides now reproduce that from different readers, each
+having first corrected an error in its own.
+
+**THE 772 CENSUS INVERTS THE 30, and it is why the applied reachability stays
+held.** Median `SELF` 94 % on the 30 against **1.5 %** on the 772; 404 of 598
+below 30 %, holding 73 % of the code bytes. Applied there it would darken about
+four fifths of what the disassembly currently decodes — on exactly the modules
+with no source to notice with. The caller's deck-vs-member control (79.5 % against
+77.7 %) is what makes it load-bearing: **the form is worth two points**, the rest
+is the population.
+
+**⚠️ And #383's own named example is overtaken.** `IKJEFLE4` — *"21 bytes at
+100 %, only reachability can say nothing branches here"* — is already entirely
+`DC` today with no reachability at all. Of the 72 sections the issue was written
+for: 4 already fully `DC`, 3 entry-point names, **65 still decoding**.
+`ISTCFCM1` replaces it: **7,988 of 26,565 bytes decoding as instructions**, and
+both sessions reproduce that to the byte. **This bears on #395**, because the old
+sentence is an argument *against* an opcode gate resting on the one module that
+cannot test one.
+
 **#383 is SPECIFIED and MEASURED, and the applied form is deliberately held.**
 `--reach-report` is in `main` (#406, `3054c8a`) — the traversal from the code
 roots, reporting its own coverage. `--reach` (applied) exits 16 and names the
