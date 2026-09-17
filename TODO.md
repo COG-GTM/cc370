@@ -1344,6 +1344,37 @@ at the cost of one more dimension in which two objects can disagree.
 
 Pointers only. The reasoning lives in the issues and their PRs.
 
+- **2026-09-17 — #418's arithmetic half, MERGED as `1d6cf6f` (PR #424).** A
+  cross-section adcon carried the target's origin **twice**: `AHLMCER` read
+  `A(AHLMCMSG+X'548')` where `AHLMCMSG`'s origin *is* `X'548'` — 1,352 bytes past.
+  A deck numbers module-absolute throughout (#415, one class over), so the addend
+  must be the offset alone. Gated: 6,395 sections, **147 changed in 136 modules**,
+  **760 adcons — every one into a non-zero-origin target, 0 into a zero-origin
+  one, and the delta exactly the target's origin in all 760**, 0 anomalies, and
+  **147 of 147 reassemble rc 0 → 0**. It survived because 131 of the 814
+  cross-section entries point at a section at origin 0, where both readings
+  coincide — which is also the fixture's null control. **The `EXTRN` half is
+  deliberately unimplemented**: two lines that would settle by accident a question
+  nobody has decided. #418 keeps it.
+
+- **2026-09-17 — #416, MERGED as `a5c063d` (PR #423).** An unresolved `COPY` was
+  silent: rc 0, nothing on either stream, and every offset after it moved.
+  IFOX00 is the reference and the severity is **its** number — `erms.asm:84`,
+  `jermsgcd.asm:95` **`SEV68 EQU 8`**, and `ifnx1a.asm:1524` shows it abandoning
+  the `COPY` and reading on, exactly as as370 does. So **0 decks and 0 return
+  codes move**; what moves is that the message names the member. Five modules, 25
+  occurrences today, **agreeing with IFOX00's own diagnostics member for member**
+  — and `QTRKCALC` fires on neither side, its `COPY` sitting behind an `AIF`.
+
+- **2026-09-17 — #421, MERGED as `2bde72f` (PR #422).** `IFO007`: a subscripted
+  reference to a symbol declared without a dimension. IFOX00 refuses the
+  statement; as370 substituted nothing and assembled `LA 0,0(0,0)`, so `IEAVEXS`
+  was four bytes long. **The measurement came before the code** — instrumented
+  over all 5,528 modules, the shape occurs in **2**, and IFOX00 flags **exactly
+  those 2**. The same site's *broad* check was already measured unsafe at 6,387
+  false positives (#97's note), and this is safe because it keys on a **positive
+  declaration of the wrong shape** rather than on absence.
+
 - **2026-09-17 — #395, MERGED as `2f1e821` (PR #420).** `--isa app`: the opcode
   table narrowed to the **128** mnemonics an application program can execute,
   dropping 108 — floating point 52, privileged 30, packed decimal 16, I/O 10.
