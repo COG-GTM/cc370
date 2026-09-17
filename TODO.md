@@ -694,8 +694,26 @@ locate the first difference **earlier** than the anchor column on 557 of the 832
 than a location, which `--anchors=report` says of itself. Both columns are kept
 and each is named for what it is.
 
-**#383 reachability is next, and its acceptance must be rewritten before it is
-implemented** — the original states an outcome where a rule is what is being
+**#383 is SPECIFIED and MEASURED, and the applied form is deliberately held.**
+`--reach-report` is in `main` (#406, `3054c8a`) — the traversal from the code
+roots, reporting its own coverage. `--reach` (applied) exits 16 and names the
+measurement; it lives on `wip/dasm370-reach` at `180f891`.
+
+**Why it is held**, over the 30 control CSECTs against their source listings:
+it darkens **12,558 bytes the source calls CODE** against **2,300 bytes of
+genuine table** it correctly silences, and recovers 130 bytes that did not decode
+before. The best threshold on its own coverage is **break-even** (1.12 : 1 at
+80 %). *Byte-safe is not harmless*: a module whose real code becomes `DC`
+reassembles byte-identically and every gate reports success.
+
+**The limit is the BASE MAP, not the root set** — `ICKTR02` has four roots and
+reaches 1.1 %. The traversal reaches an aggregate of 82.2 % and a median of
+97.7 %, bimodal. **No base assumption works alone: about 5 % and 7 % each, about
+77 % together.** One sentence for whoever takes it up: **a register needs to be
+allowed more than one value.** #383 carries the full ledger.
+
+**Superseded — the old note that #383 "must be rewritten before it is
+implemented"** — the original states an outcome where a rule is what is being
 specified, and it was measured unreachable as written. `mvs38src/tools/reachgate.py`
 is its gate and is proven to fail.
 
