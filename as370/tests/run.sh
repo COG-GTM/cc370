@@ -3219,11 +3219,15 @@ rm -f /tmp/_sx$$.obj /tmp/_sx2$$.obj /tmp/_sx$$.tsv /tmp/_sx$$.out /tmp/_sx3$$.o
 # AIF ('&SYSPARM' NE 'TEST'), and neither assembler reports what it never reached.
 cpmdir=/tmp/_cpm$$
 mkdir -p "$cpmdir"
-# LOWERCASE: lib_path() lowercases the member name before looking for the file,
-# so `COPY CPYOK' opens `cpyok'. Written as CPYOK this passed on macOS -- a
-# case-insensitive filesystem matched it -- and failed on CI's Linux, where the
-# resolving control silently became a second missing member. The fixture could
-# not fail on the machine it was written on.
+# LOWERCASE, and since #425 that is no longer forced: lib_path() used to
+# lowercase the member name and try nothing else, so `COPY CPYOK' opened only
+# `cpyok'. Written as CPYOK this passed on macOS -- a case-insensitive
+# filesystem matched it -- and failed on CI's Linux, where the resolving control
+# silently became a second missing member; the fixture could not fail on the
+# machine it was written on. The name as written is tried first now, so either
+# spelling would do here. It stays lowercase on purpose: that keeps this an
+# exercise of the RETAINED fallback, and copycase below covers the uppercase
+# member, which is how a real library is stored.
 printf '%-71s\n' 'OKSYM    DS    CL4                      the member that resolves' \
     > "$cpmdir/cpyok"
 ./as370 -I "$cpmdir" -o /tmp/_cpm$$.obj tests/copymiss.s >/tmp/_cpm$$.out 2>/tmp/_cpm$$.err
@@ -3247,6 +3251,72 @@ else
     echo "          resolves stays silent)"
 fi
 rm -rf "$cpmdir" /tmp/_cpm$$.obj /tmp/_cpm$$.out /tmp/_cpm$$.err
+
+# ---- #425: a COPY member resolves by the name AS WRITTEN --------------------
+# lib_path() lowercased the member name and never tried it as written, so
+# `COPY CPYUPR' opened only `cpyupr'. An MVS member name IS uppercase: across
+# the ten -I directories gate.sh passes, 2,041 files are uppercase, 0 are
+# lowercase, and the single mixed name is amaclib-live/README.md. On a
+# case-sensitive filesystem lib_path resolved NONE of the 2,041.
+#
+# THIS TEST CANNOT FAIL WHERE run.sh RUNS IT, BEFORE OR AFTER THE FIX: /tmp is
+# on the case-insensitive root volume, and APFS answers open("cpyupr") with
+# CPYUPR, so both spellings resolve whichever pass finds them. The pre-fix score
+# the header of this file demands was therefore taken elsewhere, twice:
+#
+#   CI's Linux, pre-fix, gcc AND clang: copycase FAIL, rc 8, IFO068 on CPYUPR,
+#   the A1A2A3A4 bytes absent.                    run 35215871686
+#
+#   A case-sensitive APFS image on this Mac, which is the part worth knowing:
+#   THE CLASS IS LOCALLY REPRODUCIBLE AFTER ALL. `hdiutil create -fs
+#   'Case-sensitive APFS'`, copy the macro libraries and MVSBLD onto it, and
+#   as370 1bab9a3c assembles 1,131 of 5,528 modules clean against 4,639 here.
+#   The fix takes it to 4,639 -- 3,508 recovered, 0 regressed -- and the 5,528
+#   decks then come out BYTE-IDENTICAL to the ones this host produces.
+#
+# So do not write "only CI can see this". CI is the cheap instrument; a
+# case-sensitive image is the one that can measure the tree.
+#
+# ASSERT THE RESOLUTION, NEVER THE ABSENCE OF A DIAGNOSTIC. A check for "no
+# IFO068" passes on this host BECAUSE THE LOOKUP SUCCEEDED and on Linux because
+# the fix worked -- two different reasons, indistinguishable from the log. The
+# member's own BYTES in the deck go red on both hosts for the same reason.
+#
+# CPYUPR is the target case: uppercase on disk, which is how every real library
+# is stored. cpylow is the CONTROL in the other direction -- lowercase on disk,
+# named in uppercase by the source, so it can only resolve through the retained
+# lowercase pass. It guards the fallback ON LINUX ONLY; here the as-written pass
+# already matches it case-insensitively, so this host cannot witness the
+# fallback at all and no fixture can make it.
+ccdir=/tmp/_cc425$$
+mkdir -p "$ccdir"
+printf '%-71s\n' "         DC    X'A1A2A3A4'            the UPPERCASE member" \
+    > "$ccdir/CPYUPR"
+printf '%-71s\n' "         DC    X'B1B2B3B4'            the lowercase member" \
+    > "$ccdir/cpylow"
+./as370 -I "$ccdir" -o /tmp/_cc425$$.obj tests/copycase.s >/tmp/_cc425$$.out 2>/tmp/_cc425$$.err
+rccc=$?
+cchex=$(od -An -tx1 /tmp/_cc425$$.obj 2>/dev/null | tr -d ' \n')
+if [ $rccc != 0 ]; then
+    echo "copycase: FAIL -- both members resolve, so the assembly is clean; rc $rccc"
+    cat /tmp/_cc425$$.err; fail=$((fail + 1))
+elif grep -q 'IFO068' /tmp/_cc425$$.err; then
+    echo "copycase: FAIL -- neither COPY is missing; IFO068 means a member did"
+    echo "          not resolve"; cat /tmp/_cc425$$.err; fail=$((fail + 1))
+elif ! printf '%s' "$cchex" | grep -q 'a1a2a3a4'; then
+    echo "copycase: FAIL -- the UPPERCASE member CPYUPR did not reach the deck."
+    echo "          This is the case that fails on a case-sensitive filesystem,"
+    echo "          and it is the bytes that say so -- an absent diagnostic would"
+    echo "          not have."; fail=$((fail + 1))
+elif ! printf '%s' "$cchex" | grep -q 'b1b2b3b4'; then
+    echo "copycase: FAIL -- the lowercase member cpylow did not reach the deck;"
+    echo "          the lowercase fallback was dropped rather than kept beside"
+    echo "          the as-written attempt"; fail=$((fail + 1))
+else
+    echo "copycase: OK (a member resolves by the name AS WRITTEN, and the"
+    echo "          lowercase fallback is still there beside it)"
+fi
+rm -rf "$ccdir" /tmp/_cc425$$.obj /tmp/_cc425$$.out /tmp/_cc425$$.err
 
 # ---- IFO007: subscripted use of an undimensioned variable (cc370#421) ------
 # IFOX00 raises IFO007 at severity 8 and generates NO OBJECT CODE for the
