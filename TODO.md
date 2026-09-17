@@ -1344,6 +1344,36 @@ at the cost of one more dimension in which two objects can disagree.
 
 Pointers only. The reasoning lives in the issues and their PRs.
 
+- **2026-09-17 — #395, MERGED as `2f1e821` (PR #420).** `--isa app`: the opcode
+  table narrowed to the **128** mnemonics an application program can execute,
+  dropping 108 — floating point 52, privileged 30, packed decimal 16, I/O 10.
+  The class is a column in `opc_table.h` where both tools read it, gated by
+  `opcinv.c`, which asserts the five counts **and re-runs the whole inversion
+  assertion under the cut**. The mechanism it exists for: **the round trip cannot
+  object to a false instruction**, because it re-encodes the wrong reading to the
+  same bytes, so narrowing the table is the only thing that removes the reading.
+
+  **The cut is ours and the header says so** — nobody here has Pospischil's
+  `DISOPAPP`. Two independent passes agreed on floating point *to the entry*
+  (a rule: opcode ranges 20-3F and 60-7F) and differed on eleven elsewhere, every
+  difference an omission. `MVCK`/`MVCP`/`MVCS` are privileged **on the class rule
+  and not on their rarity**; `MVCIN` stays, and its 205 false decodes with it,
+  because rarity is not what the column encodes.
+
+  Acceptance, both halves: **5,538 modules, 0 decks differ**; stage 1a's 66 —
+  data bytes **+18.4 %**, 47 gaining, **0 losing**; the 19 targets — data
+  **80.0 % → 87.3 %**, statements **−33 %**, 0 losing. **A rule fixed 47 sections
+  where a fix would have fixed one**: `IKJPARSE` was the only loss under the first
+  cut, was read by hand *because* it was the outlier, pointed at `MVCK`, and came
+  right on its own at 182 → 238.
+
+  **And the residue confirmed a prediction nobody was tracking.**
+  `mvs38src/tools/nosource.py` said before either session started that *"an opcode
+  subset will not stop text decoding as L, LA, ST or BC"*. Of 133 residual
+  statements, **108 (81 %) have an opcode byte that IS a printable EBCDIC
+  character** — `X'40'` a blank decoding as `STH`, `K M N O P` as the SS group.
+  No class cut can reach them. Recorded on **#383**.
+
 - **2026-09-17 — #385, MERGED as `33aa446` (PR #419).**
   The repair contract's **source** half, as a translator and not a second guess —
   Mike's decision on the shape. Two flags, `--ref-stmts` and `--cand-stmts`,
