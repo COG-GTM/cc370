@@ -673,7 +673,7 @@ bytes, so the round trip stayed green over it the whole time. Byte-safe,
 therefore invisible to the gate that would have to fail. The caller's `recovered`
 moved 1,626 → 1,628 with zero modules going the other way.
 
-**#384 `--align-diff` is open as #405.** Both objects of one CSECT disassembled
+**#384 `--align-diff` is merged as `01ee607` (#405).** Both objects of one CSECT disassembled
 and aligned on the statement with its **displacements masked**, so a shift is
 classified against a cumulative shift function taken from the alignment rather
 than from a list of insertions. Two rules came from constructed cases and neither
@@ -687,6 +687,12 @@ eyecatcher modules 140 carry exactly the expected signed shift at offset 0; over
 the 832-module target population, 382,378 shifts classified as consequences and
 **109,257 constant changes**, which is the population `lenattr.py` has never
 counted because it drops every equal-length difference.
+
+`SUMMARY` carries `first=` plus four denominators, and `first=` turned out to
+locate the first difference **earlier** than the anchor column on 557 of the 832
+(median 38 bytes, max 3,898) — consistent with the anchor being a bound rather
+than a location, which `--anchors=report` says of itself. Both columns are kept
+and each is named for what it is.
 
 **#383 reachability is next, and its acceptance must be rewritten before it is
 implemented** — the original states an outcome where a rule is what is being
