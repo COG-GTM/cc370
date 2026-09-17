@@ -694,6 +694,43 @@ locate the first difference **earlier** than the anchor column on 557 of the 832
 than a location, which `--anchors=report` says of itself. Both columns are kept
 and each is named for what it is.
 
+**2026-09-17, third — the repair contract, and an export that had to come first.**
+
+**#410 `--align-diff --json`** emits one record per divergence; validated over the
+832, 120,163 findings and every subtotal identical to the text report's. But
+three of #385's five fields are **listing** facts, and the decisive one is
+reserve-versus-align: **in an object a `DS 0F` pad and a `DS CL1` reservation are
+both uncovered bytes.** Two defensible object-side rules over 13,161 such bytes
+gave 89 and 1,788 — 1 % against 14 %. Two methods that cannot agree on a
+population's *size* is what "a source fact" means once measured.
+
+**So Mike chose shape 1: the export first.** #411 filed, #413 merged
+(`98da84b`) — `as370 --stmts`, one record per generated statement:
+`org cards loc len stmt gen mdepth mcall_stmt mcall_name reserves text`.
+The tree-wide gate passed in its strong form, 0 of 5,538 decks moved.
+
+**And the source fact landed INSIDE the bracket the object could only bound**:
+`reserves=0` gives **412 bytes, 3.1 %**, between the 0.7 % and 13.6 % the two
+object rules spanned. The object could not determine it, could bound it, and the
+bound was right.
+
+**⚠️ `stmt` does not locate a card; `org` does.** Measured over 30 modules' real
+sources, 61,252 open-code cards: **0.8 % against 99.9 %.** A continued statement
+spans several cards under one statement number. `org` was already tracked
+internally as `line_org` — the field everyone wanted existed and neither session
+knew.
+
+**#412** fixed a decoder defect the caller found as a case: an `F_S0`'s tail is
+not a field, so `PTLB` with `B20D 28B2` lost two bytes. 1 of 649 sections moved.
+Its context is the larger number: **598 of 599 no-source sections round-trip
+byte-identically**, including 403 of the 404 the traversal reaches under 30 % of.
+*The round trip is not a weak test of a disassembly — it is not a test of it.*
+
+**#396/#408** `--labels sequential`, because a displacement-derived name is wrong
+the moment a statement is inserted and **still assembles**. **#409** made a
+refusal name what it found, which turned 124 "unreadable" modules into 93 entry
+points, 29 deleted CESD entries and 2 genuine misses.
+
 **2026-09-17, second half — #396 and the refusal fix are in; the 772 census
 inverts what the 30 said.**
 
