@@ -123,16 +123,24 @@ front of you, the second is nineteen-twentieths unattributable.
 
 ## The order
 
+**⚠️ THIS TABLE RANKS `as370`, `ld370` AND `tests` — NOT THE WHOLE PROJECT.** It
+holds seven `as370` rows, one `ld370` and one `tests`, and **no `dasm370` at
+all**: that work and the format-library tools are ordered by DEPENDENCY under
+*The format library and the tools on it*, further down. Read as a project
+ranking it says "take the oldest `as370` issue", which is how a live `dasm370`
+item waiting on nothing gets passed over. Say which list you are reading from.
+
 | | Issue | Tool | Kind | Waiting on |
 |---|---|---|---|---|
 | 1 | #97 | as370 | silent — a different object module, **assignment side fixed** | nothing (the reference side waits on #370's neighbour) |
 | 2 | #342 | as370 | silent — a DSECT symbol recorded absolute | nothing |
-| 3 | #362 | as370 | silent under-reporting — 155 `USING` operands | nothing — reopened 2026-09-13 |
+| 3 | #362 | as370 | silent under-reporting — 155 `USING` operands | nothing — **reopened a SECOND time 2026-09-17**, see below |
 | 4 | #89 | as370 | silent — a wrong value in the deck | **one corpus measurement** |
 | 5 | #100 | ld370 | silent — inverted attribute default | **a decision**, after one survey |
 | 6 | #86 | as370 | silent under-reporting, ×11 recorders | nothing |
 | 7 | #184 | as370 | silent under-reporting — three scans left | **a separating construct** |
-| 8 | #241 | as370 | silent — twenty modules, one of them readable | nothing |
+| 8 | #241 | as370 | silent — **33** modules, all but one now `IFC` | the four EREP macros; see the issue's 2026-09-17 comment |
+| 10 | #427 | as370 | fidelity — a macro member rejected where IFOX00 accepts it | nothing; one caller, moves no verdict |
 | 9 | #23 | tests | the gate that would have caught most of this | **a decision** (where decks come from) |
 
 **#37 left the table on 2026-09-12** (PR #368, merged that day; the issue
@@ -376,9 +384,24 @@ Everything below this line in the top class is waiting on something.
 *measured into a different issue than the one that was filed — and closed for a
 day and a half while the work had not started*
 
-**Re-verified at `7ee6c67` on 2026-09-13, and reopened the same day.** GitHub
-closed this issue on 2026-09-11 at 08:13:19Z, **one second after #26** and by
-the same gesture, on the day PR #363 landed — and #363's own body opens *"Closes #26. **Does not close
+**⚠️ CLOSED TWICE WHILE THE WORK HAD NOT STARTED, AND BOTH TIMES BY THE SENTENCE
+WRITTEN TO PREVENT IT.** Reopened again on 2026-09-17. GitHub's issue linker
+matches a closing keyword followed by `#<n>` **inside a negation** — the word
+"not" is invisible to it, and a line wrap between the keyword and the number does
+not stop it either:
+
+| closed | by | the text that did it |
+|---|---|---|
+| 2026-09-11 08:13 | `994d24b`, PR #363's squash | `It does NOT close` ⏎ `#362's 193 corpus sites…` |
+| 2026-09-13 10:19 | `aba2ac8`, docs, direct to main | quoting #363's body: `"Closes #26. Does not close #362"` |
+
+The second is the one to learn from: it is the commit that **documented** the
+first closure and reproduced it by quoting the disclaimer, four lines above its
+own sentence *"#362 is open again"*. **So never write the disclaimer** — say what
+the change covers, or write the number without the `#`. Recorded on the issue.
+
+**Re-verified at `7ee6c67` on 2026-09-13.** The 09-11 closure came
+**one second after #26** and by the same gesture, on the day PR #363 landed — and #363's own body opens *"Closes #26. **Does not close
 #362**"*. No successor issue was filed. What the binary says: `tests/usingreloc.s`
 gives **1 statement flagged, severity 8, rc 8** against the recorded IFOX00 run's
 **3 flagged, severity 12, 4 × `IFO217`**, and the deck body is already identical,
