@@ -300,6 +300,29 @@ Up to four IDR record kinds, written in this order:
 - Header constant `X'80FA0100'` (`HEWLFOUT.ASM:1434` `IDRZHDR`). Byte 0=`X'80'`, byte 1=`X'FA'` (=250), byte 2=`X'01'` subtype (HMASPZAP), byte 3=count of SPZAP entries (with `CHAIN X'40'` OR'd in if a continuation record follows, `:185,1049`).
 - Header length `HDRLEN=4` (`:221`); each SPZAP entry is 13 bytes (`ZAPSIZE DC F'13'`, `:1436`); count field max `ZAPMAX X'53'` (`:187`); record length `ZPRECLEN=251` (`:228`). Data starts at IDRBUF+4 (= byte 4).
 
+**The 13-byte entry, which this section used to give a size for and no layout.**
+From `HEWLFIDR.ASM` (the linkage editor's IDR module), `ZAPLOOP` at `:1165`:
+the entry's first field is read at `NODISP(ITEMPTR)` for `IDLEN` bytes, used to
+index the RNT and **renumbered on relink** — so it is a **CESDID**, and
+`IDLEN EQU 2` (`:~`), `NODISP EQU 0`, `FULWD EQU 4` (first entry at IDRBUF+4),
+`HEADLEN EQU 3` (count at byte 3), `ZAPLEN EQU 13` (`:369`).
+
+| offset | length | field |
+|---|---|---|
+| 0 | 2 | **CESDID** — binary, names the section the zap applies to |
+| 2 | 3 | date, packed `yyddd` |
+| 5 | 8 | zap identifier, EBCDIC; `NO IDENT` when none was given |
+
+**So an entry NAMES its section and carries no offset.** Attributing a zap to a
+CSECT is a CESDID lookup, not a test of whether an offset falls in a range —
+which is what a count of entries cannot tell you and is the whole reason to
+decode them.
+
+Validated against the four DLIB members carrying entries: `IEFVFA` CESDID 2
+`#DYN004`, `IEFVHE` 2 `#DYP005`, `IEFVHF` 2 `#DYP003`, `IGC018` **6** `NO IDENT`
+— all dated `26189F`, and `IGC018` differing in the CESDID is the discrimination
+the field exists for.
+
 ### 10.2 Linkage-editor IDR (always present)
 - Header `X'801102'` (`HEWLFOUT.ASM:1437` `LKIDR`): byte 0=`X'80'`, byte 1=`X'11'` (=17 = record length 18 − 1), byte 2=`X'02'` subtype (Linkage Editor).
 - Component name `CL10'5752SC104'` (`HEWLFOUT.ASM:1438`).
@@ -324,6 +347,35 @@ It identifies itself as `LD370` V01 M00 rather than claiming to be `5752SC104` a
 
 ### 10.4 User-data IDR(s)
 - Subtype `USERTYPE X'08'` (`HEWLFOUT.ASM:201,1302`). From IDENTIFY control statements.
+
+**The entry, and it has the same first field as an SPZAP entry — a CESDID.**
+Variable length, packed back to back until the record ends:
+
+| offset | length | field |
+|---|---|---|
+| 0 | 2 | **CESDID** — names the section the identification belongs to |
+| 2 | 3 | date, packed `yyddd` |
+| 5 | 1 | length of the text that follows |
+| 6 | *len* | EBCDIC text — in practice the APAR/PTF number |
+
+Confirmed by two instruments rather than assumed. `mvs38src` read `IKJEFT01`'s
+42-byte record by hand — three entries, all `84028`, `UZ42826` / `UY13431` /
+`UY43678` — and, *separately*, read one such id out of each of the three DLIB
+elements the member is bound from. The CESDIDs here put each id back on the
+element it came from: **1 `IKJEFT01` `UY13431`, 2 `IKJEFT06` `UZ42826`, 33
+`IKJEFTSC` `UY43678`** — and all three are `SD` entries where the rest of that
+CESD is `LR`/`ER`. Three agreements, from two readers that failed differently.
+
+**This is the record that answers "was this CSECT serviced", and the SPZAP one
+is not.** Measured over both corpora:
+
+```
+TARGET  2,396 members   2,297 carry APAR ids (3,951 ids)   33 carry a zap
+DLIB    5,252 members   5,112 carry APAR ids (5,278 ids)    4 carry a zap
+```
+
+`IKJEFT01` itself carries **three APARs and zero zap entries**, so a zap-only
+reader reports "no service applied" about a module carrying three.
 
 ### 10.5 Last-IDR marker
 - The final IDR written has `LASTIDR X'80'` OR'd into its **subtype byte** (`HEWLFOUT.ASM:1155` `OI SUBTYPE,LASTIDR`, `:195`). This is how the loader knows IDR processing is complete.
