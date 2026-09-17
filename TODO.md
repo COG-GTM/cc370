@@ -1344,7 +1344,7 @@ at the cost of one more dimension in which two objects can disagree.
 
 Pointers only. The reasoning lives in the issues and their PRs.
 
-- **2026-09-17, in flight — #385, PR #419 (`feat/dasm370-385-json-source`).**
+- **2026-09-17 — #385, MERGED as `33aa446` (PR #419).**
   The repair contract's **source** half, as a translator and not a second guess —
   Mike's decision on the shape. Two flags, `--ref-stmts` and `--cand-stmts`,
   because the two objects are two maintenance levels with two different sources
@@ -1368,6 +1368,16 @@ Pointers only. The reasoning lives in the issues and their PRs.
   `DS CL2` at one offset, **their decks are byte-identical** (sha256
   `287591aa…`, reproduced independently by `mvs38src`), and the same finding at
   000006 comes back `reserves` false against true.
+
+  **The three merges needed no re-arguing after their squashes, and that is a
+  method rather than luck.** Each squash was checked by diffing the merged tree
+  against the gated head — empty every time — and then by building: `main`
+  produces `as370 11323ca9…` and `dasm370 7f63377a…`, bit-identical to the
+  binaries the gates were run on. **A gate transfers by hash, not by sampling**:
+  the 6,395-section null control the peer ran between two gated binaries *is* the
+  main-against-rebased run, because both ends are those binaries. That is the
+  same form as #417's transfer and it is worth reaching for before re-running
+  anything tree-wide.
 
 - **2026-09-17 — #415, MERGED as `db4561c` (PR #417).** `dasm370` read a deck's TXT address as an offset into the
   section. It is **module-absolute**, the same space as the section's ESD
