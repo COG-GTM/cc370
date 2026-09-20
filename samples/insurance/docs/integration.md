@@ -10,10 +10,10 @@ SYS1.MACLIB export**. Its archive is
 All bundle checksums passed locally before use. No macro export or IBM source
 is committed to this repository.
 
-The [environment session](https://app.devin.ai/sessions/8445e980914147f6a429a6b7d910d8a6)
-reports successful independent smoke jobs on TK5 Update 5 / Hyperion 4.9.1.
-That is environment evidence; **this insurance application has not run on
-MVS yet**, from either guest or host-built objects.
+The [execution evidence session](https://app.devin.ai/sessions/8445e980914147f6a429a6b7d910d8a6)
+contains successful application runs on TK5 Update 5 / Hyperion 4.9.1 through
+IFOX00/IEWL, as370/IEWL and as370/ld370. Each passed `INSSMOK` and all five
+batch comparisons. The seven decks match over columns 1–72 excluding END.
 
 From the application directory, after extracting the supplied archive:
 
@@ -61,7 +61,7 @@ Before submission, allocate cataloged datasets on the guest:
 | `IBMUSER.INSHST.OBJ` | PO, FB80, BLKSIZE 3200; raw as370 object decks | 10 tracks, 5 directory blocks |
 | `IBMUSER.INSHST.LOAD` | PO, U, BLKSIZE 32760; IEWL-linked host objects | 20 tracks, 5 directory blocks |
 
-These allocations and application jobs remain unvalidated on the guest.
+The reusable runner creates these allocations and captures each utility step.
 Source/macros must be padded to FB80 and encoded once as CP037; preserve
 column 72 continuation flags. Objects are already binary and must not be
 encoded again. The fixture files below require PS datasets at their own LRECL.
@@ -119,8 +119,10 @@ python3 tools/compare.py --golden golden/v1 --stage a \
 
 The comparator fails on a missing, extra, duplicated, truncated or reordered
 record and on any byte of any declared field, reporting record number, policy,
-field, offsets and both byte strings. A missing RC, an ABEND, a timeout or a
-hash mismatch fails before comparison. The receipt is a runner attestation,
+case ID, field, offsets, decoded values and both byte strings. It aggregates
+every state/result difference in `comparison.json`; malformed packed values
+retain their decode errors. A missing RC, ABEND, timeout or hash mismatch
+rejects acceptance while diagnostic comparison still runs. The receipt is a runner attestation,
 not an authenticity check: preserve the corresponding raw spool and derive
 statuses from it, never from expected results.
 
@@ -154,33 +156,70 @@ says nothing about runtime behaviour.
    into a third load library if the transport supports it. This independently
    validates the host linker; `as370 -> IEWL` execution does not.
 
-## Adapting the supplied runner
+## Reproduce on Linux
 
-The bundle's `run_job.py` accepts only a single FB80 binary stream per job.
-**Do not pass the 128/40/96-byte fixtures to that interface unchanged**, even
-when their total length happens to be divisible by 80. The integration child
-must extend binary transport while preserving these layouts:
+The scripts need passwordless sudo for package installation and an isolated
+network namespace. They do not require Docker or hardware virtualization.
 
-- A loader/unloader can wrap mixed-format records in FB80 transport cards,
-  reassemble exact bytes into PS FB128/FB40, and unwrap FB96/FB128 output.
-  Alternatively use another proven binary dataset path. Verify a round-trip
-  of each actual LRECL before running the app; no line splitting or transcoding.
-- Preserve raw punch captures. Remove only a positively identified JES
-  transport separator from deck exports before `deck_compare.py`; never strip
-  blank data records or silently truncate output to an expected count.
-- Allocate/submit through the existing isolated guest on the environment
-  child's machine. Do not install another image or mount its DASD elsewhere.
-- Require all expected steps: build = ACALC, AVAL, APACK, ADATE, ARATE, ASMOK,
-  ABAT, LSMOK, LBAT, SMOKE; host-object link = LSMOK, LBAT, SMOKE;
-  batch = RUN, plus every added transport step. Check the PROC step naming
-  against actual IEF142I output when adapting `--steps`.
-- Convert the runner's `result.json` into the receipt schema above only after
-  checking its `passed`, `purged`, `errors` and complete step list against
-  the raw spool. Its smoke schema is not accepted directly by `compare.py`.
+```sh
+bash tools/tk5_setup.sh
+bash tools/tk5_macros.sh "$HOME/mvs-demo/export"
+bash tools/tk5_start.sh
+```
 
-For each execution path, test failed-master RC 12, a rejected transaction with
-unchanged state, duplicate/conflict/order records, successful generation
-restart, and discard/re-run after a forced partial failure. Hold one controller
-lock across input selection, submission, capture, comparison and publication;
-the supplied per-job lock alone does not serialize a multi-job generation.
-Record the final walkthrough only after real application execution succeeds.
+The last command runs in a dedicated foreground terminal. Wait for TK5 startup
+and JES initiation in `$HOME/mvs-demo/evidence/console.log`. Namespace
+`mvs-smoke` has only loopback; no guest service is exposed publicly. After a
+snapshot or VM restart, start the guest again. Never run two emulators over the
+same DASD. Hercules is QPL 1.0; the guest distribution has separate terms.
+
+Supply `TK5_JOB_USER` and `TK5_JOB_PASSWORD` through the session environment
+for the local guest's RAKF account. Never put them in committed JCL or logs
+intended for sharing. A raw submission card necessarily contains its JOB-card
+authentication; retain the original privately and disclose any redaction when
+sharing evidence.
+
+```sh
+python3 tools/tk5_demo.py --root "$HOME/mvs-demo" \
+  --maclib "$HOME/mvs-demo/export/ascii" \
+  --evidence "$HOME/mvs-demo/application-run-01" --prefix IBMUSER.APP01 \
+  --interactive
+```
+
+Use a new evidence directory and dataset prefix for every run. Omit
+`--interactive` for unattended execution. The script performs host assembly,
+exact FB128/FB40/FB96 round trips (including zero and blank records), all three
+build/runtime paths, deck comparison, negative controls and recovery.
+`tk5_provenance.py` records source revision and worktree status, tool and macro
+hashes, guest identity and raw build evidence. Its default macro-export
+location is the original smoke bundle; override `--macro-export` when using
+another export directory.
+
+`tk5.py` transports physical records through AWS tapes mounted on device 0480
+(`UNIT=480` in MVS JCL). It rejects invalid AWS chains, partial records and
+unexpected marks. `tk5_linker.py` frames ld370's unchanged IEBCOPY bytes as VS
+records; IEBCOPY imports load modules directly, without running IEWL.
+`tk5_job.py` captures raw printer, console, punch, submitted cards, commands,
+all observed return codes, the JES ID and purge confirmation.
+The macro-library concatenation's first DD uses BLKSIZE 32720; omitting it
+caused a real IFOX261 wrong-length read on `SYS1.MACLIB`.
+
+`tk5_validate.py` holds `run.lock` across input selection, transport,
+execution, comparison and atomic `current.json` publication. Stage A replay
+and stage B both read the actual validated stage-A master; B replay reads
+the actual validated stage-B master. Replay output never replaces a committed
+generation. Restart uses `--resume-from <prior/current.json>` and checks the
+persisted master's hash and comparison verdict.
+
+`tk5_controls.py` proves duplicate, malformed and oversized masters return
+RC12 with empty outputs and unchanged input datasets; missing program S806 is
+rejected; DUPL/CNFL/ORDR/PACK/DATE requests preserve the committed master.
+`tk5_recovery.py` launches separate processes, deliberately delivers half of
+stage B, verifies rejection without publication, then reruns complete stage B
+from the unchanged stage-A checkpoint. This is a partial-delivery control,
+not a claim to have crashed or power-cycled MVS.
+
+On timeout, interrupted submission or uncertain device-control failure,
+`quarantine.json` blocks further submissions. Inspect the referenced raw
+evidence and JES state; cancel the job if still active and confirm its purge
+before removing that marker. Never clear it merely to continue another run.

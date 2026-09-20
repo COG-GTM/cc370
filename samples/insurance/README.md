@@ -12,11 +12,15 @@ from `mvs38src`'s historical IBM recovered-source corpus.
 
 ## Validation status
 
-The host milestone assembles all seven modules and links `INSSMOK` and
-`INSBAT` at RC 0 with the supplied TK5 Update 5 SYS1.MACLIB export.
-`INSSMOK` and all five shared modules also build without system macros.
-**Guest assembly, execution, restart runs, and host/IFOX00 deck comparisons are
-separate acceptance gates. No golden file is an observed MVS result.**
+Real TK5 Update 5 / Hercules 4.9.1 execution passed through all three paths:
+IFOX00 → IEWL, host as370 → guest IEWL, and host as370 → host ld370 → IEBCOPY.
+Each executed `INSSMOK` and all five `INSBAT` stages with strict byte comparison.
+All seven object decks match IFOX00 over columns 1–72 excluding END metadata.
+Invalid-master RC12, S806, immutable rejections, persisted restart and forced
+partial-delivery discard/rerun also passed on the guest.
+`tools/tk5_demo.py` repeats the full sequence with fresh guest datasets and
+raw evidence. See [the integration runbook](docs/integration.md).
+No golden file is an observed MVS result.
 
 ## Build
 
@@ -90,7 +94,7 @@ valuation date and sequence. A death quote is **not** settlement or closure.
 ## Tests and golden data
 
 ```sh
-make test            # lint, py_compile, 13 contract tests
+make test            # lint, py_compile and contract/transport/comparator tests
 make verify-golden   # regenerate golden/v1 and compare every byte
 ```
 

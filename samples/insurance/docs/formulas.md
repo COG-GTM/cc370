@@ -52,7 +52,7 @@ Half-up rounding of non-negative values uses integer arithmetic: the assembler
 adds half the divisor before `DP` (`AP WPROD,=PL5'1825000'` then
 `DP WPROD,=PL5'3650000'`). The divisor is 365 × 10000 = 3,650,000.
 The host Decimal oracle is checked against independent Fraction arithmetic;
-assembler execution still requires guest validation. Interest accrues on the stored
+real guest execution is captured separately by the TK5 runner. Interest accrues on the stored
 cash value before the operation is applied, so a premium earns nothing on the
 day it is paid, and a withdrawal still earns interest for the days it was
 invested. Quotes are not read-only: `Q` and `D` credit interest and advance
@@ -90,7 +90,7 @@ packed syntax, sign, amount bound, date, accrued-balance bound, operation,
 funding, and final balance bound. A request violating several rules reports
 the first one encountered; reordering checks can change observable statuses.
 
-## Worked example (anchor A001, embedded in `INSSMOK`; guest run pending)
+## Worked example (anchor A001, embedded in `INSSMOK` and verified on TK5)
 
 Policy `00000001`, issued 2024-01-01, face 1,000,000, cash 100,000, loan 0.
 Request: sequence 1, date 2025-01-01, `P` (premium) 10,000.
