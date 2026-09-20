@@ -28,7 +28,8 @@ present on a subset. Rejections leave the current state in place, so later
 events depend on prior success or failure.
 
 `cases.jsonl` maps case ID, category and physical record index to raw transaction
-bytes. `expected.jsonl` carries every decoded result field under the same ID.
+bytes. `expected.jsonl` retains that identifier as `case_id` alongside every
+decoded result field; its `id` field is the eight-digit policy ID.
 `category` describes the attempted stimulus, not an assertion that it reaches
 that check: earlier validation may take precedence.
 
@@ -48,12 +49,13 @@ The 500 additional replay requests are all expected `DUPL`. Each has the exact
 last accepted request from that policy's persisted stage output. The 10
 hand-written anchors are checked independently from the seeded histories.
 
-The 13 host tests cover anchors; sign/digit validation; complete byte layouts;
+The 14 host tests cover anchors; sign/digit validation; complete byte layouts;
 immutability on rejection/replay/conflict/order; invalid/truncated masters;
 physical order; Fraction-versus-Decimal rounding; frozen fixtures and a split
 restart at transaction 1,777; every result/master field; absent, extra,
 duplicated, truncated and reordered output; packed sign differences; and
-failed/malformed run receipts. These are tests of scaffolding and contracts.
+failed/malformed run receipts; and case-to-policy traceability. These are tests
+of scaffolding and contracts.
 
 ## Reproduce the host checks
 

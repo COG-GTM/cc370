@@ -157,7 +157,7 @@ def fixtures() -> dict[str, bytes]:
                 cases.append({"id": case_id, "stage": stage,
                               "record": len(requests) + 1, "category": category,
                               "transaction_hex": txn.hex()})
-                expected.append({"id": case_id, **result_fields})
+                expected.append({"case_id": case_id, **result_fields})
                 overall_status[str(result_fields["status"])] += 1
                 requests.append(txn)
                 results.append(result)
@@ -170,7 +170,7 @@ def fixtures() -> dict[str, bytes]:
         cases.append({"id": f"V1-{stage.upper()}-MISSING", "stage": stage,
                       "record": len(requests), "category": "missing-policy",
                       "transaction_hex": missing.hex()})
-        expected.append({"id": f"V1-{stage.upper()}-MISSING",
+        expected.append({"case_id": f"V1-{stage.upper()}-MISSING",
                          **decode(all_results[-96:], "result")})
         overall_status["NPOL"] += 1
         files[f"{stage}.txns.bin"] = b"".join(requests)

@@ -3,7 +3,7 @@
   "sha256": {
     "tests/anchors.json": "f53928cf46aea7b32794809751e79b7628869f4b72664a22171247f263630a9f",
     "tools/codec.py": "0a228b1e5b48798149906c34177708a71509a920ceb75d2fe98f38e433a99df6",
-    "tools/corpus.py": "9e19d63f14d614a530791e8db5646b1bf18c91a72da4041d87507d64ee00707c",
+    "tools/corpus.py": "efe4a2b9508bfd55b11bc314ff3f98ffe947758846f4e38dcf9a11b2cb9e146a",
     "tools/oracle.py": "466a9ddd29a4e73a23db3e78f05d60fba43074335f42df737a67a903a66eca61"
   }
 }
