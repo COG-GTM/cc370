@@ -21,7 +21,7 @@ work-area pre-image. A reimplementation that reproduces the formulas but not
 A calculation core with no I/O, holding contract V001 as integer-cent
 arithmetic with explicit half-up rounding and an externalized rate table; a
 state store owning the policy record and the `SSEQ`/`SLAST` replay token as a
-first-class idempotency key rather than a byte comparison; a batch driver that
+first-class replay key retaining the exact request bytes and comparison rules; a batch driver that
 preserves input order and generation-at-a-time publication; and codecs at the
 edge for CP037, packed decimal and big-endian binary, so that no encoding
 concern reaches the core. The 512-policy in-storage table is the one design
@@ -39,9 +39,11 @@ element that should not survive.
 4. **Shadow.** Run both implementations on the same input generation and
    compare raw bytes, not decoded values; a packed sign difference is a
    defect.
-5. **Cut over one operation family at a time**, quotes first, since they are
-   the ones whose hidden state effect is easiest to get wrong and cheapest to
-   detect.
+5. **Cut over a policy cohort under one writer.** Begin with quote-heavy
+   histories but keep every operation for a policy on the same writer.
+   Quotes change the same state as money movements, so routing operations
+   independently would require a shared atomic state/replay protocol.
+   Preserve each input generation for rollback; do not publish both outputs.
 
 ## Traceability identifiers
 

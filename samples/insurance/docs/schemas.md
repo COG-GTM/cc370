@@ -1,10 +1,11 @@
 # Record schemas (contract V001)
 
-All records are fixed length, unblocked into FB datasets, and contain three
+Host files contain consecutive fixed-length records without separators; guest
+FB datasets group them into blocks. The records contain three
 encodings that must never be converted as a unit: CP037 text, big-endian
 two's-complement binary, and signed packed decimal. Monetary fields are
 integer **cents**, scale 0, maximum 99,999,999,999 (`MAXAMT`). Dates are
-unsigned decimal `YYYYMMDD` held as binary fullwords, not packed and not text.
+positive `YYYYMMDD` values held as signed binary fullwords, not packed or text.
 Reserved and tail bytes are binary zero and are validated, so a sender that
 pads with CP037 blanks (`X'40'`) is rejected rather than silently accepted.
 
@@ -63,7 +64,22 @@ if the assembled DSECT and `tools/codec.py` ever disagree with this table.
 On a rejection, `OCASH`/`OLOAN` carry the unchanged stored values and the other
 amounts are packed zero, so a consumer never sees an uninitialized field. A
 `STAT` rejection cannot report balances at all: the state it would read is the
-state that failed validation, so every amount stays zero.
+state that failed validation, so every amount stays zero. `INSBAT`'s missing-policy
+path also returns zero balances because no stored policy was found.
+
+PL7 holds 13 decimal digits and a sign nibble; PL3 holds five digits and a sign.
+Accepted input signs are C (positive), D (negative), and F (unsigned positive).
+Other sign nibbles are rejected even if supported by other S/370 applications.
+Negative zero compares as zero and is permitted. Arithmetic result fields
+use C for non-negative values. The retained `SLAST` bytes preserve the input
+sign, including D-zero and F, because replay equality is byte-based.
+
+`SSEQ`/`TSEQ` range up to 2,147,483,647; zero marks an initial policy, and new
+requests require a positive sequence. There is no wraparound protocol.
+Within `WORK`, SREC starts at 0, TREC at 128 and OREC at 168; these
+three records occupy adjacent storage. Their `DS 0CL...` labels overlay the
+field declarations. Scratch storage follows OREC, with doubleword alignment
+before the eight-byte `WNUM` used by CVD.
 
 ## Statuses
 

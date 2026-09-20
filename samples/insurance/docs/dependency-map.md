@@ -1,7 +1,8 @@
 # Module and dependency map
 
-Every edge below is a real `V`-constant reference resolved by the linker, taken
-from the assembled ESD/RLD records rather than from prose.
+These edges are `V`-constant references in the source. Host ESD/CESD inspection
+confirms all module external symbols and linked sections, including the QSAM
+driver assembled against the supplied TK5 SYS1.MACLIB export.
 
 ```text
 INSBAT  (entry, QSAM)  POLIN -> TXNIN -> POLOUT + RESOUT
@@ -32,15 +33,15 @@ returned in the work area, not in registers — `INSDATE` writes `WORD`, `WYEAR`
 load-bearing. `INSCALC` calls `INSDATE` three times with different inputs and
 saves the intermediate results into `WOLDORD`/`WISSYR`/`WISSMD` between calls.
 
-`INSENT`/`INSRET` (`copy/`) are application macros and are not substitutes for
-`SAVE`/`RETURN`. `INSWORK.copy` is the single shared DSECT: the state,
-transaction and result records overlay one contiguous area, so `INSCALC` can
+`INSENT`/`INSRET` (`copy/`) are application macros independent of OS
+`SAVE`/`RETURN` macros. `INSWORK.copy` is the shared DSECT: the state,
+transaction and result records are adjacent in one contiguous area, so `INSCALC` can
 move `TREC` into `SLAST` as one 40-byte `MVC`. `WBEFORE` holds the pre-image
 that a failed transaction is rolled back from.
 
 `INSCALC` dispatches on `TOP` through `OPTABLE`, eight bytes per entry
 (`CL1` code, three reserved bytes, `A(routine)`), loading the address and
 branching with `BR 15`. The table entries are relocatable, so the operation set
-is discoverable only through the RLD records and the table itself.
+can be traced through the table and its relocation records.
 
 Load modules are non-reentrant, non-reusable, unauthorized, 24-bit.

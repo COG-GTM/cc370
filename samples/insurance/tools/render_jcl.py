@@ -23,7 +23,7 @@ def token(value: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["build", "run"])
+    parser.add_argument("mode", choices=["build", "link", "run"])
     parser.add_argument("--hlq", type=dataset, required=True)
     parser.add_argument("--account", type=token, required=True)
     parser.add_argument("--job-class", type=token, default="A")

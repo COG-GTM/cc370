@@ -8,7 +8,7 @@ actuarial advice or a description of any insurer's book of business.
 
 | ID | Rule | Source |
 |----|----|----|
-| BR-001 | Every packed field is digit- and sign-checked before any decimal instruction runs | `src/INSPACK.asm` |
+| BR-001 | Each state or transaction amount is digit- and sign-checked before arithmetic consumes it | `src/INSPACK.asm` |
 | BR-002 | Dates are Gregorian 1900-01-01..2099-12-31; ordinal day 0 is 1900-01-01 | `src/INSDATE.asm` |
 | BR-003 | Credit and surrender-charge rates come from an effective-date table, latest row at or below `TDATE`; duration ≥ 10 waives the charge | `src/INSRATE.asm` |
 | BR-004 | Stored state is validated before it can become a calculation candidate | `src/INSVAL.asm` |
@@ -21,7 +21,7 @@ actuarial advice or a description of any insurer's book of business.
 | BR-011 | At most 512 policies per generation, in strictly increasing ID order; an unknown ID is `NPOL` | `src/INSBAT.asm` |
 | BR-012 | Physical input order is the business order; nothing is sorted | `src/INSBAT.asm` |
 | BR-013 | Reserved bytes must be binary zero, amounts non-negative, and cash/loan non-negative with `loan <= cash` | `src/INSVAL.asm`, `src/INSCALC.asm` |
-| BR-014 | `MAXAMT` = 99,999,999,999 cents bounds inputs, intermediates and results | `src/INSCALC.asm`, `src/INSVAL.asm` |
+| BR-014 | `MAXAMT` = 99,999,999,999 cents bounds monetary inputs and balances; larger multiplication products use PL12 scratch | `src/INSCALC.asm`, `src/INSVAL.asm` |
 
 ## Rate table (synthetic)
 
@@ -48,17 +48,49 @@ surrender = max(0, cash - charge - loan)                         # BR-009
 death     = max(0, max(SFACE, cash) - loan)                      # BR-010
 ```
 
-Half-up rounding is done in integer arithmetic: the assembler adds half the
-divisor before `DP` (`AP WPROD,=PL5'1825000'` then `DP WPROD,=PL5'3650000'`,
-which is `2 * 365 * 2500`), so no truncation-versus-rounding disagreement can
-hide between the two implementations. Interest always accrues on the stored
+Half-up rounding of non-negative values uses integer arithmetic: the assembler
+adds half the divisor before `DP` (`AP WPROD,=PL5'1825000'` then
+`DP WPROD,=PL5'3650000'`). The divisor is 365 × 10000 = 3,650,000.
+The host Decimal oracle is checked against independent Fraction arithmetic;
+assembler execution still requires guest validation. Interest accrues on the stored
 cash value before the operation is applied, so a premium earns nothing on the
 day it is paid, and a withdrawal still earns interest for the days it was
 invested. Quotes are not read-only: `Q` and `D` credit interest and advance
 `SDATE`/`SSEQ` exactly like a money movement, which is the kind of hidden state
 effect this sample exists to demonstrate.
 
-## Worked example (anchor A001, executed by `INSSMOK` on the guest)
+The transaction date's rate applies to the entire interval, including intervals
+that cross table changes. There is no daily compounding within an interval and
+no split at a rate boundary. Accepted intervening transactions capitalize
+interest, so adding a quote can change later amounts through both timing and
+rounding. Policy age counts anniversaries, not elapsed days divided by 365.
+
+| Operation | Effect after interest |
+|----|----|
+| P | Add amount to cash |
+| W | Subtract amount from cash; reject if loan would exceed remaining cash |
+| L | Add amount to loan; cash is unchanged; require loan <= cash |
+| R | Subtract amount from loan; cash is unchanged; reject over-repayment |
+| Q | Calculate cash/surrender quote; require zero amount |
+| D | Calculate death quote; require zero amount; do not settle or close policy |
+
+Loans have no separate interest accrual in V001, and disbursement/payment
+accounting is outside this calculation slice. Premiums do not change face value.
+Zero monetary transactions are permitted. Tax, mortality, product-specific
+guarantees and real policyholder attributes are not modeled.
+
+PL12 scratch holds 23 digits. Valid cash (11 digits), rate (at most 325) and
+day span (at most 73,048) produce a product below 2.375e18, within that field.
+The seven-byte quotient has 13 digits, enough to hold the largest interest
+before the business maximum is checked. Balance addition/subtraction may exceed
+the business maximum but remains within PL7 capacity; it returns `OVER`/`FUND`.
+
+Validation precedence is state, identity, sequence/replay, reserved bytes,
+packed syntax, sign, amount bound, date, accrued-balance bound, operation,
+funding, and final balance bound. A request violating several rules reports
+the first one encountered; reordering checks can change observable statuses.
+
+## Worked example (anchor A001, embedded in `INSSMOK`; guest run pending)
 
 Policy `00000001`, issued 2024-01-01, face 1,000,000, cash 100,000, loan 0.
 Request: sequence 1, date 2025-01-01, `P` (premium) 10,000.

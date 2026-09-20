@@ -12,8 +12,9 @@ from `mvs38src`'s historical IBM recovered-source corpus.
 
 ## Validation status
 
-The initial host milestone assembles and links `INSSMOK` and all five shared
-modules at RC 0. `INSBAT` is a QSAM driver requiring genuine guest macro exports.
+The host milestone assembles all seven modules and links `INSSMOK` and
+`INSBAT` at RC 0 with the supplied TK5 Update 5 SYS1.MACLIB export.
+`INSSMOK` and all five shared modules also build without system macros.
 **Guest assembly, execution, restart runs, and host/IFOX00 deck comparisons are
 separate acceptance gates. No golden file is an observed MVS result.**
 
@@ -24,7 +25,7 @@ From this directory, with Python 3.10+ and the repository C toolchain:
 ```sh
 make core                 # system-macro-free core + guest smoke entry
 make lint
-make batch MACLIBS="/absolute/export/SYS1.MACLIB /absolute/export/SYS1.AMACLIB"
+make batch MACLIBS="/absolute/mvs-smoke-v1/bundle/macros"
 ```
 
 The last command intentionally fails without explicit macro paths. The build
@@ -83,6 +84,7 @@ valuation date and sequence. A death quote is **not** settlement or closure.
 - `docs/dependency-map.md` — modules, linkage, work-area conventions, dispatch
 - `docs/landmines.md` — implemented, bounded and deferred coverage
 - `docs/integration.md` — Hercules/MVS handoff: macros, DD names, JCL, receipts
+- `docs/coverage.md` — deterministic corpus inventory and validation commands
 - `docs/migration-plan.md` — proposed target architecture and sequence, plan only
 
 ## Tests and golden data
@@ -93,8 +95,9 @@ make verify-golden   # regenerate golden/v1 and compare every byte
 ```
 
 `golden/v1` is a frozen V1 corpus from seed 37020260920: 256 policies, 8194
-cases over two 32-event stages plus replay stages and the ten hand-worked
-anchors, with `cases.jsonl`, `expected.jsonl`, `coverage.json`, `SHA256SUMS`
+primary cases over 32 events per policy split across two stages, plus 500 replay
+requests and ten hand-worked anchors, with `cases.jsonl`, `expected.jsonl`,
+`coverage.json`, `SHA256SUMS`
 and `expectation-provenance.json`. The expectations are computed by
 `tools/oracle.py` (host Python, `Decimal` half-up) and are **generated
 expectations, not captured MVS output**. `tools/{codec,oracle,corpus,compare,
