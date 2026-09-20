@@ -1,0 +1,7 @@
+         MACRO
+&LABEL   INSRET
+&LABEL   L     13,4(13)
+         L     14,12(13)
+         LM    0,12,20(13)
+         BR    14
+         MEND
