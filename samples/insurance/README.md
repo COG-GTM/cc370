@@ -2,8 +2,8 @@
 
 This is a deliberately bounded System/370 assembler application for studying
 insurance calculations and mainframe storage mechanics together. Its rules,
-records, and policyholders are invented. It is **not production insurer source,
-data, actuarial advice, or a representation of production equivalence**.
+records, and policyholders are invented. It contains **no insurer's source or
+data and provides no actuarial advice or claim of production equivalence**.
 No modernization implementation is included.
 
 `cc370` is the appropriate home: the sample consumes its host assembler and
