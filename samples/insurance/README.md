@@ -76,5 +76,27 @@ accepted 40-byte request gives `DUPL`; a changed request at that sequence gives
 are safely rejected but their old results are not cached. Quotes advance the
 valuation date and sequence. A death quote is **not** settlement or closure.
 
-Full schemas, formula inventory, golden coverage, and integration instructions
-are supplied with this sample's documentation and test tools.
+## Documentation
+
+- `docs/schemas.md` — record layouts with offsets, encodings, scales, statuses
+- `docs/formulas.md` — contract V001, rule inventory BR-001..BR-014, worked anchors
+- `docs/dependency-map.md` — modules, linkage, work-area conventions, dispatch
+- `docs/landmines.md` — implemented, bounded and deferred coverage
+- `docs/integration.md` — Hercules/MVS handoff: macros, DD names, JCL, receipts
+- `docs/migration-plan.md` — proposed target architecture and sequence, plan only
+
+## Tests and golden data
+
+```sh
+make test            # lint, py_compile, 13 contract tests
+make verify-golden   # regenerate golden/v1 and compare every byte
+```
+
+`golden/v1` is a frozen V1 corpus from seed 37020260920: 256 policies, 8194
+cases over two 32-event stages plus replay stages and the ten hand-worked
+anchors, with `cases.jsonl`, `expected.jsonl`, `coverage.json`, `SHA256SUMS`
+and `expectation-provenance.json`. The expectations are computed by
+`tools/oracle.py` (host Python, `Decimal` half-up) and are **generated
+expectations, not captured MVS output**. `tools/{codec,oracle,corpus,compare,
+deck_compare,check_layout,render_jcl}.py` are testing scaffolding and are
+explicitly not the modernization deliverable.

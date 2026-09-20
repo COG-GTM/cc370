@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import subprocess
 
+from check_layout import verify
+
 SAMPLE = Path(__file__).resolve().parents[1]
 ROOT = SAMPLE.parents[1]
 CORE = ["INSCALC", "INSVAL", "INSPACK", "INSDATE", "INSRATE"]
@@ -76,6 +78,8 @@ def main() -> None:
         ]
         print(" ".join(cmd), flush=True)
         subprocess.run(cmd, check=True, env=env)
+        if name != "INSPACK":
+            verify(build / f"{name}.sym")
     for entry in ["INSSMOK"] + (["INSBAT"] if args.mode == "batch" else []):
         cmd = [
             str(linker), "--norent", "--noreus", "--entry", entry,
@@ -85,10 +89,10 @@ def main() -> None:
         ]
         print(" ".join(cmd), flush=True)
         subprocess.run(cmd, check=True, env=env)
-    manifest["outputs"] = {
-        p.name: digest(p) for p in sorted(build.iterdir())
-        if p.is_file() and p.suffix in [".obj", ".iebcopy"]
-    }
+    artifacts = [build / f"{name}.obj" for name in names]
+    artifacts += [build / f"{entry}.iebcopy"
+                  for entry in ["INSSMOK"] + (["INSBAT"] if args.mode == "batch" else [])]
+    manifest["outputs"] = {p.name: digest(p) for p in artifacts}
     (build / f"{args.mode}-manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     )
