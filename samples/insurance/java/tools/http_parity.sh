@@ -5,6 +5,13 @@
 # Usage (working directory does not matter; paths below are explicit):
 #   tools/http_parity.sh <jar> <source-commit> <work-dir> <report-dir> [a2-runtime-dir]
 #
+# Optional environment:
+#   A3_RUNTIME=<dir>   fresh guest run laid out as <dir>/<path>/<stage>/{polin,txnin,polout,resout}.bin
+#                      (tk5_demo.py evidence directory); adds a3-<path> runs for the three paths
+#   A3_TARGETED=<cases-dir>:<authority-dir>
+#                      targeted fresh-guest cases (targeted_a3.py cases / capture); adds a
+#                      targeted comparison in both HTTP modes
+#
 # The database and server are private to this run and torn down at exit. Each authority gets its
 # own namespace prefix because a namespace has exactly one root generation.
 set -euo pipefail
@@ -57,6 +64,14 @@ for mode in http-gen http-json; do
   run "$mode" a1 a1
   for p in ifox-iewl as370-iewl as370-ld370; do
     run "$mode" a2 "a2-$p" "$A2/$p"
+    if [[ -n "${A3_RUNTIME:-}" ]]; then run "$mode" a3 "a3-$p" "$A3_RUNTIME/$p"; fi
   done
+  if [[ -n "${A3_TARGETED:-}" ]]; then
+    python3 "$HERE/targeted_a3.py" compare --mode "$mode" \
+        --cases "${A3_TARGETED%%:*}" --authority "${A3_TARGETED##*:}" \
+        --jar "$JAR" --source-commit "$SHA" --base-url "http://127.0.0.1:$PORT" \
+        --namespace-prefix "${mode}-a3t-" --work "$WORK/${mode}-a3-targeted" \
+        --report "$REPORTS/a3-targeted-${mode}.json" || STATUS=1
+  fi
 done
 exit $STATUS

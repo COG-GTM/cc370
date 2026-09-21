@@ -1,0 +1,49 @@
+{
+  "case": "date-bounds",
+  "dataset_prefix": "IBMUSER.INSJ4.X.C05",
+  "errors": [],
+  "job_id": "JOB00180",
+  "job_result_sha256": "3fa78125e166708f59c8c9664053bf5c1bf20d48e056c9ce1bfd5933d4167542",
+  "observed_statuses": [
+    "OKAY",
+    "OKAY",
+    "DATE",
+    "DATE",
+    "OKAY",
+    "OKAY",
+    "DATE",
+    "DATE",
+    "DATE",
+    "DATE",
+    "DATE",
+    "DATE",
+    "OKAY"
+  ],
+  "oracle_agrees": true,
+  "oracle_statuses": [
+    "OKAY",
+    "OKAY",
+    "DATE",
+    "DATE",
+    "OKAY",
+    "OKAY",
+    "DATE",
+    "DATE",
+    "DATE",
+    "DATE",
+    "DATE",
+    "DATE",
+    "OKAY"
+  ],
+  "passed": true,
+  "polin_sha256": "c7b78eb263d219e3cb46b3de734920bbb740d4324950001c09c2cb03f48afbaa",
+  "polout_sha256": "7befb0273d56095845ace2a893ea7c6143c384be56b7111764ea2dc5f04d663a",
+  "purged": true,
+  "resout_sha256": "4d419ebcd637cb279e49580aacf2638832dc1b21a40552ed484c4bfd28095fe3",
+  "schema": "insurance-a3-targeted-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 0
+  },
+  "txnin_sha256": "d490b42b58f7b23d27a648798426aece78855d32e30144af0c5f4ac65d05d613"
+}

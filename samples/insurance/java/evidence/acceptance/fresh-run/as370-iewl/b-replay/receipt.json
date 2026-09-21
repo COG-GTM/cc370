@@ -1,0 +1,19 @@
+{
+  "abend": null,
+  "build_manifest_sha256": "bd5c6354ea4f1b13494ffdd1d7f31a8f292f4ac3c6850c526b51d117cfba8b5d",
+  "guest_manifest_sha256": "e4d2d2f8862d0a06815377aff63f2a91a432f6c9bcd97802ff93e69045e71391",
+  "input_generation": "/home/ubuntu/a3/run-01/as370-iewl/b/polout.bin",
+  "job_id": "JOB00080",
+  "job_result_sha256": "b811abdf97fec738c3700f2b36357e09a78cb21809c8a08d09889893249f386a",
+  "outcome": "completed",
+  "polin_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+  "polout_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+  "resout_sha256": "983ab6ae00d6ca445381482cbe16a060322caacb6f8da0ac86e7b6c955bc90ac",
+  "schema": "insurance-run-v1",
+  "step_rc": {
+    "RUN": 0
+  },
+  "timed_out": false,
+  "txnin_sha256": "31d53d3bc51d92ad4d4f9f491d323e59a1080029ec057cbbc6a9c5c55e727708"
+}

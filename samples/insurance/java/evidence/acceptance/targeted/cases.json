@@ -1,0 +1,259 @@
+[
+  {
+    "name": "interest-tie",
+    "description": "cash 73000 @325bps: 1 day = 6.5 -> 7; 5 days = 32.5 -> 33; cash 14600, 25 days = 32.5 -> 33",
+    "control": null,
+    "policies_count": 3,
+    "transactions_count": 3,
+    "polin_sha256": "87f4440fc4844fccb284d582ff1085ece10175ab16248e380ab7fde62f104f47",
+    "txnin_sha256": "32fcf04b1717f8179ed4bd02a98496c97e55bd7f357ad347d04e6d9bbe70528e",
+    "oracle_statuses": [
+      "OKAY",
+      "OKAY",
+      "OKAY"
+    ]
+  },
+  {
+    "name": "quotient-over",
+    "description": "cash 99,999,999,999 from 1900-01-01 to 2025-01-01 (45,656 days @325bps): interest 406,526,027,393 > MAXAMT -> OVER; sibling policy proves a 1-day interval on the same cash is OVER via cash+interest; third policy shows cash exactly MAXAMT with a 0-day interval is OKAY",
+    "control": null,
+    "policies_count": 3,
+    "transactions_count": 3,
+    "polin_sha256": "39cc046a84d0fb0713e0aa2cedcbc91a5fea2b9e11d8fc137a796d4c1e4d67a6",
+    "txnin_sha256": "d06732b865dc571c044c937e957b988a436a75573fffcb3008ead427210056ec",
+    "oracle_statuses": [
+      "OVER",
+      "OVER",
+      "OKAY"
+    ]
+  },
+  {
+    "name": "cash-max-boundary",
+    "description": "cash 96,800,000,000 over 2024 (366 days @325bps) -> interest 3,154,619,178, cash 99,954,619,178 OKAY; premium 45,380,821 (0 days) -> cash exactly MAXAMT OKAY; premium 1 -> OVER",
+    "control": null,
+    "policies_count": 1,
+    "transactions_count": 3,
+    "polin_sha256": "af0a5a075ac2f26ebf479a129255c0aa9caca3dbaeff1c962493c96fba9d738e",
+    "txnin_sha256": "03a967f4a220cdc4ae3f5b86c150e58c66ad492ec74d996dfab158a6615bb9f8",
+    "oracle_statuses": [
+      "OKAY",
+      "OKAY",
+      "OVER"
+    ]
+  },
+  {
+    "name": "charge-tie",
+    "description": "0-day premium into cash 0 @350bps: cash 300 -> charge 10.5 -> 11 (half-even 10); cash 100 -> 3.5 -> 4; @400bps (2024) cash 125 -> 5.0 exact; cash 1125 -> 45.0; cash 375 -> 15.0",
+    "control": null,
+    "policies_count": 3,
+    "transactions_count": 5,
+    "polin_sha256": "cf687ff51bf15a576b941a19f39764ca8b91973319f8bfe42e79af892db01f27",
+    "txnin_sha256": "f521d5e8f4fe0498ebd4a011113992d0cb9ab76fe6a4289a3709188f5ee225e4",
+    "oracle_statuses": [
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY"
+    ]
+  },
+  {
+    "name": "date-bounds",
+    "description": "1900-01-01 lower bound OKAY; 2099-12-31 upper bound OKAY (age 199); 2100-01-01 DATE; 1900-02-29 DATE (not leap); 2000-02-29 OKAY; 2025-04-31 DATE; 2025-13-01 DATE; 0 DATE; negative DATE; 999990101 DATE; date before SDATE DATE",
+    "control": null,
+    "policies_count": 4,
+    "transactions_count": 13,
+    "polin_sha256": "c7b78eb263d219e3cb46b3de734920bbb740d4324950001c09c2cb03f48afbaa",
+    "txnin_sha256": "d490b42b58f7b23d27a648798426aece78855d32e30144af0c5f4ac65d05d613",
+    "oracle_statuses": [
+      "OKAY",
+      "OKAY",
+      "DATE",
+      "DATE",
+      "OKAY",
+      "OKAY",
+      "DATE",
+      "DATE",
+      "DATE",
+      "DATE",
+      "DATE",
+      "DATE",
+      "OKAY"
+    ]
+  },
+  {
+    "name": "age-rate-bands",
+    "description": "issue 2015-06-01: quotes on every rate-band edge (2019-12-31 175/600, 2020-01-01 225/500, 2023-12-31 225/500, 2024-01-01 300/400, 2024-12-31 300/400, 2025-01-01 325/350), age 9 with fee on 2025-05-31, age 10 fee waived on 2025-06-01; issue 2024-02-29: 2025-02-28 age 0, 2025-03-01 age 1",
+    "control": null,
+    "policies_count": 2,
+    "transactions_count": 10,
+    "polin_sha256": "6326cfcf4b08b4a46416a4e90a983388339b473fc56cb0a1640a8ec0cc37fb63",
+    "txnin_sha256": "887bcf3fec96463b66e772ff1d1cdba66b4cf29479dc847e6144987856a9fcce",
+    "oracle_statuses": [
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY"
+    ]
+  },
+  {
+    "name": "packed-signs",
+    "description": "P 12345 with F sign OKAY; P negative-zero (0000000D) OKAY as 0 and SLAST keeps the D nibble; exact replay of the negative-zero record DUPL; same seq with C-sign zero CNFL; W 1 with F sign OKAY; P -5 NEGA; W -0 (negative zero, seq 4) OKAY",
+    "control": null,
+    "policies_count": 1,
+    "transactions_count": 7,
+    "polin_sha256": "a6d8631b8b676816d82d5c4f321b79d980cc0e5dfad9cfa7005cec9edea23254",
+    "txnin_sha256": "1c1f63daed7f9f47ffa160bd12d653a46c2d5538213e9c118ebdc9a2194db591",
+    "oracle_statuses": [
+      "OKAY",
+      "OKAY",
+      "DUPL",
+      "CNFL",
+      "OKAY",
+      "NEGA",
+      "OKAY"
+    ]
+  },
+  {
+    "name": "malformed",
+    "description": "PACK digit nibble A; PACK sign nibble 0; PACK sign E; FORM nonzero TPAD; FORM nonzero TTAIL; TYPE op X; TYPE lowercase p; AMNT Q 1; AMNT D 1; FORM before PACK; PACK before TYPE; NEGA before DATE; OVER (amount > MAXAMT) before TYPE; DATE before TYPE; TYPE before FUND-size amount",
+    "control": null,
+    "policies_count": 1,
+    "transactions_count": 15,
+    "polin_sha256": "a6d8631b8b676816d82d5c4f321b79d980cc0e5dfad9cfa7005cec9edea23254",
+    "txnin_sha256": "19c9c1696bcad52c6a97f26313cab325c1a9f75630385b6e79d793be27143e78",
+    "oracle_statuses": [
+      "PACK",
+      "PACK",
+      "PACK",
+      "FORM",
+      "FORM",
+      "TYPE",
+      "TYPE",
+      "AMNT",
+      "AMNT",
+      "FORM",
+      "PACK",
+      "NEGA",
+      "OVER",
+      "DATE",
+      "TYPE"
+    ]
+  },
+  {
+    "name": "sequence-matrix",
+    "description": "seq 0 ORDR; seq -1 ORDR; seq 1 OKAY; exact replay DUPL; same seq other amount CNFL; same seq with FORM defect CNFL (CNFL precedes FORM); seq 0 with bad packed ORDR; gap to seq 5 OKAY; seq 3 ORDR; seq 7 DATE-rejected then seq 7 OKAY (rejection did not advance SSEQ); unknown policy NPOL; unknown policy with malformed bytes NPOL; second policy untouched",
+    "control": null,
+    "policies_count": 2,
+    "transactions_count": 13,
+    "polin_sha256": "ac783e3753fa5e4b2f1c0a684058c66103735b1a7d91ed4b00f83dae1e32f15b",
+    "txnin_sha256": "da8ed7e7c1b1007ee2364e6ee33b91d6b9443dc7cc3e2397ccea7ca9b898a7d9",
+    "oracle_statuses": [
+      "ORDR",
+      "ORDR",
+      "OKAY",
+      "DUPL",
+      "CNFL",
+      "CNFL",
+      "ORDR",
+      "OKAY",
+      "ORDR",
+      "DATE",
+      "OKAY",
+      "NPOL",
+      "NPOL"
+    ]
+  },
+  {
+    "name": "funds-ops",
+    "description": "W > cash FUND; L > cash FUND; L = cash OKAY; R > loan FUND; W leaving cash < loan FUND; R full OKAY; D 0 OKAY (does not close); Q after D OKAY; P MAXAMT into cash 0 (0 days) OKAY; then Q one day later OVER (cash+interest); W MAXAMT back to 0 OKAY",
+    "control": null,
+    "policies_count": 2,
+    "transactions_count": 11,
+    "polin_sha256": "23636138ec636186ce9e402e4bd3669d34c4ae32cc0c5be14d4c36d0d20ae51e",
+    "txnin_sha256": "1fdffdf00a02d68f3b13ce32c63ed691090fb9d91e1d9516b84352665f2e5109",
+    "oracle_statuses": [
+      "FUND",
+      "FUND",
+      "OKAY",
+      "FUND",
+      "FUND",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OKAY",
+      "OVER",
+      "OKAY"
+    ]
+  },
+  {
+    "name": "empty-txnin",
+    "description": "two policies, zero transactions: unchanged master, zero results",
+    "control": null,
+    "policies_count": 2,
+    "transactions_count": 0,
+    "polin_sha256": "6ee1d2b92cafcd569c83619c7d1d22a29d5b6a27cd7c7f3a7caf805e0a725276",
+    "txnin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle_statuses": []
+  },
+  {
+    "name": "empty-polin",
+    "description": "no policies, three transactions: NPOL each, empty POLOUT",
+    "control": null,
+    "policies_count": 0,
+    "transactions_count": 3,
+    "polin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "txnin_sha256": "add9ca2e2ae324e5fda6e310cdf211c2086e43cffee8d315fc7f6996ed81e078",
+    "oracle_statuses": [
+      "NPOL",
+      "NPOL",
+      "NPOL"
+    ]
+  },
+  {
+    "name": "control-master-loan-over-cash",
+    "description": "master with loan > cash: INSVAL rejects at load, RC=12",
+    "control": "RC=12",
+    "policies_count": 1,
+    "transactions_count": 1,
+    "polin_sha256": "f0c577aac6f941f6ac1c02b9eac6ffef7a8d678f0bcae1a815130e36e1c2f5cb",
+    "txnin_sha256": "59d6a3667b984f90b4319010bec9031a565032cbb10118e3b08a53cbe9b87c4d",
+    "oracle_statuses": null
+  },
+  {
+    "name": "control-master-unordered",
+    "description": "master IDs out of order: RC=12",
+    "control": "RC=12",
+    "policies_count": 2,
+    "transactions_count": 1,
+    "polin_sha256": "75f8f84a8b016c44ac5efb4035be875345d350561086fba45f14f549556d69d8",
+    "txnin_sha256": "59d6a3667b984f90b4319010bec9031a565032cbb10118e3b08a53cbe9b87c4d",
+    "oracle_statuses": null
+  },
+  {
+    "name": "control-master-duplicate",
+    "description": "duplicate master IDs: RC=12",
+    "control": "RC=12",
+    "policies_count": 2,
+    "transactions_count": 1,
+    "polin_sha256": "5348317eaccf0b479a5f36a77454dc706d180fdc934b696699b4af086f2b7c27",
+    "txnin_sha256": "59d6a3667b984f90b4319010bec9031a565032cbb10118e3b08a53cbe9b87c4d",
+    "oracle_statuses": null
+  },
+  {
+    "name": "control-master-513",
+    "description": "513 policies: RC=12",
+    "control": "RC=12",
+    "policies_count": 513,
+    "transactions_count": 1,
+    "polin_sha256": "4280046e7213a8011ac0401f2b434f6bb4989bbb5374d62a5b55525dcbb8dcb2",
+    "txnin_sha256": "59d6a3667b984f90b4319010bec9031a565032cbb10118e3b08a53cbe9b87c4d",
+    "oracle_statuses": null
+  }
+]

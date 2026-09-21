@@ -1,0 +1,48 @@
+PASS: authority=a1 mode=http-gen stages 5/5, results compared 8704; report /home/ubuntu/a3/java/reports/a1-http-gen.json
+PASS: authority=a2 mode=http-gen stages 5/5, results compared 8704; report /home/ubuntu/a3/java/reports/a2-ifox-iewl-http-gen.json
+PASS: authority=a3 mode=http-gen stages 5/5, results compared 8704; report /home/ubuntu/a3/java/reports/a3-ifox-iewl-http-gen.json
+PASS: authority=a2 mode=http-gen stages 5/5, results compared 8704; report /home/ubuntu/a3/java/reports/a2-as370-iewl-http-gen.json
+PASS: authority=a3 mode=http-gen stages 5/5, results compared 8704; report /home/ubuntu/a3/java/reports/a3-as370-iewl-http-gen.json
+PASS: authority=a2 mode=http-gen stages 5/5, results compared 8704; report /home/ubuntu/a3/java/reports/a2-as370-ld370-http-gen.json
+PASS: authority=a3 mode=http-gen stages 5/5, results compared 8704; report /home/ubuntu/a3/java/reports/a3-as370-ld370-http-gen.json
+interest-tie: 3 results, statuses=['OKAY', 'OKAY', 'OKAY'] -> PASS
+quotient-over: 3 results, statuses=['OVER', 'OVER', 'OKAY'] -> PASS
+cash-max-boundary: 3 results, statuses=['OKAY', 'OKAY', 'OVER'] -> PASS
+charge-tie: 5 results, statuses=['OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY'] -> PASS
+date-bounds: 13 results, statuses=['OKAY', 'OKAY', 'DATE', 'DATE', 'OKAY', 'OKAY', 'DATE', 'DATE', 'DATE', 'DATE', 'DATE', 'DATE', 'OKAY'] -> PASS
+age-rate-bands: 10 results, statuses=['OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY'] -> PASS
+packed-signs: 7 results, statuses=['OKAY', 'OKAY', 'DUPL', 'CNFL', 'OKAY', 'NEGA', 'OKAY'] -> PASS
+malformed: 15 results, statuses=['PACK', 'PACK', 'PACK', 'FORM', 'FORM', 'TYPE', 'TYPE', 'AMNT', 'AMNT', 'FORM', 'PACK', 'NEGA', 'OVER', 'DATE', 'TYPE'] -> PASS
+sequence-matrix: 13 results, statuses=['ORDR', 'ORDR', 'OKAY', 'DUPL', 'CNFL', 'CNFL', 'ORDR', 'OKAY', 'ORDR', 'DATE', 'OKAY', 'NPOL', 'NPOL'] -> PASS
+funds-ops: 11 results, statuses=['FUND', 'FUND', 'OKAY', 'FUND', 'FUND', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OVER', 'OKAY'] -> PASS
+empty-txnin: 0 results, statuses=[] -> PASS
+empty-polin: 3 results, statuses=['NPOL', 'NPOL', 'NPOL'] -> PASS
+control-master-loan-over-cash: guest RC=12 java_rejected=True -> PASS
+control-master-unordered: guest RC=12 java_rejected=True -> PASS
+control-master-duplicate: guest RC=12 java_rejected=True -> PASS
+control-master-513: guest RC=12 java_rejected=True -> PASS
+PASS: mode=http-gen cases 16/16, results compared 86; report /home/ubuntu/a3/java/reports/a3-targeted-http-gen.json
+PASS: authority=a1 mode=http-json stages 5/5, results compared 8704, typed 7424/8704 (raw fallback 1280); report /home/ubuntu/a3/java/reports/a1-http-json.json
+PASS: authority=a2 mode=http-json stages 5/5, results compared 8704, typed 7424/8704 (raw fallback 1280); report /home/ubuntu/a3/java/reports/a2-ifox-iewl-http-json.json
+PASS: authority=a3 mode=http-json stages 5/5, results compared 8704, typed 7424/8704 (raw fallback 1280); report /home/ubuntu/a3/java/reports/a3-ifox-iewl-http-json.json
+PASS: authority=a2 mode=http-json stages 5/5, results compared 8704, typed 7424/8704 (raw fallback 1280); report /home/ubuntu/a3/java/reports/a2-as370-iewl-http-json.json
+PASS: authority=a3 mode=http-json stages 5/5, results compared 8704, typed 7424/8704 (raw fallback 1280); report /home/ubuntu/a3/java/reports/a3-as370-iewl-http-json.json
+PASS: authority=a2 mode=http-json stages 5/5, results compared 8704, typed 7424/8704 (raw fallback 1280); report /home/ubuntu/a3/java/reports/a2-as370-ld370-http-json.json
+PASS: authority=a3 mode=http-json stages 5/5, results compared 8704, typed 7424/8704 (raw fallback 1280); report /home/ubuntu/a3/java/reports/a3-as370-ld370-http-json.json
+interest-tie: 3 results, statuses=['OKAY', 'OKAY', 'OKAY'] -> PASS
+quotient-over: 3 results, statuses=['OVER', 'OVER', 'OKAY'] -> PASS
+cash-max-boundary: 3 results, statuses=['OKAY', 'OKAY', 'OVER'] -> PASS
+charge-tie: 5 results, statuses=['OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY'] -> PASS
+date-bounds: 13 results, statuses=['OKAY', 'OKAY', 'DATE', 'DATE', 'OKAY', 'OKAY', 'DATE', 'DATE', 'DATE', 'DATE', 'DATE', 'DATE', 'OKAY'] -> PASS
+age-rate-bands: 10 results, statuses=['OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OKAY'] -> PASS
+packed-signs: 7 results, statuses=['OKAY', 'OKAY', 'DUPL', 'CNFL', 'OKAY', 'NEGA', 'OKAY'] -> PASS
+malformed: 15 results, statuses=['PACK', 'PACK', 'PACK', 'FORM', 'FORM', 'TYPE', 'TYPE', 'AMNT', 'AMNT', 'FORM', 'PACK', 'NEGA', 'OVER', 'DATE', 'TYPE'] -> PASS
+sequence-matrix: 13 results, statuses=['ORDR', 'ORDR', 'OKAY', 'DUPL', 'CNFL', 'CNFL', 'ORDR', 'OKAY', 'ORDR', 'DATE', 'OKAY', 'NPOL', 'NPOL'] -> PASS
+funds-ops: 11 results, statuses=['FUND', 'FUND', 'OKAY', 'FUND', 'FUND', 'OKAY', 'OKAY', 'OKAY', 'OKAY', 'OVER', 'OKAY'] -> PASS
+empty-txnin: 0 results, statuses=[] -> PASS
+empty-polin: 3 results, statuses=['NPOL', 'NPOL', 'NPOL'] -> PASS
+control-master-loan-over-cash: guest RC=12 java_rejected=True -> PASS
+control-master-unordered: guest RC=12 java_rejected=True -> PASS
+control-master-duplicate: guest RC=12 java_rejected=True -> PASS
+control-master-513: guest RC=12 java_rejected=True -> PASS
+PASS: mode=http-json cases 16/16, results compared 86; report /home/ubuntu/a3/java/reports/a3-targeted-http-json.json

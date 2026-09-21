@@ -1,0 +1,24 @@
+{
+  "case": "control-master-duplicate",
+  "dataset_prefix": "IBMUSER.INSJ4.X.C15",
+  "errors": [
+    "RUN: expected one RC=0, found [12]",
+    "RUN: nonzero RC=0012"
+  ],
+  "job_id": "JOB00210",
+  "job_result_sha256": "3bf7d55654ea4b46ec1c8c9e47a1c70e2780e4ad2ca7c350da92553eac17a773",
+  "observed_statuses": [],
+  "oracle_agrees": false,
+  "oracle_statuses": null,
+  "passed": false,
+  "polin_sha256": "5348317eaccf0b479a5f36a77454dc706d180fdc934b696699b4af086f2b7c27",
+  "polout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "purged": true,
+  "resout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema": "insurance-a3-targeted-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 12
+  },
+  "txnin_sha256": "59d6a3667b984f90b4319010bec9031a565032cbb10118e3b08a53cbe9b87c4d"
+}

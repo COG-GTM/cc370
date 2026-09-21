@@ -1,0 +1,37 @@
+{
+  "case": "packed-signs",
+  "dataset_prefix": "IBMUSER.INSJ4.X.C07",
+  "errors": [],
+  "job_id": "JOB00186",
+  "job_result_sha256": "9dad780c300cc6bcb019ddd171c9c5ea19fc6e96d581e1d52492e3f78cff8f2a",
+  "observed_statuses": [
+    "OKAY",
+    "OKAY",
+    "DUPL",
+    "CNFL",
+    "OKAY",
+    "NEGA",
+    "OKAY"
+  ],
+  "oracle_agrees": true,
+  "oracle_statuses": [
+    "OKAY",
+    "OKAY",
+    "DUPL",
+    "CNFL",
+    "OKAY",
+    "NEGA",
+    "OKAY"
+  ],
+  "passed": true,
+  "polin_sha256": "a6d8631b8b676816d82d5c4f321b79d980cc0e5dfad9cfa7005cec9edea23254",
+  "polout_sha256": "fcc4eab5327d5323d1ae355a15ab9f5e1c7537558c099a79eb8fba3c8949b2d9",
+  "purged": true,
+  "resout_sha256": "752ed0a6bf3a354066e0841b9446657aaabf0cf909e0c19a57de0de98fc48ef4",
+  "schema": "insurance-a3-targeted-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 0
+  },
+  "txnin_sha256": "1c1f63daed7f9f47ffa160bd12d653a46c2d5538213e9c118ebdc9a2194db591"
+}

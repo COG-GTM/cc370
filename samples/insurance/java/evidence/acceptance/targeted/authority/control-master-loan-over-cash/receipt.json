@@ -1,0 +1,24 @@
+{
+  "case": "control-master-loan-over-cash",
+  "dataset_prefix": "IBMUSER.INSJ4.X.C13",
+  "errors": [
+    "RUN: expected one RC=0, found [12]",
+    "RUN: nonzero RC=0012"
+  ],
+  "job_id": "JOB00204",
+  "job_result_sha256": "a2af118c22cabe8858bbd944866bcc50a09ea77f03c77ab09c52889c837d6260",
+  "observed_statuses": [],
+  "oracle_agrees": false,
+  "oracle_statuses": null,
+  "passed": false,
+  "polin_sha256": "f0c577aac6f941f6ac1c02b9eac6ffef7a8d678f0bcae1a815130e36e1c2f5cb",
+  "polout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "purged": true,
+  "resout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema": "insurance-a3-targeted-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 12
+  },
+  "txnin_sha256": "59d6a3667b984f90b4319010bec9031a565032cbb10118e3b08a53cbe9b87c4d"
+}

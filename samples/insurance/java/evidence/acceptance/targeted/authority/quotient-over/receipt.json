@@ -1,0 +1,29 @@
+{
+  "case": "quotient-over",
+  "dataset_prefix": "IBMUSER.INSJ4.X.C02",
+  "errors": [],
+  "job_id": "JOB00171",
+  "job_result_sha256": "f337b8d5b14b3b53d4214f777da48b410070f9af1fa3fdfb6d30325109904a82",
+  "observed_statuses": [
+    "OVER",
+    "OVER",
+    "OKAY"
+  ],
+  "oracle_agrees": true,
+  "oracle_statuses": [
+    "OVER",
+    "OVER",
+    "OKAY"
+  ],
+  "passed": true,
+  "polin_sha256": "39cc046a84d0fb0713e0aa2cedcbc91a5fea2b9e11d8fc137a796d4c1e4d67a6",
+  "polout_sha256": "19b7e528112b8d2a4c40de0e83a744997ff32f280a11412186453f088c6432da",
+  "purged": true,
+  "resout_sha256": "ca095d0a6d0553e59d835a956a50cecf971f67610df5399c33a233f581835e2c",
+  "schema": "insurance-a3-targeted-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 0
+  },
+  "txnin_sha256": "d06732b865dc571c044c937e957b988a436a75573fffcb3008ead427210056ec"
+}

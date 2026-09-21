@@ -1,0 +1,53 @@
+{
+  "case": "malformed",
+  "dataset_prefix": "IBMUSER.INSJ4.X.C08",
+  "errors": [],
+  "job_id": "JOB00189",
+  "job_result_sha256": "0dfa41aeddbe6a195f744ee532976d8d6e10c316e13d502a92f3f17822dfefa5",
+  "observed_statuses": [
+    "PACK",
+    "PACK",
+    "PACK",
+    "FORM",
+    "FORM",
+    "TYPE",
+    "TYPE",
+    "AMNT",
+    "AMNT",
+    "FORM",
+    "PACK",
+    "NEGA",
+    "OVER",
+    "DATE",
+    "TYPE"
+  ],
+  "oracle_agrees": true,
+  "oracle_statuses": [
+    "PACK",
+    "PACK",
+    "PACK",
+    "FORM",
+    "FORM",
+    "TYPE",
+    "TYPE",
+    "AMNT",
+    "AMNT",
+    "FORM",
+    "PACK",
+    "NEGA",
+    "OVER",
+    "DATE",
+    "TYPE"
+  ],
+  "passed": true,
+  "polin_sha256": "a6d8631b8b676816d82d5c4f321b79d980cc0e5dfad9cfa7005cec9edea23254",
+  "polout_sha256": "a6d8631b8b676816d82d5c4f321b79d980cc0e5dfad9cfa7005cec9edea23254",
+  "purged": true,
+  "resout_sha256": "9b9128c283a2889a048d484cf4d88d19381ef82c2bb1f434b4fcda0feb03c7d4",
+  "schema": "insurance-a3-targeted-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 0
+  },
+  "txnin_sha256": "19c9c1696bcad52c6a97f26313cab325c1a9f75630385b6e79d793be27143e78"
+}

@@ -1,0 +1,7 @@
+{
+  "schema": "insurance-comparison-v1",
+  "stage": "b-replay",
+  "passed": true,
+  "errors": [],
+  "mismatches": []
+}

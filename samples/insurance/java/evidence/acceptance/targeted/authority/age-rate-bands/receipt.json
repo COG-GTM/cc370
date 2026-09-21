@@ -1,0 +1,43 @@
+{
+  "case": "age-rate-bands",
+  "dataset_prefix": "IBMUSER.INSJ4.X.C06",
+  "errors": [],
+  "job_id": "JOB00183",
+  "job_result_sha256": "659d442ad6f295714ec5c0d737567b2a7c8ae1d0ec7c7108cc42b8c36edab8c8",
+  "observed_statuses": [
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY"
+  ],
+  "oracle_agrees": true,
+  "oracle_statuses": [
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY",
+    "OKAY"
+  ],
+  "passed": true,
+  "polin_sha256": "6326cfcf4b08b4a46416a4e90a983388339b473fc56cb0a1640a8ec0cc37fb63",
+  "polout_sha256": "83c3a24e9ad585c30fa71ddb03bce8a58f1667c1fcbfae7b0f5bcd6d6849ff9a",
+  "purged": true,
+  "resout_sha256": "6b761f7d936fa9e0b88a10c34711b3b2ae0a0a31f75f90d361b91754bef30f9c",
+  "schema": "insurance-a3-targeted-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 0
+  },
+  "txnin_sha256": "887bcf3fec96463b66e772ff1d1cdba66b4cf29479dc847e6144987856a9fcce"
+}
