@@ -16,8 +16,9 @@ insurer's rules, data, z/OS, HLASM, production scale or power-loss behavior.
 | `legacy-codec` | CP037, big-endian fullword, packed decimal (C/D/F signs, negative zero preserved), raw byte-backed 128/40/96-byte records (`PolicyRecord`, `TransactionRecord`, `ResultRecord`) | none |
 | `contract-v001` | `ContractV001`: the V001 business contract — validation precedence, half-up interest, quote/commit operations, replay/order/conflict, exact PL7/PL3 width checks, 1900-2099 calendar, frozen rate table | none |
 | `ledger-application` | `PolicyLedgerService`, `BatchRunner` (INSBAT semantics), `ExpectedManifest` (independent counts + input hashes), `Receipt`, `GenerationStore` + `FileGenerationStore` (pending/published/discarded generations), `BatchCli` | Jackson only |
-| `ledger-app` | Single Spring Boot deployable; `java -jar ledger-app.jar batch ...` dispatches to the CLI without starting the web container | Spring Boot |
-| `tools/parity_java.py` | Parity driver: runs the JAR over anchors/A/A-replay/B/B-replay against an authority, validates receipts independently, reuses the unchanged `../tools/compare.py` for field-level diffs | Python 3 |
+| `ledger-app` | Single Spring Boot deployable: `JdbcGenerationStore` (PostgreSQL, Flyway, Spring Data JDBC, published-row INSERT/UPDATE/DELETE triggers), stateful raw + typed HTTP API, stateless `/v1/raw/evaluate`; `java -jar ledger-app.jar batch ...` dispatches to the CLI without starting the web container | Spring Boot 3.5 |
+| `tools/parity_java.py` | Parity driver (`--mode batch\|http-gen\|http-json`): runs the JAR or the live HTTP service over anchors/A/A-replay/B/B-replay against an authority, validates receipts independently, reuses the unchanged `../tools/compare.py` for field-level diffs | Python 3 |
+| `tools/http_parity.sh` | Launcher: private `postgres:15-alpine` container + fat JAR on a local port, then `http-gen` and `http-json` over A1 and all three A2 paths | bash, Docker |
 
 Legacy source, macros, layouts, goldens, tests and `../tools/compare.py` are
 unchanged; the Java tree is additive.
@@ -57,6 +58,35 @@ empty TXNIN -> master copied unchanged, zero RESOUT. "Genuine" is decided by
 the manifest, not by the delivered file, so aligned truncation (lost whole
 records) and partial records are both rejected before anything is published.
 
+## HTTP API (stateful generations)
+
+All paths are under `/v1/namespaces/{ns}`. Persistence is PostgreSQL
+(`LEDGER_DB_URL`, `LEDGER_DB_USER`, `LEDGER_DB_PASSWORD`; Flyway migrates
+`V1__generation_ledger.sql` on start-up). `LEDGER_SOURCE_COMMIT` is bound into
+every receipt.
+
+| Method / path | Purpose |
+|---|---|
+| `POST /import` | bootstrap a root generation from POLIN bytes pinned by an independent manifest (one root per namespace) |
+| `POST /generations` | open a pending successor of a published parent; optional `polinBase64` must equal the parent's published bytes; returns a fence |
+| `POST /generations/{gen}/requests:raw` | apply one 40-byte request (`recordHex`) under the fence; returns ordinal, echoed request bytes, 96-byte result bytes |
+| `POST /generations/{gen}/requests` | typed JSON request; encoded to the exact 40 bytes before evaluation, response adds a typed `result` decoded from the result bytes |
+| `POST /generations/{gen}/batch` | apply a whole TXNIN (base64) in physical order under the fence |
+| `POST /generations/{gen}/publish` | validate against the pinned manifest, flip to PUBLISHED and CAS the namespace's current pointer; returns the receipt |
+| `POST /generations/{gen}/discard` | fence-aware discard |
+| `GET /generations/{gen}/{polout,resout,requests}` | published bytes only (404/409 for pending or discarded) |
+| `GET /generations/{gen}/peek/...` | explicitly pending, unvalidated bytes |
+| `GET /current`, `GET /generations/{gen}`, `GET /generations/{gen}/policies/{id}` | metadata and published policy reads |
+| `POST /v1/raw/evaluate` | stateless evaluation of one master + one request (not used for parity) |
+
+Status mapping: typed/envelope failures 400, unknown resources 404,
+fence/lifecycle/CAS conflicts 409, manifest validation at publish 422; legacy
+domain outcomes (`NPOL`, `ORDR`, `OVER`, ...) are HTTP 200 with the status in
+the result bytes. Typed JSON is only accepted when it re-encodes to exactly the
+submitted bytes; everything else (F signs, negative zero, malformed packed
+fields, nonzero reserved/tail bytes, non-CP037 text, out-of-grammar dates) has
+to go through `requests:raw`.
+
 ## Parity (FAST regression)
 
 Authorities are kept distinct:
@@ -85,17 +115,53 @@ compares POLOUT and RESOUT byte-for-byte including padding, tails, sign
 nibbles and `SLAST`, reports each mismatch with record number, ID, field,
 offset, raw bytes and decoded values, and stops at the first failing stage.
 
-Current phase-1 results (`evidence/fast/`): A1 and all three A2 paths pass
-5/5 stages, 8,704 results each, with successor masters identical.
+Stateful HTTP parity (mandatory; PostgreSQL-backed, not `/v1/raw/evaluate`):
+
+```sh
+cd samples/insurance/java
+tools/http_parity.sh $JAR $SHA /path/to/fresh/work /path/to/reports [../evidence/28790e2/runtime]
+# or, against an already running service:
+python3 tools/parity_java.py --mode http-gen  --authority a1 --jar $JAR --source-commit $SHA \
+    --base-url http://127.0.0.1:8080 --namespace-prefix gen-a1- --work W --report R
+python3 tools/parity_java.py --mode http-json --authority a1 --jar $JAR --source-commit $SHA \
+    --base-url http://127.0.0.1:8080 --namespace-prefix json-a1- --work W --report R
+```
+
+`http-gen` sends every request through `requests:raw`. `http-json` decides
+independently (in Python, from the 40 bytes) whether a request is
+byte-representable as typed JSON, sends those through `/requests` and the rest
+through `requests:raw`, preserves physical order, checks the echoed request
+bytes and ordinal on every response, decodes the returned 96-byte result and
+compares each typed response field to it, then publishes, reads the published
+POLOUT/RESOUT/requests back and compares them like the batch mode. Typed
+coverage is reported separately (`typed_requests` / `raw_requests`).
+
+Current results (`evidence/fast/`), A1 and all three A2 paths, 5/5 stages and
+8,704 results each, successor masters identical:
+
+| mode | typed | raw fallback |
+|---|---|---|
+| `batch` | n/a | n/a |
+| `http-gen` | 0 | 8,704 |
+| `http-json` | 7,424 | 1,280 (512 malformed packed, 256 negative zero, 256 F sign, 256 nonzero reserved/tail) |
+
+Negative control: flipping one byte of an authority's `resout.bin` makes the
+same driver stop at that stage with the first mismatching record, field,
+offset, raw bytes and decoded values; changing the expected source commit or
+JAR hash fails receipt validation before any comparison.
 
 ## Status and limitations
 
-- Phase 1 (this state): codec, V001 core, batch adapter, file generation
-  store, receipts, parity driver, A1/A2 batch FAST parity.
-- Pending on this PR: PostgreSQL store (Flyway, Spring Data JDBC, published-row
-  INSERT/UPDATE/DELETE guards), stateful raw and hybrid typed/raw HTTP with
-  `http-gen`/`http-json` FAST parity, Java-only crash/fence/CAS/retry tests,
-  and A3 targeted fresh guest cases (interest tie, reachable quotient OVER).
+- Done: codec, V001 core, batch adapter, file and PostgreSQL generation
+  stores, receipts, stateful raw/typed HTTP, `batch`/`http-gen`/`http-json`
+  FAST parity against A1 and A2, Java-only lifecycle tests (fence, CAS race,
+  retry commit boundaries, truncation, immutability, fail-closed restart).
+- Pending: A3 targeted fresh guest cases (interest tie, reachable quotient
+  OVER, signs, malformed records, replay matrix) are only claimed once a
+  Hercules run is actually executed and recorded.
+- PostgreSQL immutability is enforced by row triggers and the fence; the
+  in-process publish lock is per JVM, the durable guard is the expected-parent
+  CAS in one transaction.
 - Agreement with the source-derived oracle and goldens is implementation
   evidence, not independent business-intent validation.
 - The file store does not claim power-loss durability (no fsync/cut-power

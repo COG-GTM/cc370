@@ -230,6 +230,112 @@ class JdbcGenerationStoreTest {
   }
 
   @Test
+  void siblingPublishRaceHasExactlyOneWinnerAndTheLoserIsDiscarded() throws Exception {
+    bootstrap();
+    int n = 6;
+    List<Lease> leases = new ArrayList<>();
+    for (int i = 0; i < n; i++) {
+      Lease lease = svc.begin(NS, "root", "s" + i, Optional.of(seed()));
+      for (TransactionRecord t : requests()) {
+        svc.apply(lease, t, false);
+      }
+      leases.add(lease);
+    }
+    ExecutorService pool = Executors.newFixedThreadPool(n);
+    CountDownLatch go = new CountDownLatch(1);
+    List<Future<Receipt>> futures = new ArrayList<>();
+    for (Lease lease : leases) {
+      futures.add(
+          pool.submit(
+              () -> {
+                go.await();
+                return svc.publish(lease, manifest("a", 2, 3, seed(), txnin()), "http");
+              }));
+    }
+    go.countDown();
+    List<String> winners = new ArrayList<>();
+    int casLosers = 0;
+    for (Future<Receipt> f : futures) {
+      try {
+        winners.add(f.get().generation());
+      } catch (java.util.concurrent.ExecutionException e) {
+        assertTrue(e.getCause() instanceof CasException, String.valueOf(e.getCause()));
+        casLosers++;
+      }
+    }
+    pool.shutdown();
+    assertEquals(1, winners.size());
+    assertEquals(n - 1, casLosers);
+    assertEquals(Optional.of(winners.get(0)), store.current(NS));
+    for (Lease lease : leases) {
+      GenerationStatus status = store.info(NS, lease.generation()).orElseThrow().status();
+      assertEquals(
+          lease.generation().equals(winners.get(0))
+              ? GenerationStatus.PUBLISHED
+              : GenerationStatus.DISCARDED,
+          status);
+    }
+    Integer published =
+        db.sql("SELECT count(*) FROM generation WHERE namespace = ? AND status = 'PUBLISHED'")
+            .param(NS)
+            .query(Integer.class)
+            .single();
+    assertEquals(2, published); // root + the single winner
+  }
+
+  @Test
+  void applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched() {
+    bootstrap();
+    Lease lease = svc.begin(NS, "root", "g1", Optional.of(seed()));
+    for (TransactionRecord t : requests()) {
+      svc.apply(lease, t, false);
+    }
+    Receipt receipt = svc.publish(lease, manifest("a", 2, 3, seed(), txnin()), "http");
+    byte[] resout = store.resout(NS, "g1");
+    assertThrows(
+        FencedException.class,
+        () -> svc.apply(lease, txn("00000002", 2, VALUATION, 'P', 1), false));
+    assertThrows(FencedException.class, () -> svc.discard(lease));
+    assertEquals(3, store.info(NS, "g1").orElseThrow().lastOrdinal());
+    assertArrayEquals(resout, store.resout(NS, "g1"));
+    assertEquals(receipt.resoutSha256(), Sha256.of(store.resout(NS, "g1")));
+    assertEquals(GenerationStatus.PUBLISHED, store.info(NS, "g1").orElseThrow().status());
+  }
+
+  @Test
+  void bootstrapEnforcesTheLegacyMasterTableCapAndOrder() {
+    byte[][] rows = new byte[513][];
+    for (int i = 0; i < rows.length; i++) {
+      rows[i] = fresh(String.format("%08d", i + 1), 500_000, 20_000, 0).bytes();
+    }
+    byte[] tooMany = concat(rows);
+    assertThrows(
+        insurance.contract.v001.PolicyTable.BadMasterException.class,
+        () ->
+            svc.bootstrap(
+                NS, "root", tooMany, manifest("bootstrap", 513, 0, tooMany, new byte[0])));
+    byte[] cap = concat(java.util.Arrays.copyOf(rows, 512));
+    assertEquals(
+        512,
+        svc.bootstrap(NS, "root", cap, manifest("bootstrap", 512, 0, cap, new byte[0]))
+            .policiesCount());
+    byte[] unordered = concat(rows[1], rows[0]);
+    assertThrows(
+        insurance.contract.v001.PolicyTable.BadMasterException.class,
+        () ->
+            svc.bootstrap(
+                "u", "root", unordered, manifest("bootstrap", 2, 0, unordered, new byte[0])));
+    byte[] duplicate = concat(rows[0], rows[0]);
+    assertThrows(
+        insurance.contract.v001.PolicyTable.BadMasterException.class,
+        () ->
+            svc.bootstrap(
+                "d", "root", duplicate, manifest("bootstrap", 2, 0, duplicate, new byte[0])));
+    assertTrue(store.info("u", "root").isEmpty());
+    assertTrue(store.info("d", "root").isEmpty());
+  }
+
+  @Test
   void concurrentWritersUnderOneFenceGetContiguousOrdinalsAndSerialEvaluation() throws Exception {
     bootstrap();
     Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
