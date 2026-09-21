@@ -2,8 +2,9 @@
  "callable": [
   {
    "byte_classes": {
-    "scratch": [],
-    "stable": [
+    "input": [],
+    "output": [],
+    "preserved": [
      "SID",
      "SISSUE",
      "SDATE",
@@ -55,14 +56,22 @@
      "WPROD",
      "WBEFORE"
     ],
+    "scratch": [],
     "unasserted": []
    },
    "class_meaning": {
-    "scratch": "written by the assembler implementation; asserted here against the model so the guest evidence is complete, but NOT a Java requirement",
-    "stable": "business-visible value or byte the routine must leave unchanged; Java must reproduce",
+    "input": "read by the routine and left unchanged; preserving it is business-visible (compared as class 'stable')",
+    "output": "logical result of the call; Java must reproduce (compared as class 'stable')",
+    "preserved": "unrelated WORK storage the routine never touches; asserted as an assembler preservation/ABI property (compared as class 'abi'), NOT a Java requirement",
+    "scratch": "written by the assembler implementation; asserted against the model so the guest evidence is complete, NOT a Java requirement",
     "unasserted": "arithmetic scratch whose content is implementation-defined; recorded, not compared"
    },
    "entry_point": "INSPACK",
+   "java": {
+    "inputs": "the seven bytes at R1 (never WORK)",
+    "outputs": "R15: 0 valid / 8 invalid; argument bytes unchanged",
+    "shape": "boolean isValidPacked(byte[7])"
+   },
    "kind": "library routine (direct BALR 14,15 call)",
    "linkage": {
     "condition_code": "undefined at return; never asserted",
@@ -70,6 +79,69 @@
     "preserved": "R0-R12 restored, R13 restored, R14 restored (low 24 bits asserted; BALR stores ILC/CC/mask in the high byte and that byte is not asserted)",
     "return": "INSRET: L 13,4(13); L 14,12(13); LM 0,12,20(13); BR 14",
     "return_code": "R15"
+   },
+   "logical_io": {
+    "inputs": [
+     "R1 -> seven packed bytes"
+    ],
+    "outputs": [
+     "R15"
+    ],
+    "preserved": [
+     "SID",
+     "SISSUE",
+     "SDATE",
+     "SSEQ",
+     "SFACE",
+     "SCASH",
+     "SLOAN",
+     "SPAD",
+     "SLAST",
+     "STAIL",
+     "TID",
+     "TSEQ",
+     "TDATE",
+     "TOP",
+     "TPAD",
+     "TAMT",
+     "TTAIL",
+     "OID",
+     "OSEQ",
+     "ODATE",
+     "OSTAT",
+     "OOP",
+     "OPAD",
+     "OAGE",
+     "ORATE",
+     "OFEE",
+     "OCASH",
+     "OSURR",
+     "ODEATH",
+     "OLOAN",
+     "OINT",
+     "OCHG",
+     "OVERS",
+     "OTAIL",
+     "WDATE",
+     "WYEAR",
+     "WMD",
+     "WORD",
+     "WVALID",
+     "WOLDORD",
+     "WISSYR",
+     "WISSMD",
+     "WAGE",
+     "WDAYS",
+     "WRATE",
+     "WFEE",
+     "WPAD",
+     "WNUM",
+     "WPROD",
+     "WBEFORE"
+    ],
+    "r15": "result",
+    "scratch": [],
+    "unasserted": []
    },
    "notes": [
     "pure predicate: WORK untouched, argument bytes untouched"
@@ -87,8 +159,16 @@
   },
   {
    "byte_classes": {
-    "scratch": [],
-    "stable": [
+    "input": [
+     "WDATE"
+    ],
+    "output": [
+     "WYEAR",
+     "WMD",
+     "WORD",
+     "WVALID"
+    ],
+    "preserved": [
      "SID",
      "SISSUE",
      "SDATE",
@@ -123,11 +203,6 @@
      "OCHG",
      "OVERS",
      "OTAIL",
-     "WDATE",
-     "WYEAR",
-     "WMD",
-     "WORD",
-     "WVALID",
      "WOLDORD",
      "WISSYR",
      "WISSMD",
@@ -140,14 +215,22 @@
      "WPROD",
      "WBEFORE"
     ],
+    "scratch": [],
     "unasserted": []
    },
    "class_meaning": {
-    "scratch": "written by the assembler implementation; asserted here against the model so the guest evidence is complete, but NOT a Java requirement",
-    "stable": "business-visible value or byte the routine must leave unchanged; Java must reproduce",
+    "input": "read by the routine and left unchanged; preserving it is business-visible (compared as class 'stable')",
+    "output": "logical result of the call; Java must reproduce (compared as class 'stable')",
+    "preserved": "unrelated WORK storage the routine never touches; asserted as an assembler preservation/ABI property (compared as class 'abi'), NOT a Java requirement",
+    "scratch": "written by the assembler implementation; asserted against the model so the guest evidence is complete, NOT a Java requirement",
     "unasserted": "arithmetic scratch whose content is implementation-defined; recorded, not compared"
    },
    "entry_point": "INSDATE",
+   "java": {
+    "inputs": "WDATE",
+    "outputs": "WVALID (0 valid / 8 invalid), WYEAR, WMD, WORD (days since 19000101); R15 is always 0 (SR 15,15 at DTEXIT) and carries no result",
+    "shape": "Optional<CivilDate> parse(int yyyymmdd)"
+   },
    "kind": "library routine (direct BALR 14,15 call)",
    "linkage": {
     "condition_code": "undefined at return; never asserted",
@@ -156,13 +239,74 @@
     "return": "INSRET: L 13,4(13); L 14,12(13); LM 0,12,20(13); BR 14",
     "return_code": "R15"
    },
+   "logical_io": {
+    "inputs": [
+     "WDATE"
+    ],
+    "outputs": [
+     "WVALID",
+     "WYEAR",
+     "WMD",
+     "WORD"
+    ],
+    "preserved": [
+     "SID",
+     "SISSUE",
+     "SDATE",
+     "SSEQ",
+     "SFACE",
+     "SCASH",
+     "SLOAN",
+     "SPAD",
+     "SLAST",
+     "STAIL",
+     "TID",
+     "TSEQ",
+     "TDATE",
+     "TOP",
+     "TPAD",
+     "TAMT",
+     "TTAIL",
+     "OID",
+     "OSEQ",
+     "ODATE",
+     "OSTAT",
+     "OOP",
+     "OPAD",
+     "OAGE",
+     "ORATE",
+     "OFEE",
+     "OCASH",
+     "OSURR",
+     "ODEATH",
+     "OLOAN",
+     "OINT",
+     "OCHG",
+     "OVERS",
+     "OTAIL",
+     "WOLDORD",
+     "WISSYR",
+     "WISSMD",
+     "WAGE",
+     "WDAYS",
+     "WRATE",
+     "WFEE",
+     "WPAD",
+     "WNUM",
+     "WPROD",
+     "WBEFORE"
+    ],
+    "r15": "fixed",
+    "scratch": [],
+    "unasserted": []
+   },
    "notes": [
     "WYEAR written for any positive WDATE; WMD/WORD only when the date is valid",
     "ordinal WORD counts days since 19000101"
    ],
    "r1": "R1 -> WORK",
    "r15": {
-    "0": "always 0; validity is WVALID (0 valid / 8 invalid), not R15"
+    "0": "always 0 (DTEXIT executes SR 15,15 before INSRET); validity is WVALID (0 valid / 8 invalid), not R15"
    },
    "reads": [
     "WDATE"
@@ -177,8 +321,15 @@
   },
   {
    "byte_classes": {
-    "scratch": [],
-    "stable": [
+    "input": [
+     "TDATE",
+     "WAGE"
+    ],
+    "output": [
+     "WRATE",
+     "WFEE"
+    ],
+    "preserved": [
      "SID",
      "SISSUE",
      "SDATE",
@@ -191,7 +342,6 @@
      "STAIL",
      "TID",
      "TSEQ",
-     "TDATE",
      "TOP",
      "TPAD",
      "TAMT",
@@ -221,23 +371,28 @@
      "WOLDORD",
      "WISSYR",
      "WISSMD",
-     "WAGE",
      "WDAYS",
-     "WRATE",
-     "WFEE",
      "WPAD",
      "WNUM",
      "WPROD",
      "WBEFORE"
     ],
+    "scratch": [],
     "unasserted": []
    },
    "class_meaning": {
-    "scratch": "written by the assembler implementation; asserted here against the model so the guest evidence is complete, but NOT a Java requirement",
-    "stable": "business-visible value or byte the routine must leave unchanged; Java must reproduce",
+    "input": "read by the routine and left unchanged; preserving it is business-visible (compared as class 'stable')",
+    "output": "logical result of the call; Java must reproduce (compared as class 'stable')",
+    "preserved": "unrelated WORK storage the routine never touches; asserted as an assembler preservation/ABI property (compared as class 'abi'), NOT a Java requirement",
+    "scratch": "written by the assembler implementation; asserted against the model so the guest evidence is complete, NOT a Java requirement",
     "unasserted": "arithmetic scratch whose content is implementation-defined; recorded, not compared"
    },
    "entry_point": "INSRATE",
+   "java": {
+    "inputs": "TDATE, WAGE",
+    "outputs": "WRATE (bps), WFEE (bps, 0 at age >= 10); R15 always 0",
+    "shape": "Rate rateFor(int yyyymmdd, int age)"
+   },
    "kind": "library routine (direct BALR 14,15 call)",
    "linkage": {
     "condition_code": "undefined at return; never asserted",
@@ -245,6 +400,67 @@
     "preserved": "R0-R12 restored, R13 restored, R14 restored (low 24 bits asserted; BALR stores ILC/CC/mask in the high byte and that byte is not asserted)",
     "return": "INSRET: L 13,4(13); L 14,12(13); LM 0,12,20(13); BR 14",
     "return_code": "R15"
+   },
+   "logical_io": {
+    "inputs": [
+     "TDATE",
+     "WAGE"
+    ],
+    "outputs": [
+     "WRATE",
+     "WFEE"
+    ],
+    "preserved": [
+     "SID",
+     "SISSUE",
+     "SDATE",
+     "SSEQ",
+     "SFACE",
+     "SCASH",
+     "SLOAN",
+     "SPAD",
+     "SLAST",
+     "STAIL",
+     "TID",
+     "TSEQ",
+     "TOP",
+     "TPAD",
+     "TAMT",
+     "TTAIL",
+     "OID",
+     "OSEQ",
+     "ODATE",
+     "OSTAT",
+     "OOP",
+     "OPAD",
+     "OAGE",
+     "ORATE",
+     "OFEE",
+     "OCASH",
+     "OSURR",
+     "ODEATH",
+     "OLOAN",
+     "OINT",
+     "OCHG",
+     "OVERS",
+     "OTAIL",
+     "WDATE",
+     "WYEAR",
+     "WMD",
+     "WORD",
+     "WVALID",
+     "WOLDORD",
+     "WISSYR",
+     "WISSMD",
+     "WDAYS",
+     "WPAD",
+     "WNUM",
+     "WPROD",
+     "WBEFORE"
+    ],
+    "r15": "fixed",
+    "scratch": [],
+    "unasserted": []
    },
    "notes": [
     "does not validate TDATE; see RT-DOMAIN",
@@ -266,13 +482,7 @@
   },
   {
    "byte_classes": {
-    "scratch": [
-     "WDATE",
-     "WYEAR",
-     "WMD",
-     "WORD"
-    ],
-    "stable": [
+    "input": [
      "SID",
      "SISSUE",
      "SDATE",
@@ -282,7 +492,12 @@
      "SLOAN",
      "SPAD",
      "SLAST",
-     "STAIL",
+     "STAIL"
+    ],
+    "output": [
+     "WVALID"
+    ],
+    "preserved": [
      "TID",
      "TSEQ",
      "TDATE",
@@ -307,7 +522,6 @@
      "OCHG",
      "OVERS",
      "OTAIL",
-     "WVALID",
      "WOLDORD",
      "WISSYR",
      "WISSMD",
@@ -320,14 +534,27 @@
      "WPROD",
      "WBEFORE"
     ],
+    "scratch": [
+     "WDATE",
+     "WYEAR",
+     "WMD",
+     "WORD"
+    ],
     "unasserted": []
    },
    "class_meaning": {
-    "scratch": "written by the assembler implementation; asserted here against the model so the guest evidence is complete, but NOT a Java requirement",
-    "stable": "business-visible value or byte the routine must leave unchanged; Java must reproduce",
+    "input": "read by the routine and left unchanged; preserving it is business-visible (compared as class 'stable')",
+    "output": "logical result of the call; Java must reproduce (compared as class 'stable')",
+    "preserved": "unrelated WORK storage the routine never touches; asserted as an assembler preservation/ABI property (compared as class 'abi'), NOT a Java requirement",
+    "scratch": "written by the assembler implementation; asserted against the model so the guest evidence is complete, NOT a Java requirement",
     "unasserted": "arithmetic scratch whose content is implementation-defined; recorded, not compared"
    },
    "entry_point": "INSVAL",
+   "java": {
+    "inputs": "SREC (128 bytes)",
+    "outputs": "R15 0/8 and WVALID 0/8; SREC unchanged. WDATE/WYEAR/WMD/WORD are internal INSDATE scratch, not part of the Java result",
+    "shape": "boolean isValidState(State)"
+   },
    "kind": "library routine (direct BALR 14,15 call)",
    "linkage": {
     "condition_code": "undefined at return; never asserted",
@@ -335,6 +562,69 @@
     "preserved": "R0-R12 restored, R13 restored, R14 restored (low 24 bits asserted; BALR stores ILC/CC/mask in the high byte and that byte is not asserted)",
     "return": "INSRET: L 13,4(13); L 14,12(13); LM 0,12,20(13); BR 14",
     "return_code": "R15"
+   },
+   "logical_io": {
+    "inputs": [
+     "SID",
+     "SISSUE",
+     "SDATE",
+     "SSEQ",
+     "SFACE",
+     "SCASH",
+     "SLOAN",
+     "SPAD",
+     "SLAST",
+     "STAIL"
+    ],
+    "outputs": [
+     "WVALID",
+     "R15"
+    ],
+    "preserved": [
+     "TID",
+     "TSEQ",
+     "TDATE",
+     "TOP",
+     "TPAD",
+     "TAMT",
+     "TTAIL",
+     "OID",
+     "OSEQ",
+     "ODATE",
+     "OSTAT",
+     "OOP",
+     "OPAD",
+     "OAGE",
+     "ORATE",
+     "OFEE",
+     "OCASH",
+     "OSURR",
+     "ODEATH",
+     "OLOAN",
+     "OINT",
+     "OCHG",
+     "OVERS",
+     "OTAIL",
+     "WOLDORD",
+     "WISSYR",
+     "WISSMD",
+     "WAGE",
+     "WDAYS",
+     "WRATE",
+     "WFEE",
+     "WPAD",
+     "WNUM",
+     "WPROD",
+     "WBEFORE"
+    ],
+    "r15": "result",
+    "scratch": [
+     "WDATE",
+     "WYEAR",
+     "WMD",
+     "WORD"
+    ],
+    "unasserted": []
    },
    "notes": [
     "SREC never modified",
@@ -359,22 +649,16 @@
   },
   {
    "byte_classes": {
-    "scratch": [
-     "WDATE",
-     "WYEAR",
-     "WMD",
-     "WORD",
-     "WVALID",
-     "WOLDORD",
-     "WISSYR",
-     "WISSMD",
-     "WAGE",
-     "WDAYS",
-     "WRATE",
-     "WFEE",
-     "WBEFORE"
+    "input": [
+     "TID",
+     "TSEQ",
+     "TDATE",
+     "TOP",
+     "TPAD",
+     "TAMT",
+     "TTAIL"
     ],
-    "stable": [
+    "output": [
      "SID",
      "SISSUE",
      "SDATE",
@@ -385,13 +669,6 @@
      "SPAD",
      "SLAST",
      "STAIL",
-     "TID",
-     "TSEQ",
-     "TDATE",
-     "TOP",
-     "TPAD",
-     "TAMT",
-     "TTAIL",
      "OID",
      "OSEQ",
      "ODATE",
@@ -408,8 +685,25 @@
      "OINT",
      "OCHG",
      "OVERS",
-     "OTAIL",
+     "OTAIL"
+    ],
+    "preserved": [
      "WPAD"
+    ],
+    "scratch": [
+     "WDATE",
+     "WYEAR",
+     "WMD",
+     "WORD",
+     "WVALID",
+     "WOLDORD",
+     "WISSYR",
+     "WISSMD",
+     "WAGE",
+     "WDAYS",
+     "WRATE",
+     "WFEE",
+     "WBEFORE"
     ],
     "unasserted": [
      "WNUM",
@@ -417,11 +711,18 @@
     ]
    },
    "class_meaning": {
-    "scratch": "written by the assembler implementation; asserted here against the model so the guest evidence is complete, but NOT a Java requirement",
-    "stable": "business-visible value or byte the routine must leave unchanged; Java must reproduce",
+    "input": "read by the routine and left unchanged; preserving it is business-visible (compared as class 'stable')",
+    "output": "logical result of the call; Java must reproduce (compared as class 'stable')",
+    "preserved": "unrelated WORK storage the routine never touches; asserted as an assembler preservation/ABI property (compared as class 'abi'), NOT a Java requirement",
+    "scratch": "written by the assembler implementation; asserted against the model so the guest evidence is complete, NOT a Java requirement",
     "unasserted": "arithmetic scratch whose content is implementation-defined; recorded, not compared"
    },
    "entry_point": "INSCALC",
+   "java": {
+    "inputs": "SREC, TREC",
+    "outputs": "OREC (status, age, rate, fee, cash, surrender, death, loan, interest, charge, V001) and SREC (new state on OKAY, unchanged otherwise); TREC unchanged; R15 always 0, outcome is OSTAT. WBEFORE and the W* scratch are assembler-only",
+    "shape": "Outcome apply(State, Transaction)"
+   },
    "kind": "library routine (direct BALR 14,15 call)",
    "linkage": {
     "condition_code": "undefined at return; never asserted",
@@ -429,6 +730,79 @@
     "preserved": "R0-R12 restored, R13 restored, R14 restored (low 24 bits asserted; BALR stores ILC/CC/mask in the high byte and that byte is not asserted)",
     "return": "INSRET: L 13,4(13); L 14,12(13); LM 0,12,20(13); BR 14",
     "return_code": "R15"
+   },
+   "logical_io": {
+    "inputs": [
+     "SID",
+     "SISSUE",
+     "SDATE",
+     "SSEQ",
+     "SFACE",
+     "SCASH",
+     "SLOAN",
+     "SPAD",
+     "SLAST",
+     "STAIL",
+     "TID",
+     "TSEQ",
+     "TDATE",
+     "TOP",
+     "TPAD",
+     "TAMT",
+     "TTAIL"
+    ],
+    "outputs": [
+     "SID",
+     "SISSUE",
+     "SDATE",
+     "SSEQ",
+     "SFACE",
+     "SCASH",
+     "SLOAN",
+     "SPAD",
+     "SLAST",
+     "STAIL",
+     "OID",
+     "OSEQ",
+     "ODATE",
+     "OSTAT",
+     "OOP",
+     "OPAD",
+     "OAGE",
+     "ORATE",
+     "OFEE",
+     "OCASH",
+     "OSURR",
+     "ODEATH",
+     "OLOAN",
+     "OINT",
+     "OCHG",
+     "OVERS",
+     "OTAIL"
+    ],
+    "preserved": [
+     "WPAD"
+    ],
+    "r15": "fixed",
+    "scratch": [
+     "WDATE",
+     "WYEAR",
+     "WMD",
+     "WORD",
+     "WVALID",
+     "WOLDORD",
+     "WISSYR",
+     "WISSMD",
+     "WAGE",
+     "WDAYS",
+     "WRATE",
+     "WFEE",
+     "WBEFORE"
+    ],
+    "unasserted": [
+     "WNUM",
+     "WPROD"
+    ]
    },
    "notes": [
     "TREC bytes are never modified",
@@ -542,6 +916,7 @@
    "width": 460
   }
  },
+ "java_authority": "Java acceptance uses the guest observations (evidence/*/observed.json: input, business.outputs, business.r15) and this contract. fixtures/<v>/expected.json is the independent expectation the guest was compared against, not runtime truth; where comparison.json passed the two agree byte for byte.",
  "library": [
   "INSPACK",
   "INSDATE",
@@ -590,7 +965,7 @@
   "CA-AGE": "policy age = TDATE year - SISSUE year, minus one before the anniversary month/day; fee zero from age 10",
   "CA-CHG": "surrender charge = half_up(cash * fee / 10000); surrender = cash - charge - loan",
   "CA-CNFL": "TSEQ == SSEQ with different transaction bytes is CNFL",
-  "CA-D": "D death quote: max(face, cash) - loan; zero amount required; does not close or settle the policy",
+  "CA-D": "D death quote: ODEATH = max(face, cash) - loan; zero amount required; like Q it posts interest and advances SSEQ/SDATE/SLAST but does not close or settle the policy (no cash/loan/face movement)",
   "CA-DATE": "invalid TDATE, or TDATE before SDATE -> DATE",
   "CA-DUPL": "replayed transaction (TSEQ == SSEQ, identical 40 bytes) is DUPL and does not change state",
   "CA-FORM": "TPAD/TTAIL must be zero (FORM)",
@@ -647,7 +1022,7 @@
   "VL-SEQ": "SSEQ must be >= 0 (negative fullword rejects); large positive accepted",
   "VL-TAIL": "STAIL (40 trailing bytes) must be zero"
  },
- "schema": "insurance-routines-contract-v1",
+ "schema": "insurance-routines-contract-v2",
  "undefined_and_not_asserted": [
   "condition code at return",
   "R14 high byte after BALR (ILC/CC/program mask)",

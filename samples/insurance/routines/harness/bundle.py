@@ -99,6 +99,49 @@ def summarize(evidence: Path) -> dict:
     return runs
 
 
+def derivation(evidence: Path) -> dict:
+    """Which harness decoded/compared each retained capture, versus what ran at capture time.
+
+    run.json is the guest receipt written when the capture was taken and is never rewritten.
+    comparison.json / observed.json are host-derived and may be regenerated later by a revised
+    comparator/decoder; their harness_identity hashes name the code that produced them. The
+    *.orig.json files, when present, are the artifacts written at capture time, kept verbatim.
+    """
+    out: dict = {}
+    for name in ROUTINE_RUNS:
+        run = evidence / name
+        if not (run / "run.json").exists():
+            continue
+        receipt = json.loads((run / "run.json").read_text())
+        entry = {"guest_receipt": {"file": "run.json", "sha256": sha256((run / "run.json").read_bytes()),
+                                   "capture_sha256": receipt["capture_sha256"],
+                                   "fixture_manifest_sha256_at_run": receipt["fixture_manifest_sha256"],
+                                   "cases_sha256_at_run": receipt["cases_sha256"]},
+                 "derived": {}, "retained_originals": {}}
+        for derived in ("comparison.json", "observed.json"):
+            if (run / derived).exists():
+                data = json.loads((run / derived).read_text())
+                entry["derived"][derived] = {
+                    "schema": data.get("schema"),
+                    "capture_sha256": data.get("capture_sha256"),
+                    "fixture_manifest_sha256": data.get("fixture_manifest_sha256"),
+                    "harness_identity": data.get("harness_identity"),
+                    "same_capture_as_receipt": data.get("capture_sha256") == receipt["capture_sha256"],
+                    "same_manifest_as_run": (data.get("fixture_manifest_sha256")
+                                             == receipt["fixture_manifest_sha256"]),
+                }
+            orig = run / derived.replace(".json", ".orig.json")
+            if orig.exists():
+                entry["retained_originals"][orig.name] = sha256(orig.read_bytes())
+        out[name] = entry
+    out["note"] = ("the guest executed the driver against cases.bin (cases_sha256_at_run) and wrote "
+                   "run.json once; comparison.json/observed.json were (re)derived on the host from "
+                   "the retained capture by the harness named in harness_identity, which may postdate "
+                   "the run. same_manifest_as_run=false means only manifest metadata changed since; "
+                   "cases_sha256 is checked by contract.validate_run.")
+    return out
+
+
 def job_ids(node) -> list[str]:
     found: list[str] = []
     if isinstance(node, dict):
@@ -128,7 +171,7 @@ def main() -> None:
     for run in included:
         target = out / run.name
         target.mkdir(exist_ok=True)
-        for name in COMPACT:
+        for name in COMPACT + ("comparison.orig.json",):
             if (run / name).exists():
                 shutil.copy2(run / name, target / name.replace("/", "-"))
         for name in ("run", "smoke"):
@@ -146,6 +189,7 @@ def main() -> None:
         "schema": "insurance-routines-receipts-v1",
         "provenance": provenance(args.evidence, args.maclib),
         "runs": summarize(args.evidence),
+        "derivation": derivation(args.evidence),
         "capture_sha256_by_path": captures,
         "captures_identical_across_paths": len(set(captures.values())) == 1 if captures else None,
         "compact_files_sha256": tree([p for p in out.rglob("*") if p.name != "RECEIPTS.json"], out),

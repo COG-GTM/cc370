@@ -1,6 +1,8 @@
 {
  "cases_measured": 184,
  "cases_total": 184,
+ "evidence_policy": "a case is PASS only when its run receipt, guest job steps, capture hash/count, comparison report and decoded observations all validate; any defect marks every case of that run INVALID and the rule FAIL",
+ "fixture_manifest_sha256": "68e200992e715cc244a447c74c943146d8571e2442c3805865c3dca2ee166901",
  "observed_runs": [
   "as370-ld370"
  ],
@@ -146,7 +148,7 @@
      "tags": []
     }
    ],
-   "description": "D death quote: max(face, cash) - loan; zero amount required; does not close or settle the policy",
+   "description": "D death quote: ODEATH = max(face, cash) - loan; zero amount required; like Q it posts interest and advances SSEQ/SDATE/SLAST but does not close or settle the policy (no cash/loan/face movement)",
    "routine": "INSCALC",
    "status": "PASS"
   },
@@ -2094,10 +2096,58 @@
   }
  },
  "rules_without_cases": [],
- "schema": "insurance-routines-coverage-v1",
+ "runs": {
+  "as370-ld370": {
+   "backend": "as370-ld370",
+   "comparison_harness_identity": {
+    "compare.py": "b1be51e2bf065ee4a286ca7b1d60140a010557f15fcf2836d8ac61f390ecca3f",
+    "contract.py": "f5a2831484b7cb5fda7d8dd1b513f25ffe44001ff7c016219c76b666a96f2100",
+    "fixtures.py": "b687a4d785980892ae062d6108a949cc38cf96a7697bda46b1c6812bedf94af8",
+    "layout.py": "15e708ebc6418dc109b4dd9f60f06e106d0931b97728c84ce79c5af4e5e5bfa7",
+    "observe.py": "927d82951780467d518089bfd52f4c7db3ff0b2c9609638c37ea913a55e16503"
+   },
+   "fixture_manifest_at_run": "e0aea975d978e9c1692ae30fe99f9deca030e53d1886d8f7091e12d2b5bf71c9",
+   "fixture_manifest_matches_run": false,
+   "folder": "../evidence/as370-ld370",
+   "jobs": {
+    "allocate": {
+     "job_id": "JOB00021",
+     "steps": [
+      [
+       "ALLOC",
+       "0000"
+      ]
+     ]
+    },
+    "import": {
+     "job_id": "JOB00022",
+     "steps": [
+      [
+       "C001",
+       "0000"
+      ]
+     ]
+    },
+    "run": {
+     "job_id": "JOB00024",
+     "steps": [
+      [
+       "DRV",
+       "0000"
+      ]
+     ]
+    }
+   },
+   "prefix": "INSR.L1",
+   "problems": [],
+   "valid": true
+  }
+ },
+ "schema": "insurance-routines-coverage-v2",
  "unmeasured_paths": [
   "INSBAT/INSSMOK internal control flow beyond RC, POLOUT and RESOUT bytes (job-level only)",
   "INSCALC behaviour for TDATE below 19000101 with a valid state (unreachable: INSVAL requires SDATE >= 19000101 and ORDR precedes rating)",
   "OPEN failure RC16 in INSBAT (requires a DD-level fault the harness does not inject)"
- ]
+ ],
+ "valid": true
 }

@@ -5,25 +5,43 @@ observed decoded values and raw bytes, and a class:
 
   structure  record count, order, identity, malformed capture
   harness    driver-side preconditions (WORK before-image, R1 convention)
-  abi        register preservation, save chain, guards, R15 for routines whose
-             caller contract defines it
-  stable     business-visible WORK bytes Java must reproduce
+  abi        register preservation, save chain, guards, R15 for routines that
+             always clear it, and unrelated WORK bytes the routine must leave
+             alone (manifest byte class "preserved")
+  stable     business-visible bytes Java must reproduce: manifest classes
+             "output" and "input" (inputs must survive the call), R15 where
+             the caller reads it as the result, INSPACK's argument bytes
   scratch    assembler-specific scratch the model predicts (not for Java)
   unasserted recorded only, never a failure (WNUM/WPROD remainder bytes)
 
 All findings are kept; the comparison fails when any class other than
-"unasserted" has findings.
+"unasserted" has findings. The report records the capture hash, the fixture
+manifest hash and the hashes of the harness files that produced it, so a
+re-derived report can never be mistaken for the one written at run time.
 """
 
 import argparse
 import json
 from pathlib import Path
 
-from fixtures import load
-from layout import (CAPTURE, CAPTURE_LRECL, GUARD, LIBRARY, SENTINEL, WORK,
-                    decode_field, number, symbols)
+from fixtures import R15, load
+from layout import (CAPTURE, CAPTURE_LRECL, GUARD, LIBRARY, ROUTINES, SENTINEL, WORK,
+                    decode_field, number, sha256, symbols)
 
 FAILING = ("structure", "harness", "abi", "stable", "scratch")
+FINDING_CLASS = {"output": "stable", "input": "stable", "preserved": "abi",
+                 "scratch": "scratch", "unasserted": "unasserted"}
+SCHEMA = "insurance-routines-comparison-v2"
+
+
+def manifest_sha256(manifest: dict) -> str:
+    return sha256(json.dumps(manifest, sort_keys=True).encode())
+
+
+def harness_identity() -> dict[str, str]:
+    """Hashes of the host files whose behaviour a derived report depends on."""
+    names = ("layout.py", "fixtures.py", "compare.py", "observe.py", "contract.py")
+    return {n: sha256((ROUTINES / "harness" / n).read_bytes()) for n in names}
 
 
 def field(raw: bytes, name: str) -> bytes:
@@ -57,8 +75,9 @@ def compare_work(report: Report, exp: dict, classes: list[str], observed: bytes)
     for f in WORK:
         want, got = expected[f.offset:f.end], observed[f.offset:f.end]
         if want != got:
-            report.add(classes[f.offset], exp["routine"], exp["id"], "work_after." + f.name,
-                       decode_field(f, want), decode_field(f, got), want, got, f.offset)
+            report.add(FINDING_CLASS[classes[f.offset]], exp["routine"], exp["id"],
+                       "work_after." + f.name, decode_field(f, want), decode_field(f, got),
+                       want, got, f.offset)
 
 
 def compare_record(report: Report, exp: dict, classes: list[str], raw: bytes,
@@ -98,7 +117,7 @@ def compare_record(report: Report, exp: dict, classes: list[str], raw: bytes,
     if after[14] & 0xFFFFFF != addr["addr_return"]:
         report.add("abi", routine, cid, "R14(after).low24", hex(addr["addr_return"]),
                    hex(after[14] & 0xFFFFFF))
-    r15_class = "abi" if routine in ("INSDATE", "INSRATE", "INSCALC") else "stable"
+    r15_class = "stable" if R15[routine] == "result" else "abi"
     if after[15] != exp["r15"]:
         report.add(r15_class, routine, cid, "R15", exp["r15"], after[15])
     # Save chain: callee stored R14..R12 into the caller's area; callee area points back.
@@ -172,9 +191,14 @@ def compare(captured: bytes, manifest: dict, expected: list[dict],
     by_class = {k: sum(1 for f in report.findings if f["class"] == k) for k in FAILING}
     failed_cases = sorted({f["case"] for f in report.findings})
     return {
-        "schema": "insurance-routines-comparison-v1",
+        "schema": SCHEMA,
         "passed": not report.findings,
+        "capture_sha256": sha256(captured), "capture_bytes": len(captured),
+        "fixture_version": manifest["version"], "fixture_manifest_sha256": manifest_sha256(manifest),
+        "cases_sha256": manifest["cases_sha256"], "harness_identity": harness_identity(),
         "expected_records": len(expected), "observed_records": len(records),
+        "observed_identity": [[field(r, "id").decode("cp037").strip(),
+                               field(r, "routine").decode("cp037").strip()] for r in records],
         "findings_by_class": by_class, "failed_cases": failed_cases,
         "cases_passed": [e["id"] for e in expected if e["id"] not in failed_cases
                          and e["id"] in observed_ids],
