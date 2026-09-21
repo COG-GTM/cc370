@@ -1,0 +1,13 @@
+http-json driver exit=1
+http-json: passed=False stopped_at=negctl-http-json-anchors:anchors stages_passed=0
+  stage anchors: first_result_mismatch_record=7 request_errors=1 persisted_mismatches=0 receipt_errors=[] errors=[]
+  record 7 typed=True
+    immediate result differs from authority: {"case_id": "position 7", "expected": {"bytes": "0000000000000c", "decode_error": null, "value": 0}, "field": "charge", "id": "00000008", "kind": "result", "observed": {"bytes": "0000000000100c", "decode_error": null, "value": 100}, "observed_id": "00000008",
+  CONTROL DETECTED
+http-gen driver exit=1
+http-gen: passed=False stopped_at=negctl-http-gen-anchors:anchors stages_passed=0
+  stage anchors: first_result_mismatch_record=7 request_errors=1 persisted_mismatches=0 receipt_errors=[] errors=[]
+  record 7 typed=False
+    immediate result differs from authority: {"case_id": "position 7", "expected": {"bytes": "0000000000000c", "decode_error": null, "value": 0}, "field": "charge", "id": "00000008", "kind": "result", "observed": {"bytes": "0000000000100c", "decode_error": null, "value": 100}, "observed_id": "00000008",
+  CONTROL DETECTED
+NEGATIVE_CONTROL_STATUS=0

@@ -7,7 +7,7 @@
     "rate_table_canonical_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a"
   },
   "base_url": "http://127.0.0.1:18080",
-  "jar_sha256": "7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+  "jar_sha256": "f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
   "java_version": "openjdk version \"21.0.12\" 2026-07-21\nOpenJDK Runtime Environment (build 21.0.12+8-1-22.04-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12+8-1-22.04-Ubuntu, mixed mode, sharing)",
   "mode": "http-json",
   "passed": true,
@@ -28,7 +28,7 @@
     }
   ],
   "schema": "insurance-java-parity-v1",
-  "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+  "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
   "stages": [
     {
       "authority_expected_sha256": {
@@ -46,6 +46,25 @@
       },
       "first_result_mismatch_record": null,
       "generation": "http-json-a3-ifox-iewl-anchors-anchors",
+      "guest_receipt": {
+        "abend": null,
+        "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+        "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/anchors.polin.bin",
+        "job_id": "JOB00016",
+        "job_result_sha256": "bf39ece0eaa0958e96ba684c4fb9b409bf5aaabf507b434a9d4314f93fc668aa",
+        "outcome": "completed",
+        "polin_sha256": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80",
+        "polout_sha256": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+        "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+        "resout_sha256": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a",
+        "schema": "insurance-run-v1",
+        "step_rc": {
+          "RUN": 0
+        },
+        "timed_out": false,
+        "txnin_sha256": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876"
+      },
       "mismatches": [],
       "namespace": "http-json-a3-ifox-iewl-anchors",
       "observed_sha256": {
@@ -57,7 +76,7 @@
       "passed": true,
       "raw_requests": 0,
       "receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "51980942935bb51532ec4ac8f9ae200a2970eaaa35c213fcb7e2c772c2da729b",
         "generation": "http-json-a3-ifox-iewl-anchors-anchors",
         "mode": "http-json",
@@ -76,7 +95,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "anchors",
         "transactions_count": 10,
         "txnin_sha256": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876",
@@ -104,6 +123,25 @@
       },
       "first_result_mismatch_record": null,
       "generation": "http-json-a3-ifox-iewl-a-a",
+      "guest_receipt": {
+        "abend": null,
+        "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+        "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/polin.bin",
+        "job_id": "JOB00019",
+        "job_result_sha256": "4bfc24c9bc1406913235e7e43489f02a550f2d1857b8221d67fa98888e99f1bf",
+        "outcome": "completed",
+        "polin_sha256": "20a3704db57bbc4bbbbf12c600c68d2ac0b67624dbf32290dbc6dfc108bb023d",
+        "polout_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+        "resout_sha256": "6215239a1821b50feb0134bb6e4b4eebe0b1ed5b9afbee9fec91389cca787742",
+        "schema": "insurance-run-v1",
+        "step_rc": {
+          "RUN": 0
+        },
+        "timed_out": false,
+        "txnin_sha256": "0f87af931a83dbcbe2084d452af5aa32f81abb6110fe52993eb741984328b005"
+      },
       "mismatches": [],
       "namespace": "http-json-a3-ifox-iewl-a",
       "observed_sha256": {
@@ -115,7 +153,7 @@
       "passed": true,
       "raw_requests": 256,
       "receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "b717036b35704155e9e4fa9945aa09020ff01c2335f22b07986730c12f4d9cd4",
         "generation": "http-json-a3-ifox-iewl-a-a",
         "mode": "http-json",
@@ -134,7 +172,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "a",
         "transactions_count": 4097,
         "txnin_sha256": "0f87af931a83dbcbe2084d452af5aa32f81abb6110fe52993eb741984328b005",
@@ -142,7 +180,7 @@
       },
       "receipt_errors": [],
       "request_errors": [],
-      "seconds": 7.133,
+      "seconds": 7.544,
       "stage": "a",
       "typed_requests": 3841
     },
@@ -162,6 +200,25 @@
       },
       "first_result_mismatch_record": null,
       "generation": "http-json-a3-ifox-iewl-a-a-replay",
+      "guest_receipt": {
+        "abend": null,
+        "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+        "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+        "input_generation": "/home/ubuntu/a3/run-01/ifox-iewl/a/polout.bin",
+        "job_id": "JOB00022",
+        "job_result_sha256": "06be2cb25aa19852daf677a933ddf4275ef50125ce1ea6cb623c11d9b2013cfc",
+        "outcome": "completed",
+        "polin_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "polout_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+        "resout_sha256": "f9e4860d519851c789b9012029a678119997961001a354d71c2bb60cf2d9f8ff",
+        "schema": "insurance-run-v1",
+        "step_rc": {
+          "RUN": 0
+        },
+        "timed_out": false,
+        "txnin_sha256": "b1e20d2fcf727142b4a47b6aeee0d3fb4abf171e1f79bf68014c100754976bb2"
+      },
       "mismatches": [],
       "namespace": "http-json-a3-ifox-iewl-a",
       "observed_sha256": {
@@ -173,7 +230,7 @@
       "passed": true,
       "raw_requests": 0,
       "receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "bb02976bbb80790ada06e2e2671fed086ef3e7de8c29c72b222442ec74acdbb6",
         "generation": "http-json-a3-ifox-iewl-a-a-replay",
         "mode": "http-json",
@@ -192,7 +249,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "a-replay",
         "transactions_count": 244,
         "txnin_sha256": "b1e20d2fcf727142b4a47b6aeee0d3fb4abf171e1f79bf68014c100754976bb2",
@@ -200,7 +257,7 @@
       },
       "receipt_errors": [],
       "request_errors": [],
-      "seconds": 0.463,
+      "seconds": 0.479,
       "stage": "a-replay",
       "typed_requests": 244
     },
@@ -220,6 +277,25 @@
       },
       "first_result_mismatch_record": null,
       "generation": "http-json-a3-ifox-iewl-a-b",
+      "guest_receipt": {
+        "abend": null,
+        "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+        "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+        "input_generation": "/home/ubuntu/a3/run-01/ifox-iewl/a/polout.bin",
+        "job_id": "JOB00025",
+        "job_result_sha256": "71d87df4d886e7370342890b35d1f3cf2d5248412a3705f31d94eb5405b80f15",
+        "outcome": "completed",
+        "polin_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "polout_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+        "resout_sha256": "5ceca4e5e3e06fd2b2cd69b3431675ba27d6e82d72598ec1325acf8229bc8f9d",
+        "schema": "insurance-run-v1",
+        "step_rc": {
+          "RUN": 0
+        },
+        "timed_out": false,
+        "txnin_sha256": "a090b6b3dbfe69f1cf03587f01aaaeb2cac78bb707d22c8718ddf67dbe2b60be"
+      },
       "mismatches": [],
       "namespace": "http-json-a3-ifox-iewl-a",
       "observed_sha256": {
@@ -231,7 +307,7 @@
       "passed": true,
       "raw_requests": 1024,
       "receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "ed8c918c370d377ff1f000f248fbf8f1bd86b35344a8c13b42cd79b47012581c",
         "generation": "http-json-a3-ifox-iewl-a-b",
         "mode": "http-json",
@@ -250,7 +326,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "b",
         "transactions_count": 4097,
         "txnin_sha256": "a090b6b3dbfe69f1cf03587f01aaaeb2cac78bb707d22c8718ddf67dbe2b60be",
@@ -258,7 +334,7 @@
       },
       "receipt_errors": [],
       "request_errors": [],
-      "seconds": 7.403,
+      "seconds": 7.716,
       "stage": "b",
       "typed_requests": 3073
     },
@@ -278,6 +354,25 @@
       },
       "first_result_mismatch_record": null,
       "generation": "http-json-a3-ifox-iewl-a-b-replay",
+      "guest_receipt": {
+        "abend": null,
+        "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+        "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+        "input_generation": "/home/ubuntu/a3/run-01/ifox-iewl/b/polout.bin",
+        "job_id": "JOB00028",
+        "job_result_sha256": "b27d6df6fe15defe7c84f254f3b6ccdaef075926930c5b529329b23a5c3835f1",
+        "outcome": "completed",
+        "polin_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "polout_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+        "resout_sha256": "983ab6ae00d6ca445381482cbe16a060322caacb6f8da0ac86e7b6c955bc90ac",
+        "schema": "insurance-run-v1",
+        "step_rc": {
+          "RUN": 0
+        },
+        "timed_out": false,
+        "txnin_sha256": "31d53d3bc51d92ad4d4f9f491d323e59a1080029ec057cbbc6a9c5c55e727708"
+      },
       "mismatches": [],
       "namespace": "http-json-a3-ifox-iewl-a",
       "observed_sha256": {
@@ -289,7 +384,7 @@
       "passed": true,
       "raw_requests": 0,
       "receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "f94dc387327ab5199ee72bc481a817be286851a45582293c78966ff26b8c2511",
         "generation": "http-json-a3-ifox-iewl-a-b-replay",
         "mode": "http-json",
@@ -308,7 +403,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "b-replay",
         "transactions_count": 256,
         "txnin_sha256": "31d53d3bc51d92ad4d4f9f491d323e59a1080029ec057cbbc6a9c5c55e727708",
@@ -316,7 +411,7 @@
       },
       "receipt_errors": [],
       "request_errors": [],
-      "seconds": 0.551,
+      "seconds": 0.542,
       "stage": "b-replay",
       "typed_requests": 256
     }

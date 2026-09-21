@@ -1,10 +1,13 @@
 # A3 ACCEPTANCE — fresh Hercules/MVS observations vs Java
 
 Everything in this directory was produced by an actual TK5 (MVS 3.8j) guest
-run on Hercules on this VM, then compared against the Java implementation
-built from source commit `f26505104a72a8dd6b021c26019d05f06a0d443c`
-(JAR `sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab`,
-OpenJDK 21.0.12). It is distinct from `../fast/` (A1 generated goldens and
+run on Hercules on this VM (sections 1–2) or by the independently reviewed
+per-routine guest harness (section 3), then compared against the Java
+implementation. The Java comparison reports in `reports/` and `routines/`
+record the source commit and JAR SHA-256 they were produced from (see
+`source_commit` / `jar_sha256` / `java.build_identity` inside each report;
+the guest observations themselves predate those commits and are bound by
+their own receipts). It is distinct from `../fast/` (A1 generated goldens and
 A2 archived observations). Nothing here is simulated or copied from the
 archive; the guest job ids, dataset prefixes and step return codes are in the
 receipts.
@@ -12,7 +15,13 @@ receipts.
 Legacy guest transport, build and validation used the unchanged tools in
 `samples/insurance/tools/` (`tk5_demo.py`, `tk5_validate.py`, `compare.py`).
 The only new tooling is on the Java side (`java/tools/targeted_a3.py`,
-`java/tools/http_parity.sh`, `java/tools/parity_java.py`).
+`java/tools/http_parity.sh`, `java/tools/parity_java.py`,
+`java/tools/routine_parity.py`, and the negative-control pair
+`java/tools/mutant_proxy.py` / `java/tools/negative_response_control.sh`).
+Before any A2/A3 bytes are used as an authority, `parity_java.py` runs the
+unchanged legacy receipt validator with independently recomputed hashes and
+rejects missing, failed, timed-out, nonzero-RC or ABEND receipts, missing
+files and hash/count mismatches.
 
 ## 1. Full application corpus (`fresh-run/`)
 
@@ -112,16 +121,140 @@ Negative control (not committed, reproducible): flipping the low byte of
 first mismatch at record 1, field `interest`, offset 62, expected
 `0000000000067c` (67) vs observed `0000000000007c` (7); `15/16`.
 
-## 3. What is Java-only (not guest-observed)
+## 3. Per-routine guest observations (`routines/`)
+
+The five library routines (`INSPACK`, `INSDATE`, `INSRATE`, `INSVAL`,
+`INSCALC`) were called directly on the guest by the separately owned routine
+harness (routine-harness commit `5a71041743bc8086d47310380b417caf1e47ce08`,
+evidence archive SHA-256
+`3c881564cdc03812b9fb7affacb2634d7c5148d3b01aedaa2661a42f0ff553b2`, 184 cases,
+three executable paths, identical `capture.bin` on all three:
+`2121c27da9b626f46f1a049a4e7caa9480d50d8e70fbf10dfcf51345c6bfdbc9`). That
+harness, its fixtures and its guest receipts are not part of this PR and were
+not modified here.
+
+`java/tools/routine_parity.py` accepts the archive only after it has
+re-verified, independently of anything the archive says about itself:
+the archive SHA-256; `RECEIPTS.json` (schema, three clean guest jobs per path —
+allocate + assemble/link/import + run, every step `0000`, 184/184, zero
+findings); `capture.bin` SHA-256 equal across the file, the receipt,
+`observed.json` and the AWS tape payload; `cases-in.aws` payload SHA-256 equal
+to the fixture manifest's `cases_sha256`; the fixture manifest's canonical
+SHA-256 equal to the one recorded in `observed.json`; the frozen assembler
+sources, macros and rate table in this checkout equal to the fixture-pinned
+hashes; `observed.json` schema/count/order/valid flag with empty problem and
+quarantine lists; and every observed input/output byte re-read from
+`capture.bin` (including the `KEEP`/`STATE`/`TXN` chaining of `WORK` between
+consecutive `INSCALC` cases). `expected.json` is never read. It then rebuilds
+the 184 logical calls from the raw case bytes, runs
+`java -jar ledger-app.jar routines` once, and compares only the business
+observables:
+
+| routine | cases | compared | not compared (assembler-only) |
+|---|---|---|---|
+| `INSPACK` | 20 | validity (guest `R15` ↔ Java `valid`); argument bytes unchanged | registers, save area |
+| `INSDATE` | 26 | validity (`WVALID`); `WYEAR` whenever the guest wrote it (positive inputs, valid or not); `WMD`/`WORD` when assigned; `WDATE` unchanged | `R15` fixed 0 ABI, unwritten storage |
+| `INSRATE` | 20 | `WRATE`/`WFEE` written (value) or left unwritten (below-table dates, no date validation); inputs unchanged | scratch |
+| `INSVAL` | 34 | validity (`WVALID` and `R15`); the 128-byte policy unchanged | scratch |
+| `INSCALC` | 84 | `SREC` and `OREC` byte-for-byte; `TREC` unchanged; status histogram OKAY 45 / OVER 6 / FUND 4 / ORDR 4 / CNFL 3 / FORM 3 / PACK 3 / STAT 3 / TYPE 3 / AMNT 2 / DATE 2 / DUPL 2 / NEGA 2 / NPOL 2 | arithmetic scratch, unrelated `WORK` bytes |
+
+Result: **184/184 on each of `ifox-iewl`, `as370-iewl`, `as370-ld370`**
+(`routines/routine-parity.json`, per-case `routines/routine-results-<path>.json`,
+the reconstructed Java inputs and outputs in `routines/java-cases.json` /
+`routines/java-outputs.json`, the fixture manifest as
+`routines/routine-fixture-manifest-5a71041.json`). Java is scratch-free: it
+neither models nor asserts the assembler's `WORK` area, registers, condition
+codes or save areas; untouched unrelated `WORK` bytes are an assembler
+preservation property, not a Java requirement.
+
+Negative controls (`routines/negative-controls/`): six one-field mutations of
+the Java output (`INSDATE` year +1, `INSRATE` writing a rate below the table,
+`INSVAL` and `INSPACK` verdict flips, one `OREC` byte, one `SREC` byte) each
+fail exactly their case with the guest and Java values printed; a one-byte
+change to the archive is rejected before extraction (`tampered-archive.log`).
+
+## 4. v3 acceptance items T-01 … T-16
+
+Tier legend: **GUEST** = fresh guest output compared byte-for-byte (sections
+1–3); **JAVA** = Java-only unit/Testcontainers/subprocess test (section 5).
+Test names refer to `contract-v001` (`ContractV001Test`, `ContractBreadthTest`,
+`DirectRoutineTest`), `ledger-application` (`ExpectedManifestAndBatchTest`,
+`FileGenerationStoreTest`, `ProcessKillTest`, `RoutineCliTest`) and
+`ledger-app` (`GenerationApiTest`, `JdbcGenerationStoreTest`).
+
+| item | status | evidence |
+|---|---|---|
+| T-01 interest tie + wrong-rounding control | closed | GUEST `interest-tie` (6.5 → 7, 32.5 → 33 ×2); JAVA `interestHalfUpTieRoundsAwayFromZero`; negative control `wrongRoundingIsDetectedOnTheTieOnly` (a half-even mutant of the same formula gives 6 on the tie and is caught; it agrees off the tie, so the tie is the discriminating case) |
+| T-02 charge ties | closed | GUEST `charge-tie` (10.5 → 11, 3.5 → 4, exact 5.0/45.0/15.0); the 49 corpus ties are inside the 8,704-result A1/A2/A3 runs |
+| T-03 ages 0..99 both sides of the anniversary | closed | JAVA `everyAgeOnBothSidesOfTheAnniversary` (issue 1925-06-15; for every age 0–99 the day before, the anniversary and the day after, with rate row and fee waiver checked per side); GUEST `age-rate-bands` (age 0/1 across a 2024-02-29 issue, age 9 fee / age 10 waived) — the full 0..99 sweep is Java-only, not guest-observed |
+| T-04 rate-band boundaries | closed | GUEST `age-rate-bands` (every band edge 2019-12-31 … 2025-01-01, period-end semantics); GUEST routine `INSRATE` 20 direct cases incl. below-table dates; JAVA `lookupAgreesWithDirectOnEveryValidatedDate` |
+| T-05 overflow precedence and reachability | closed | GUEST `malformed` (a: `TAMT` above MAXAMT with an unknown op → OVER before TYPE), `quotient-over` (b: 45,656-day quotient 406,526,027,393 → OVER; c: cash + interest → OVER), `cash-max-boundary` (d: exactly MAXAMT OKAY, +1 OVER), `funds-ops` (e: loan beyond cash → FUND first; f: negative cash → FUND); JAVA `reachableQuotientOverUnderFrozenRates`, `capitalizedCashOverIsDistinctFromQuotientOver`, `widthFaultFailsClosedInsteadOfLegacyStatus` (S0CB-equivalent, injected rate) |
+| T-06 packed signs / malformed, all 13 digit positions | closed | JAVA `everyPackedDigitPositionIsDecodedAndValidated` (digit nibble A–F in each of the 13 positions, sign nibbles 0/A/B/E); GUEST `packed-signs`, `malformed`, routine `INSPACK` 20 cases; corpus 512 malformed + 256 F + 256 negative-zero requests |
+| T-07 replay matrix at all 40 offsets | closed | JAVA `everyReplayOffsetHasItsFirstFailureOutcome` (offsets 0–7 → NPOL or the other policy's verdict, 8–11 → ORDR or fresh evaluation, 12–39 → CNFL; seq 0/−1/s−1 → ORDR; gap accepted; rejected request leaves SSEQ/SLAST); GUEST `sequence-matrix`, `packed-signs` (DUPL/CNFL) |
+| T-08 comparator detects structural output mutations | closed | `tools/compare.py` unchanged; `parity_java.py` fails a stage on count mismatch, missing/extra/reordered records and receipt-hash mismatch; negative controls in section 2 and `../../README.md` § Parity (FAST regression) (one-byte authority mutation → hash rejection + field diff; wrong JAR/commit → receipt rejection) |
+| T-09a genuine empty inputs | closed | GUEST `empty-txnin`, `empty-polin`; JAVA `batchEmptyTransactionsLeavesMasterUnchangedWithZeroResults`, `batchEmptyMasterYieldsNpolForEveryTransactionAndEmptyPolout`, `emptyTxninPublishesUnchangedMasterAndZeroResults` |
+| T-09b truncated / short input (controller) | closed | JAVA `manifestRejectsAlignedTruncation`, `manifestRejectsPartialRecordAndUnexpectedlyEmptyDelivery`, `manifestRejectsWrongBytesOfRightLength`, `batchRejectsPartialMasterRecord`, `manifestPinnedAtCreationIsEnforcedAtPublishWith422AndDiscards`, `wrongTxninHashIsRejectedEvenWhenCountsMatch` — the manifest is bound at generation creation, before any request |
+| T-10 timeout / errors / crash | **partial** | JAVA (file store, real `SIGKILL`-equivalent `Runtime.halt` of a child JVM) `ProcessKillTest`: before commit, after commit before response, before publish, between the two publication renames, after publish; each followed by a restart and a re-drive from the parent that matches the oracle. JAVA (PostgreSQL) in-process fault injection at both commit boundaries (`failureBeforeCommitLeavesNoOrdinalSoRetryIsOkay`, `retryAfterCommittedRequestIsDupl…`) and fail-closed restart tests. **Not done:** killing the PostgreSQL-backed process itself, a DB-outage mid-generation, or an HTTP client timeout; and no verified-prefix *resume* — see deviation D2 |
+| T-11 race / retry / fencing / CAS | **partial** | (a) `oneWriterPerGenerationAndStaleFencesAreRejected`, `onlyOneOpenWriterPerGenerationAndStaleFencesAreRejected` — no `claim` endpoint, see D1; (b) `twoHundredConcurrentRequestsCommitInAdmissionOrder` (200 concurrent raw requests, 32 threads; ordinals equal the servlet-level admission ticket of `AdmissionSequencer`, each exactly once, echoed bytes and persisted `RESOUT` re-read after publish) — the admission order is defined and observed at the servlet filter, see D3; (c) `siblingPublishRaceHasExactlyOneWinnerAndTheLoserIsDiscarded`, `publishCasFailsWhenCurrentMovedUnderTheLease`; (d1–d3) as in T-10 plus real kills in `ProcessKillTest`; `Prefer: return=original` not implemented (optional, off); (e) `applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched`, `directChildWriteBegunWhilePendingBlocksPublicationUntilItEnds`, `directChildWriteWaitsForThePublisherLockAndIsRejectedAfterTheFlip` (two connections) |
+| T-12 blind docs-only oracle | **optional — not authorized, not done** | separate approval per the v3 plan; nothing here depends on it |
+| T-13 512 cap / order / NPOL | closed | GUEST `control-master-513`, `control-master-unordered`, `control-master-duplicate` (RC=12, no output) and `NPOL` cases; JAVA `bootstrapEnforcesTheLegacyMasterTableCapAndOrder`, `batchRejectsInvalidMasterWithRc12AndNoOutput` |
+| T-14 `TYPE` after interest | closed | GUEST `malformed` precedence pair OVER<TYPE and TYPE cases; JAVA `typeAmntFundAfterInterest` |
+| T-15 JSON ↔ raw ↔ bytes | closed | GUEST/HTTP: every typed response field compared to the independently decoded 96-byte record in `http-json` (7,424 typed + 86 targeted); `statelessEvaluateMatchesTheStatefulResultBytes`, `typedRequestReachesTheContractAndFieldsMatchResultBytes`; mismatch of a response against the authority is fatal in both HTTP modes; negative control `reports/negative-controls/` (`tools/negative_response_control.sh`): a reverse proxy alters only the 8th immediate apply response — one `OCHG` byte of `resultHex`, and for the typed mode a self-consistent `result.charge`/`result.recordHex` — while the request and the persisted `RESOUT` stay correct; both `http-json` and `http-gen` stop at record 7 of `anchors` with `immediate result differs from authority` (`charge` 0 → 100), `persisted_mismatches=0`, receipt valid (`summary.log`, `proxy-*.log`, `report-*.json`) |
+| T-16 envelope vs domain boundary | closed | JAVA `envelopeFailuresAreHttp400AndConsumeNoOrdinal` (10^13, `99999-01-01`), `representableDomainFailuresAreHttp200WithLegacyStatus` (10^12 → OVER, 2100-01-01 → DATE, unknown policy → NPOL); GUEST `date-bounds` raw cases (999990101, negative, 0 → DATE) |
+
+## 5. Deviations from the v3 plan (explicit)
+
+- **D1 — no `claim`/takeover endpoint.** The plan described a `claim` that
+  invalidates a previous writer's fence and resumes. Implemented: one writer
+  lease per pending generation, fenced applies, a second `begin` of the same
+  generation is refused (409), stale fences are rejected. A pending generation
+  whose writer is gone is never taken over; once its lease has expired it is
+  discarded on the next open/startup (`orphanedPendingGenerationIsDiscardedOnceItsLeaseExpiredAndNeverResumed`,
+  `pendingResultsAreNotServedAsPublishedAndAnotherInstanceLeavesLiveWritersAlone`).
+- **D2 — no verified-prefix resume.** The plan allowed a restarted writer to
+  verify the contiguous committed prefix and continue at `last_ordinal + 1`.
+  Implemented: fail closed — pending work is discarded, the parent is
+  unchanged, and the run is re-driven from the parent (which the kill tests
+  show yields identical bytes). Restart also refuses to serve a publication
+  whose ordinals are not contiguous or whose bytes differ from its receipt
+  (`restartFailsClosedWhenOrdinalsAreNotContiguous`,
+  `restartFailsClosedWhenPublishedBytesDoNotMatchReceipt`). Nothing here is
+  labelled "resume".
+- **D3 — admission order is defined at the servlet filter, per JVM.**
+  `AdmissionSequencer` assigns a per-namespace/generation ticket at filter
+  entry for `requests`, `requests:raw` and `batch` and serves tickets in
+  order; the ticket is returned as `X-Admission-Sequence` and equals the
+  committed ordinal. This is *the service's admission order*, observed
+  independently by the client from the header. It is **not** TCP/network
+  arrival order, and it is not defined across instances; the plan's "server
+  arrival order" is therefore met only in this bounded sense.
+- **D4 — failed publication discards rather than parking.** The plan
+  mentioned an unpublishable-pending state; implemented behaviour is that a
+  publication whose pinned manifest check fails (422) or whose parent CAS
+  loses (409 for a moved current) moves the generation to `DISCARDED`; it is
+  never served, and a fresh successor can be begun from the still-current
+  parent.
+- **D5 — `Prefer: return=original`** is not implemented (optional, off).
+- **D6 — T-12** is not done (optional, unapproved).
+
+Maven suite: `./mvnw test` runs the whole reactor. At the previously reviewed
+head the total was 70 across all four modules (29 of them in `ledger-app`);
+after the F1–F8 remediation it is 98 = `legacy-codec` 7 + `contract-v001` 21
++ `ledger-application` 33 + `ledger-app` 37 (the `ledger-app` figure alone is
+not the suite). The last run is in section 8.
+
+## 6. What is Java-only (not guest-observed)
 
 Truncation (aligned and partial-record), expected-manifest rejection, fence
 and sibling CAS publication races, retry before/after the commit boundary,
-published-row INSERT/UPDATE/DELETE guards, fail-closed restart and the typed
-JSON envelope are exercised only by the Java unit/Testcontainers suites
-(`ledger-application`, `ledger-app`). The legacy guest has no equivalent
-surface for them; they are service-layer guarantees, not legacy parity.
+published-row INSERT/UPDATE/DELETE guards, fail-closed restart, process kills,
+admission ordering and the typed JSON envelope are exercised only by the Java
+unit/Testcontainers/subprocess suites (`ledger-application`, `ledger-app`).
+The legacy guest has no equivalent surface for them; they are service-layer
+guarantees, not legacy parity. The full T-03 age sweep and T-06/T-07 breadth
+are also Java-only beyond the guest cases listed above.
 
-## 4. Limitations
+## 7. Limitations
 
 - Fresh evidence is bounded to the corpus above (8,704 results × 3 paths plus
   86 targeted results); it is not a proof about an unseen estate, z/OS,
@@ -131,11 +264,28 @@ surface for them; they are service-layer guarantees, not legacy parity.
 - Guest credentials were supplied through environment variables only and do
   not appear in this directory; the JCL and spool files, which would echo
   them, were deliberately not copied.
-- Per-routine assembler integration acceptance is a separate workstream and
-  remains pending until reviewed fixtures and fresh observations are
-  supplied.
+- The per-routine comparison (section 3) is against the reviewed harness
+  evidence at routine-harness commit `5a71041`; if that harness changes its
+  fixtures or observed schema, `routine_parity.py` must be re-pinned and
+  re-run — nothing is inferred from `expected.json`.
+- The kill tests cover the file store; the PostgreSQL store's crash behaviour
+  is covered by in-process fault injection and two-connection races only
+  (T-10, D2).
+- Source-derived oracle agreement (`oracle_agrees`) is a cross-check, not
+  independent business-intent validation; no production, estate or
+  performance claim is made.
 
-## 5. Reproduce
+## 8. Reproduce
+
+Last full verification (working directory `samples/insurance/java`, Java
+21.0.12, offline Maven): `./mvnw spotless:check`, `./mvnw checkstyle:check`,
+`./mvnw test` (98 tests, 0 failures, 0 errors, 0 skipped: 7 + 21 + 33 + 37),
+`./mvnw package` → `ledger-app-0.1.0-SNAPSHOT.jar` SHA-256
+`f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db` — the
+JAR every report in `reports/`, `routines/` and `../fast/` was produced with
+(`source_commit` `f20edae3`, whose Java sources are identical to the head that
+carries the reports; the later commit adds only evidence, docs and Python/shell
+tooling).
 
 Working directory `samples/insurance/java`, with the guest already reachable
 via the pinned `tools/tk5.py` setup (`TK5_*` environment for credentials):
@@ -165,4 +315,16 @@ python3 tools/targeted_a3.py compare --mode batch --cases <cases-dir> --authorit
 # Java vs A1 + A2 + fresh guest, stateful HTTP (PostgreSQL in Docker), both modes
 A3_RUNTIME=<run-dir> A3_TARGETED=<cases-dir>:<authority-dir> \
     tools/http_parity.sh $JAR $SHA <work>/http <reports>
+
+# Java vs the reviewed per-routine guest observations (archive pinned by SHA-256,
+# fixture manifest from the routine-harness checkout at 5a71041, frozen baseline 28790e2)
+python3 tools/routine_parity.py --archive <insurance-routines-evidence.tar.gz> \
+    --archive-sha256 3c881564cdc03812b9fb7affacb2634d7c5148d3b01aedaa2661a42f0ff553b2 \
+    --routine-manifest routines/routine-fixture-manifest-5a71041.json \
+    --routine-commit 5a71041743bc8086d47310380b417caf1e47ce08 \
+    --baseline <checkout-of-28790e2>/samples/insurance \
+    --java "$JAVA_HOME/bin/java -jar $JAR" --out <reports>/routines
+
+# response-only mutation must FAIL both HTTP modes (negative control)
+JAVA=$JAVA_HOME/bin/java tools/negative_response_control.sh $JAR $SHA <work>/negative
 ```

@@ -14,7 +14,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "43d8d8fa0fc27562864d9ce6e26c388ce7aa1b013c5f15758854c0798c9bf0a3",
         "generation": "t01-run",
         "mode": "batch",
@@ -33,7 +33,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "interest-tie",
         "transactions_count": 3,
         "txnin_sha256": "32fcf04b1717f8179ed4bd02a98496c97e55bd7f357ad347d04e6d9bbe70528e",
@@ -70,7 +70,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "0a73fa9b1fed489a6e1781437895b434f159844d521233d17dc531f3180339d5",
         "generation": "t02-run",
         "mode": "batch",
@@ -89,7 +89,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "quotient-over",
         "transactions_count": 3,
         "txnin_sha256": "d06732b865dc571c044c937e957b988a436a75573fffcb3008ead427210056ec",
@@ -126,7 +126,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "13f4d8d576928b60fed9f2c2ed091f92d730fe7edf9bad789ee9201d9fb27660",
         "generation": "t03-run",
         "mode": "batch",
@@ -145,7 +145,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "cash-max-boundary",
         "transactions_count": 3,
         "txnin_sha256": "03a967f4a220cdc4ae3f5b86c150e58c66ad492ec74d996dfab158a6615bb9f8",
@@ -182,7 +182,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "6aeaafe005e9ac94de75a99cf30aad2241c95fee0d416d16a820e85f3a5bb2f6",
         "generation": "t04-run",
         "mode": "batch",
@@ -201,7 +201,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "charge-tie",
         "transactions_count": 5,
         "txnin_sha256": "f521d5e8f4fe0498ebd4a011113992d0cb9ab76fe6a4289a3709188f5ee225e4",
@@ -242,7 +242,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "66a203c5ad85a7ed2d3e43625ce9d308634d9425dd139b8623e286c213e8cd02",
         "generation": "t05-run",
         "mode": "batch",
@@ -261,7 +261,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "date-bounds",
         "transactions_count": 13,
         "txnin_sha256": "d490b42b58f7b23d27a648798426aece78855d32e30144af0c5f4ac65d05d613",
@@ -318,7 +318,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "09f8250765156c6052b39eee2c3d26a2a287c31f93064547b605b772933f2e80",
         "generation": "t06-run",
         "mode": "batch",
@@ -337,7 +337,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "age-rate-bands",
         "transactions_count": 10,
         "txnin_sha256": "887bcf3fec96463b66e772ff1d1cdba66b4cf29479dc847e6144987856a9fcce",
@@ -388,7 +388,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "bc8365463181684d8033de1d388e6cd465e547c3f97525b2ffea4f2f38c210ad",
         "generation": "t07-run",
         "mode": "batch",
@@ -407,7 +407,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "packed-signs",
         "transactions_count": 7,
         "txnin_sha256": "1c1f63daed7f9f47ffa160bd12d653a46c2d5538213e9c118ebdc9a2194db591",
@@ -452,7 +452,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "6932d2c34ee7aad027bf2f8c2eb5a4deced1bbcaaa9b8d6742a5ea7e066d4318",
         "generation": "t08-run",
         "mode": "batch",
@@ -471,7 +471,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "malformed",
         "transactions_count": 15,
         "txnin_sha256": "19c9c1696bcad52c6a97f26313cab325c1a9f75630385b6e79d793be27143e78",
@@ -532,7 +532,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "7c329d6f233612cddacc2ccb8d5edb56d1bba4bb5a94568f3da85040f0973088",
         "generation": "t09-run",
         "mode": "batch",
@@ -551,7 +551,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "sequence-matrix",
         "transactions_count": 13,
         "txnin_sha256": "da8ed7e7c1b1007ee2364e6ee33b91d6b9443dc7cc3e2397ccea7ca9b898a7d9",
@@ -608,7 +608,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "04559511a75fc07ecaa308ac99ef56b4e30c2e54824fa2a5249672d736e0cd5e",
         "generation": "t10-run",
         "mode": "batch",
@@ -627,7 +627,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "funds-ops",
         "transactions_count": 11,
         "txnin_sha256": "1fdffdf00a02d68f3b13ce32c63ed691090fb9d91e1d9516b84352665f2e5109",
@@ -680,7 +680,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "07891b0a35b7ec7ff06e934eb07548dc07fcf46ce4caeea5a812fad2ccce85f8",
         "generation": "t11-run",
         "mode": "batch",
@@ -699,7 +699,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "empty-txnin",
         "transactions_count": 0,
         "txnin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -728,7 +728,7 @@
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
         "expected_manifest_sha256": "6cd1857dae47840c4b5892eec4ee76664b6c6ceb509e7bdbc393a7b3ea28f046",
         "generation": "t12-run",
         "mode": "batch",
@@ -747,7 +747,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c",
+        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
         "stage": "empty-polin",
         "transactions_count": 3,
         "txnin_sha256": "add9ca2e2ae324e5fda6e310cdf211c2086e43cffee8d315fc7f6996ed81e078",
@@ -845,10 +845,10 @@
   ],
   "cases_passed": 16,
   "cases_total": 16,
-  "jar_sha256": "7608405d5d9ede3dd0cace0653d85fd970dfc54b3a057bcfaf151eeb77def1ab",
+  "jar_sha256": "f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
   "mode": "batch",
   "passed": true,
   "results_compared": 86,
   "schema": "insurance-java-targeted-parity-v1",
-  "source_commit": "f26505104a72a8dd6b021c26019d05f06a0d443c"
+  "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e"
 }

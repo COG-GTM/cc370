@@ -57,6 +57,19 @@ output; genuine empty POLIN -> every transaction `NPOL`, zero POLOUT; genuine
 empty TXNIN -> master copied unchanged, zero RESOUT. "Genuine" is decided by
 the manifest, not by the delivered file, so aligned truncation (lost whole
 records) and partial records are both rejected before anything is published.
+The manifest (`insurance-expected-manifest-v1`: counts, POLIN/TXNIN
+SHA-256, `rates_sha256` of the running rate table) is bound when the
+generation is created, before any request is accepted.
+
+```
+java -jar ledger-app/target/ledger-app-0.1.0-SNAPSHOT.jar routines --cases F --out F
+```
+
+`routines` is the framework-free per-routine oracle used by
+`tools/routine_parity.py`: it calls the Java equivalents of `INSPACK`,
+`INSDATE`, `INSRATE`, `INSVAL` and `INSCALC` directly on the case bytes and
+writes the business-observable outputs (validity, year/month-day/ordinal,
+rate/fee, `SREC`/`OREC`) for comparison with the reviewed guest observations.
 
 ## HTTP API (stateful generations)
 
@@ -146,10 +159,19 @@ Current results (`evidence/fast/`), A1 and all three A2 paths, 5/5 stages and
 | `http-gen` | 0 | 8,704 |
 | `http-json` | 7,424 | 1,280 (512 malformed packed, 256 negative zero, 256 F sign, 256 nonzero reserved/tail) |
 
-Negative control: flipping one byte of an authority's `resout.bin` makes the
+Before A2/A3 bytes are used as an authority the driver runs the unchanged
+legacy receipt validator (`../tools/compare.py`) with independently recomputed
+hashes; a missing, failed, timed-out, nonzero-RC or ABEND receipt, a missing
+file or a hash/count mismatch rejects the stage before any comparison.
+
+Negative controls: flipping one byte of an authority's `resout.bin` makes the
 same driver stop at that stage with the first mismatching record, field,
 offset, raw bytes and decoded values; changing the expected source commit or
-JAR hash fails receipt validation before any comparison.
+JAR hash fails receipt validation before any comparison; a reverse proxy
+(`tools/mutant_proxy.py`) that alters only one immediate HTTP response (its
+`resultHex`, plus a self-consistent typed `charge`/`recordHex`) while the
+request and the persisted `RESOUT` stay correct fails that stage in both
+`http-gen` and `http-json` (`evidence/acceptance/reports/negative-controls/`).
 
 ## Parity (A3 ACCEPTANCE, fresh guest)
 
@@ -184,6 +206,12 @@ evidence only.
 - Done: A3 fresh guest acceptance (full corpus on three paths, 16 targeted
   cases) with Java `batch`/`http-gen`/`http-json` parity against it
   (`evidence/acceptance/`).
+- Done: per-routine logical parity (`INSPACK`, `INSDATE`, `INSRATE`, `INSVAL`,
+  `INSCALC`; 184 cases × 3 guest paths) against the independently reviewed
+  routine-harness observations via `java -jar ... routines` and
+  `tools/routine_parity.py` (`evidence/acceptance/routines/`). Compared:
+  business-observable outputs only; assembler ABI, registers, scratch and
+  unrelated `WORK` bytes are out of scope for Java.
 - Truncation, manifest rejection, fence/CAS races, retry commit boundaries,
   immutability guards and fail-closed restart are Java-only tests; the
   legacy guest has no equivalent surface.
@@ -195,5 +223,12 @@ evidence only.
 - The file store does not claim power-loss durability (no fsync/cut-power
   tests); publication is two distinct renames, and restart fails closed on
   any inconsistency it can detect.
-- Per-routine assembler integration acceptance is a separate workstream and
-  remains pending until reviewed fixtures and observations are supplied.
+- The routine harness itself (fixtures, guest capture, observed-v2 derivation)
+  is a separate workstream and is consumed here read-only, pinned by archive,
+  fixture-manifest and capture hashes; it is not modified from this tree.
+- Not implemented (explicit deviations from the plan, see
+  `evidence/acceptance/README.md`): a claim/takeover endpoint, verified-prefix
+  resume of a pending generation, an unpublishable-pending state (failed
+  publication discards), and `Prefer: return=original`. Admission order in the
+  HTTP adapter is defined at servlet-filter entry per namespace/generation
+  within one JVM, not TCP arrival or cross-instance order.

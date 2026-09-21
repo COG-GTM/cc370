@@ -335,7 +335,8 @@ def compare(args) -> None:
         ns = f"{args.namespace_prefix}t{n:02d}"
         gen = f"{ns}-run"
         policies, txns = len(data["polin"]) // 128, len(data["txnin"]) // 40
-        _, root_manifest = pj.manifest_for(f"{name}-root", policies, 0, data["polin"], b"", None)
+        _, root_manifest = pj.manifest_for(f"{name}-root", policies, 0, data["polin"], b"",
+                                           rates_sha)
         boot_error = runner.bootstrap(ns, f"{ns}-root", data["polin"], root_manifest)
         if case["control"]:
             entry["guest_rejected"] = receipt["step_rc"].get("RUN") == 12 and not receipt["passed"]
