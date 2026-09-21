@@ -1,6 +1,7 @@
 package insurance.contract.v001;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 /**
  * INSRATE: the frozen five-row rate table. The row in effect for a transaction is the latest row
@@ -14,6 +15,14 @@ public final class RateTable {
    * One table row: effective date, interest rate in basis points, surrender fee in basis points.
    */
   public record Row(int effective, int rateBps, int feeBps) {}
+
+  /**
+   * What a direct INSRATE call writes: nothing for a date before the first row (no date validation
+   * happens here, so any fullword at or after the first row selects a row), and the fee waiver is
+   * applied on age alone, so an age at or above the waiver writes a zero fee even when no row
+   * applies.
+   */
+  public record Direct(OptionalInt rateBps, OptionalInt feeBps) {}
 
   /** The frozen rows of INSRATE.asm ({@code golden/v1/rates.json}). */
   public static final RateTable FROZEN =
@@ -48,8 +57,30 @@ public final class RateTable {
     return rows;
   }
 
-  /** Rate and fee for a transaction date and policy age; the first row applies before any date. */
+  public Direct direct(int transactionDate, int age) {
+    Row selected = null;
+    for (Row r : rows) {
+      if (transactionDate < r.effective()) {
+        break;
+      }
+      selected = r;
+    }
+    OptionalInt rate = selected == null ? OptionalInt.empty() : OptionalInt.of(selected.rateBps());
+    OptionalInt fee;
+    if (age >= FEE_WAIVER_AGE) {
+      fee = OptionalInt.of(0);
+    } else {
+      fee = selected == null ? OptionalInt.empty() : OptionalInt.of(selected.feeBps());
+    }
+    return new Direct(rate, fee);
+  }
+
+  /**
+   * Rate and fee for a validated transaction date and policy age. INSCALC only reaches INSRATE with
+   * a date INSDATE accepted, which is never before the first row.
+   */
   public Row lookup(int transactionDate, int age) {
+    Direct d = direct(transactionDate, age);
     Row selected = rows.get(0);
     for (Row r : rows) {
       if (transactionDate < r.effective()) {
@@ -57,8 +88,7 @@ public final class RateTable {
       }
       selected = r;
     }
-    int fee = age >= FEE_WAIVER_AGE ? 0 : selected.feeBps();
-    return new Row(selected.effective(), selected.rateBps(), fee);
+    return new Row(selected.effective(), d.rateBps().orElseThrow(), d.feeBps().orElseThrow());
   }
 
   public int maxRateBps() {

@@ -1,0 +1,177 @@
+{
+ "schema": "insurance-java-routine-parity-v1",
+ "authority": "A3-routine (observed guest calls)",
+ "archive_sha256": "3c881564cdc03812b9fb7affacb2634d7c5148d3b01aedaa2661a42f0ff553b2",
+ "routine_commit": "5a71041743bc8086d47310380b417caf1e47ce08",
+ "passed": true,
+ "paths": {
+  "ifox-iewl": {
+   "capture_sha256": "2121c27da9b626f46f1a049a4e7caa9480d50d8e70fbf10dfcf51345c6bfdbc9",
+   "cases_sha256": "8f97f1c50b76aa94dd9a30f1359ba39f9d49f64c7ea98d01db7576f795b2329f",
+   "observed_sha256": "3ca68c5899ddd81c9e7f0ff74ba197a81c777007ca1eeda584d9d7f39c8ec261",
+   "run_json_sha256": "33df97db20880bbcffcfc1ab9cff619d02e7f222af23e860c0be7c480207b2e8",
+   "manifest_sha256_at_run": "e0aea975d978e9c1692ae30fe99f9deca030e53d1886d8f7091e12d2b5bf71c9",
+   "manifest_sha256_at_observe": "68e200992e715cc244a447c74c943146d8571e2442c3805865c3dca2ee166901",
+   "cases": 184,
+   "passed": 184,
+   "per_routine": {
+    "INSPACK": {
+     "cases": 20,
+     "passed": 20
+    },
+    "INSDATE": {
+     "cases": 26,
+     "passed": 26
+    },
+    "INSRATE": {
+     "cases": 20,
+     "passed": 20
+    },
+    "INSVAL": {
+     "cases": 34,
+     "passed": 34
+    },
+    "INSCALC": {
+     "cases": 84,
+     "passed": 84
+    }
+   },
+   "inscalc_status_histogram": {
+    "AMNT": 2,
+    "CNFL": 3,
+    "DATE": 2,
+    "DUPL": 2,
+    "FORM": 3,
+    "FUND": 4,
+    "NEGA": 2,
+    "NPOL": 2,
+    "OKAY": 45,
+    "ORDR": 4,
+    "OVER": 6,
+    "PACK": 3,
+    "STAT": 3,
+    "TYPE": 3
+   },
+   "failures": []
+  },
+  "as370-iewl": {
+   "capture_sha256": "2121c27da9b626f46f1a049a4e7caa9480d50d8e70fbf10dfcf51345c6bfdbc9",
+   "cases_sha256": "8f97f1c50b76aa94dd9a30f1359ba39f9d49f64c7ea98d01db7576f795b2329f",
+   "observed_sha256": "3ca68c5899ddd81c9e7f0ff74ba197a81c777007ca1eeda584d9d7f39c8ec261",
+   "run_json_sha256": "739039067dc28cdfde625979c4e7a39b03a2c528b4b2e07c95bff8720a51846c",
+   "manifest_sha256_at_run": "e0aea975d978e9c1692ae30fe99f9deca030e53d1886d8f7091e12d2b5bf71c9",
+   "manifest_sha256_at_observe": "68e200992e715cc244a447c74c943146d8571e2442c3805865c3dca2ee166901",
+   "cases": 184,
+   "passed": 184,
+   "per_routine": {
+    "INSPACK": {
+     "cases": 20,
+     "passed": 20
+    },
+    "INSDATE": {
+     "cases": 26,
+     "passed": 26
+    },
+    "INSRATE": {
+     "cases": 20,
+     "passed": 20
+    },
+    "INSVAL": {
+     "cases": 34,
+     "passed": 34
+    },
+    "INSCALC": {
+     "cases": 84,
+     "passed": 84
+    }
+   },
+   "inscalc_status_histogram": {
+    "AMNT": 2,
+    "CNFL": 3,
+    "DATE": 2,
+    "DUPL": 2,
+    "FORM": 3,
+    "FUND": 4,
+    "NEGA": 2,
+    "NPOL": 2,
+    "OKAY": 45,
+    "ORDR": 4,
+    "OVER": 6,
+    "PACK": 3,
+    "STAT": 3,
+    "TYPE": 3
+   },
+   "failures": []
+  },
+  "as370-ld370": {
+   "capture_sha256": "2121c27da9b626f46f1a049a4e7caa9480d50d8e70fbf10dfcf51345c6bfdbc9",
+   "cases_sha256": "8f97f1c50b76aa94dd9a30f1359ba39f9d49f64c7ea98d01db7576f795b2329f",
+   "observed_sha256": "3ca68c5899ddd81c9e7f0ff74ba197a81c777007ca1eeda584d9d7f39c8ec261",
+   "run_json_sha256": "f6a8fe8a565b13587660fb123b895989b552cccb96cac8fabdd9f0e20412adc1",
+   "manifest_sha256_at_run": "e0aea975d978e9c1692ae30fe99f9deca030e53d1886d8f7091e12d2b5bf71c9",
+   "manifest_sha256_at_observe": "68e200992e715cc244a447c74c943146d8571e2442c3805865c3dca2ee166901",
+   "cases": 184,
+   "passed": 184,
+   "per_routine": {
+    "INSPACK": {
+     "cases": 20,
+     "passed": 20
+    },
+    "INSDATE": {
+     "cases": 26,
+     "passed": 26
+    },
+    "INSRATE": {
+     "cases": 20,
+     "passed": 20
+    },
+    "INSVAL": {
+     "cases": 34,
+     "passed": 34
+    },
+    "INSCALC": {
+     "cases": 84,
+     "passed": 84
+    }
+   },
+   "inscalc_status_histogram": {
+    "AMNT": 2,
+    "CNFL": 3,
+    "DATE": 2,
+    "DUPL": 2,
+    "FORM": 3,
+    "FUND": 4,
+    "NEGA": 2,
+    "NPOL": 2,
+    "OKAY": 45,
+    "ORDR": 4,
+    "OVER": 6,
+    "PACK": 3,
+    "STAT": 3,
+    "TYPE": 3
+   },
+   "failures": []
+  }
+ },
+ "rejections": [],
+ "fixture_manifest_sha256": "68e200992e715cc244a447c74c943146d8571e2442c3805865c3dca2ee166901",
+ "frozen_source_sha256": {
+  "src/INSPACK.asm": "c1a29689c826e2799e2052ef22b5e495106f7e674774a45214e01490f89ad0ab",
+  "src/INSDATE.asm": "43f9beb750b680a92fd27c4507f2dd14f8d82ca8d7ccfcb898df3056f3dfed9b",
+  "src/INSRATE.asm": "1c121f7951fe36ff12572db3922062373e6adf906476965610dccd313c071e98",
+  "src/INSVAL.asm": "5a8ff4a18f5e938a9d22c8a09bb3c392f913bbc0f238652182f6509786e81557",
+  "src/INSCALC.asm": "80b7c66e830169fc858112e809599b783f23e52fc4b56b6b9c579e3974cb4feb",
+  "src/INSBAT.asm": "adfe94b32b990a550b7e9dcea6dfdd9bf4cbbefde9d2f0b0616ed0564297eea9",
+  "src/INSSMOK.asm": "c9e1c8c1463c2d3dab6cd6a68990e7ef1148f184f0490268ad1f28041678124c",
+  "copy/INSENT.mac": "22edaa1aa44a4827ec28038a73560037eea480032545ae8a4297354f091fbcb4",
+  "copy/INSRET.mac": "3f7b484e7005988b853d8311da5f360047ccf547fbcbfa6b6451152629ad0b0b",
+  "copy/INSWORK.copy": "2168c2674d343bcb6c38f3f0cf758062642c0ddc970e18cb2354efd69169ef72",
+  "golden/v1/rates.json": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0"
+ },
+ "fixture_cases_sha256": "8f97f1c50b76aa94dd9a30f1359ba39f9d49f64c7ea98d01db7576f795b2329f",
+ "java": {
+  "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+  "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
+  "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a"
+ }
+}

@@ -248,7 +248,7 @@ public final class BatchCli {
     return v;
   }
 
-  private static Map<String, String> parse(String[] args, int from) {
+  static Map<String, String> parse(String[] args, int from) {
     Map<String, String> m = new HashMap<>();
     for (int i = from; i < args.length; i++) {
       if (!args[i].startsWith("--") || i + 1 >= args.length) {

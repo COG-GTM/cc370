@@ -30,11 +30,20 @@ public final class LegacyCalendar {
     return parts(yyyymmdd).isPresent();
   }
 
+  /**
+   * The year digits INSDATE splits off before any range check: written for every positive input
+   * (even an invalid one), never for zero or negative inputs.
+   */
+  public static OptionalInt yearPart(int yyyymmdd) {
+    return yyyymmdd <= 0 ? OptionalInt.empty() : OptionalInt.of(yyyymmdd / 10000);
+  }
+
   public static java.util.Optional<Parts> parts(int yyyymmdd) {
-    if (yyyymmdd <= 0) {
+    OptionalInt split = yearPart(yyyymmdd);
+    if (split.isEmpty()) {
       return java.util.Optional.empty();
     }
-    int year = yyyymmdd / 10000;
+    int year = split.getAsInt();
     int month = (yyyymmdd / 100) % 100;
     int day = yyyymmdd % 100;
     if (year < MIN_YEAR || year > MAX_YEAR || month < 1 || month > 12 || day < 1) {
