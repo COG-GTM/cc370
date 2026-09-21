@@ -7,6 +7,7 @@ import insurance.legacy.codec.PolicyRecord;
 import insurance.legacy.codec.TransactionRecord;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Durable generation ledger. A namespace has at most one current generation. Generations are
@@ -56,8 +57,17 @@ public interface GenerationStore {
   /** Resolves the current bytes of a policy inside a pending or published generation. */
   Optional<PolicyRecord> policy(String namespace, String generation, byte[] id);
 
-  /** Persists request, result, successor state and the next ordinal atomically. */
-  Applied commit(Lease lease, TransactionRecord request, Evaluation evaluation, boolean typed);
+  /**
+   * Under the fenced generation lock: loads the current master for {@code request.id()}, hands it
+   * to {@code evaluator} (empty when the policy is absent) and persists request, result, successor
+   * state and the next contiguous ordinal atomically. Evaluating inside the lock is what makes a
+   * read-evaluate-persist sequence serial with every other writer of the generation.
+   */
+  Applied commit(
+      Lease lease,
+      TransactionRecord request,
+      Function<Optional<PolicyRecord>, Evaluation> evaluator,
+      boolean typed);
 
   /**
    * Under the generation lock: verify fence, rebuild outputs, validate them against the pinned

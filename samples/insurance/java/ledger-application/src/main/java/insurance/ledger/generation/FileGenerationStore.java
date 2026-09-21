@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 
 /**
  * File-backed generation store.
@@ -255,10 +256,14 @@ public final class FileGenerationStore implements GenerationStore {
 
   @Override
   public Applied commit(
-      Lease lease, TransactionRecord request, Evaluation evaluation, boolean typed) {
+      Lease lease,
+      TransactionRecord request,
+      Function<Optional<PolicyRecord>, Evaluation> evaluator,
+      boolean typed) {
     synchronized (lock) {
       GenerationInfo info = checkedPending(lease);
       PolicyTable table = tables.get(key(lease.namespace(), lease.generation()));
+      Evaluation evaluation = evaluator.apply(table.find(request.id()));
       byte[] entry = new byte[ENTRY];
       System.arraycopy(request.bytes(), 0, entry, 0, TransactionRecord.LENGTH);
       System.arraycopy(
@@ -335,6 +340,8 @@ public final class FileGenerationStore implements GenerationStore {
         return receipt;
       } catch (IOException e) {
         throw new UncheckedIOException(e);
+      } catch (FencedException e) {
+        throw e;
       } catch (GenerationException | ExpectedManifest.ManifestException e) {
         discardQuietly(lease);
         throw e;

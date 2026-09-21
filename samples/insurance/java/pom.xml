@@ -49,6 +49,7 @@
           <version>3.14.0</version>
           <configuration>
             <release>21</release>
+            <parameters>true</parameters>
             <showWarnings>true</showWarnings>
             <compilerArgs>
               <arg>-Xlint:all,-processing,-serial</arg>

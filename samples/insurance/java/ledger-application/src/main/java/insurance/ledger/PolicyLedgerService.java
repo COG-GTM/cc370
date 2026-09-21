@@ -64,11 +64,13 @@ public final class PolicyLedgerService {
 
   /** Applies one raw 40-byte request in arrival order and persists it under the lease. */
   public Applied apply(Lease lease, TransactionRecord request, boolean typed) {
-    Optional<PolicyRecord> master =
-        store.policy(lease.namespace(), lease.generation(), request.id());
-    Evaluation evaluation =
-        master.map(m -> contract.evaluate(m, request)).orElseGet(() -> contract.noPolicy(request));
-    return store.commit(lease, request, evaluation, typed);
+    return store.commit(lease, request, master -> evaluate(master, request), typed);
+  }
+
+  private Evaluation evaluate(Optional<PolicyRecord> master, TransactionRecord request) {
+    return master
+        .map(m -> contract.evaluate(m, request))
+        .orElseGet(() -> contract.noPolicy(request));
   }
 
   public Receipt publish(Lease lease, ExpectedManifest manifest, String stageMode) {
