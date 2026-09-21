@@ -40,6 +40,9 @@ java -jar ledger-app/target/ledger-app-0.1.0-SNAPSHOT.jar batch <command> ...
   bootstrap --store DIR --namespace NS --generation GEN --polin F --manifest F
   run       --store DIR --namespace NS --parent GEN --generation GEN
             --polin F --txnin F --manifest F --out DIR [--source-commit SHA]
+  resume    --store DIR --namespace NS --generation GEN
+            --polin F --txnin F --manifest F --out DIR [--source-commit SHA]
+  discard-abandoned --store DIR --namespace NS --generation GEN --reason TEXT
   inbat     --polin F --txnin F --manifest F --out DIR
   verify    --store DIR
 ```
@@ -49,8 +52,7 @@ supplied POLIN, applies every TXNIN record in physical order, validates the
 outputs against the separately supplied expected manifest (counts and input
 SHA-256s), publishes with an expected-parent compare-and-swap of the
 namespace's current pointer, and writes `polout.bin`, `resout.bin` and
-`receipt.json` to `--out`. Exit codes: 0 ok, 2 manifest/input rejection,
-3 lifecycle/publication failure, 4 usage.
+`receipt.json` to `--out`.
 
 Legacy INSBAT semantics preserved: invalid master state -> RC 12 and no
 output; genuine empty POLIN -> every transaction `NPOL`, zero POLOUT; genuine
@@ -60,6 +62,36 @@ records) and partial records are both rejected before anything is published.
 The manifest (`insurance-expected-manifest-v1`: counts, POLIN/TXNIN
 SHA-256, `rates_sha256` of the running rate table) is bound when the
 generation is created, before any request is accepted.
+
+Exit codes: 0 ok, 2 manifest/input rejection, 3 lifecycle/publication/
+checkpoint failure, 4 usage, 5 store locked by another process.
+
+### Abandoned pending generations (file store)
+
+A `run` that dies leaves a pending generation behind. Opening the store
+again does **not** discard it; it stays pending until one of two explicit
+choices is made:
+
+- `resume` claims it (the dead process's OS store lock is free; a live
+  writer still holding the lock is rejected with exit 5, never displaced),
+  re-verifies the durable prefix — every committed request is re-evaluated
+  through the pinned contract and rate table, result/successor bytes,
+  per-entry typed flags, typed/raw counters, the checkpoint chain and the
+  policy state must all agree with the pinned manifest and
+  `contract_identity` — reconciles that prefix with the supplied TXNIN,
+  applies only the records after `lastOrdinal`, and publishes with the
+  expected-parent CAS. It never re-sends a committed record and never falls
+  back to a rerun from the parent. Any corrupt or incompatible checkpoint
+  (changed inputs, rules, rate table or class bytes) is exit 3 and the
+  generation stays pending.
+- `discard-abandoned` is the separate, explicit alternative: the generation
+  becomes `DISCARDED` and a new `run` from the parent is the rerun.
+
+File-store bounds: this is a single-host, single-filesystem store. The
+claim history (`claims.json`) and the generation summary (`generation.json`)
+are separate writes, so no atomic cross-file claim history is claimed;
+there are no fsync/cut-power tests and no power-loss claim. The store is
+the batch adapter; PostgreSQL is the service acceptance target.
 
 ```
 java -jar ledger-app/target/ledger-app-0.1.0-SNAPSHOT.jar routines --cases F --out F
@@ -75,8 +107,10 @@ rate/fee, `SREC`/`OREC`) for comparison with the reviewed guest observations.
 
 All paths are under `/v1/namespaces/{ns}`. Persistence is PostgreSQL
 (`LEDGER_DB_URL`, `LEDGER_DB_USER`, `LEDGER_DB_PASSWORD`; Flyway migrates
-`V1__generation_ledger.sql` on start-up). `LEDGER_SOURCE_COMMIT` is bound into
-every receipt.
+`V1`..`V4` under `db/migration` on start-up — `V4` makes the checkpoint,
+contract identity and per-entry chain columns `NOT NULL`). `LEDGER_SOURCE_COMMIT`
+is bound into every receipt; `ledger.writer-lease` (default `PT60S`) is the
+writer lease renewed by the heartbeat.
 
 | Method / path | Purpose |
 |---|---|
@@ -86,7 +120,9 @@ every receipt.
 | `POST /generations/{gen}/requests` | typed JSON request; encoded to the exact 40 bytes before evaluation, response adds a typed `result` decoded from the result bytes |
 | `POST /generations/{gen}/batch` | apply a whole TXNIN (base64) in physical order under the fence |
 | `POST /generations/{gen}/publish` | validate against the pinned manifest, flip to PUBLISHED and CAS the namespace's current pointer; returns the receipt |
-| `POST /generations/{gen}/discard` | fence-aware discard |
+| `POST /generations/{gen}/discard` | fence-aware discard by the current writer |
+| `POST /generations/{gen}/claim` | take over an abandoned pending generation (body `{"manifestBase64": ...}`, the same pinned manifest); returns the new fence and the independently verified durable prefix (`lastOrdinal`, `typedRequests`, `rawRequests`, `committedRequestsSha256`, `checkpoint`) |
+| `POST /generations/{gen}/discard-abandoned` | explicit alternative to a claim: discard an abandoned pending generation (`{"reason": ...}`) after its lease expired |
 | `GET /generations/{gen}/{polout,resout,requests}` | published bytes only (404/409 for pending or discarded) |
 | `GET /generations/{gen}/peek/...` | explicitly pending, unvalidated bytes |
 | `GET /current`, `GET /generations/{gen}`, `GET /generations/{gen}/policies/{id}` | metadata and published policy reads |
@@ -99,6 +135,53 @@ the result bytes. Typed JSON is only accepted when it re-encodes to exactly the
 submitted bytes; everything else (F signs, negative zero, malformed packed
 fields, nonzero reserved/tail bytes, non-CP037 text, out-of-grammar dates) has
 to go through `requests:raw`.
+
+### Takeover, resume and restart (PostgreSQL)
+
+Every pending generation is owned by one writer (`writer_id`, `fence`,
+`lease_expires_at`); the owner renews the lease from a heartbeat and every
+mutation (`requests*`, `batch`, `publish`, `discard`) carries the fence. A
+service restart never discards pending generations: it only ever writes to
+generations it owns, and a pending generation whose writer died stays
+pending until an explicit `claim` or `discard-abandoned`.
+
+- **Claim only after expiry.** `claim` locks the generation row
+  (`FOR UPDATE`) and compares `lease_expires_at` with PostgreSQL
+  `clock_timestamp()`; while the lease is live and held by another writer
+  the claim is 409 — a live writer is never displaced (there is no
+  operator-forced takeover). A dead writer's generation is therefore
+  unavailable for at most one lease interval; lease renewal and commit
+  predicates also use DB time, so an expired writer cannot resurrect its
+  ownership ahead of the claim.
+- **What a claim verifies.** Before returning, the claimant re-checks the
+  immutable identity (parent, pinned manifest, seed POLIN, rate table,
+  contract identity = running class bytes) and independently verifies the
+  durable prefix: each stored request is re-evaluated through the pinned
+  contract, result and successor bytes, per-entry typed flags, the
+  `typed_requests`/`raw_requests` counters, the per-entry chain and the
+  stored checkpoint must all agree. Missing V3 checkpoint metadata
+  (`checkpoint`, `contract_identity`, entry `chain`) is a failed claim, not
+  a downgraded one. On success the claim atomically replaces writer, lease
+  and fence (`fence + 1`, `claims + 1`, a `generation_claim` row) and the
+  old writer's next mutation is 409 fenced.
+- **Resume.** The claimant continues at `lastOrdinal + 1`, reconciling its
+  own input against `committedRequestsSha256` so no committed request is
+  re-sent and none is skipped; RESOUT/POLOUT of the resumed generation are
+  the uninterrupted physical stream. Publication still requires the pinned
+  manifest and the expected-parent CAS.
+- **Lost claim response (same writer).** A claim can commit while its HTTP
+  response is lost. Retrying `claim` with the **same** replacement writer
+  while its own lease is live is idempotent: the service recognises the
+  caller as the current owner, re-verifies manifest, identity and prefix,
+  and returns the existing fence and prefix — no ownership transition, no
+  fence or `claims` increment, no `generation_claim` row, no heartbeat wait.
+  A *different* writer retrying against a live lease is still 409. This is
+  reconciliation of one's own committed claim, not a takeover.
+- **Discard.** `discard-abandoned` is the explicit alternative after
+  expiry; a corrupt or incompatible checkpoint can only be discarded and
+  rerun from the parent, never silently rerun under the resumed name.
+  Publication validation/CAS failure still discards the pending generation
+  (a stated deviation, see `evidence/acceptance/README.md` D4).
 
 ## Parity (FAST regression)
 
@@ -207,7 +290,9 @@ evidence only.
 - Done: codec, V001 core, batch adapter, file and PostgreSQL generation
   stores, receipts, stateful raw/typed HTTP, `batch`/`http-gen`/`http-json`
   FAST parity against A1 and A2, Java-only lifecycle tests (fence, CAS race,
-  retry commit boundaries, truncation, immutability, fail-closed restart).
+  retry commit boundaries, truncation, immutability, fail-closed restart,
+  claim/takeover, verified-prefix resume, same-writer claim reconciliation,
+  typed-flag/counter/chain/metadata corruption controls).
 - Done (bounded): real child-JVM kills of the PostgreSQL-backed service
   (`ServiceKillTest`: inside the commit, after the commit before the
   response, inside publication before the flip, after publication) and real
@@ -218,9 +303,16 @@ evidence only.
   after a committed prefix and during publication, the live service fails the
   request with 500 and no receipt, the DB is restored and the prefix, retry,
   heartbeat and publication are verified against the oracle; a service restart
-  during the outage exits non-zero). Runtime evidence in
-  `evidence/acceptance/runtime/`. Not covered: power loss, network partition,
-  failover; no takeover/resume (D1/D2/D4 pending decision).
+  during the outage exits non-zero); and real takeover/resume
+  (`ServiceKillTest`/`TakeoverResumeTest`: writer killed before/after a
+  commit and inside publication, replacement claims after expiry, resumes
+  at `lastOrdinal + 1` and finishes byte-equal to the uninterrupted run and
+  the archived MVS output; a `SIGSTOP`ped writer waking after takeover is
+  fenced on every mutation). Runtime evidence in
+  `evidence/acceptance/runtime/`; those child JVMs run from the Maven test
+  classpath and are bound by source/build manifest, not by the packaged
+  JAR. Not covered: power loss, network partition, cross-host failover,
+  operator-forced takeover of a live writer.
 - Done: A3 fresh guest acceptance (full corpus on three paths, 16 targeted
   cases) with Java `batch`/`http-gen`/`http-json` parity against it
   (`evidence/acceptance/`).
@@ -239,15 +331,19 @@ evidence only.
 - Agreement with the source-derived oracle and goldens is implementation
   evidence, not independent business-intent validation.
 - The file store does not claim power-loss durability (no fsync/cut-power
-  tests); publication is two distinct renames, and restart fails closed on
-  any inconsistency it can detect.
+  tests); publication is two distinct renames, `claims.json` and
+  `generation.json` are separate writes (no atomic cross-file claim
+  history), locking is OS-level on one host, and restart fails closed on
+  any inconsistency it can detect. PostgreSQL is the service acceptance
+  target.
 - The routine harness itself (fixtures, guest capture, observed-v2 derivation)
   is a separate workstream and is consumed here read-only, pinned by archive,
   fixture-manifest and capture hashes; it is not modified from this tree.
-- Not implemented (explicit deviations from the plan, see
-  `evidence/acceptance/README.md`): a claim/takeover endpoint, verified-prefix
-  resume of a pending generation, an unpublishable-pending state (failed
-  publication discards), and `Prefer: return=original`. Admission order in the
+- Remaining explicit deviations from the plan (see
+  `evidence/acceptance/README.md`): failed publication validation/CAS still
+  discards the pending generation instead of parking it (D4, partially
+  resolved: takeover, checkpoint resume and abandoned-pending retention are
+  implemented), and `Prefer: return=original`. Admission order in the
   HTTP adapter is defined at servlet-filter entry per namespace/generation
   within one JVM, not TCP arrival or cross-instance order; the claim is order
   preservation for accepted calls — a rejected envelope consumes a ticket but

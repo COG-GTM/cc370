@@ -580,8 +580,9 @@ class JdbcGenerationStoreTest {
         DataAccessException.class,
         () ->
             db.sql(
-                    "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed)"
-                        + " VALUES (?, 99, ?, ?, false)")
+                    "INSERT INTO generation_entry"
+                        + " (generation_id, ordinal, request, result, typed, chain)"
+                        + " VALUES (?, 99, ?, ?, false, 'direct')")
                 .params(id, entry, first)
                 .update());
     assertThrows(
@@ -661,8 +662,8 @@ class JdbcGenerationStoreTest {
       a.setAutoCommit(false);
       try (java.sql.PreparedStatement ins =
           a.prepareStatement(
-              "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed)"
-                  + " VALUES (?, 2, ?, ?, false)")) {
+              "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed, chain)"
+                  + " VALUES (?, 2, ?, ?, false, 'direct')")) {
         ins.setLong(1, id);
         ins.setBytes(2, t1.bytes());
         ins.setBytes(3, first);
@@ -681,8 +682,8 @@ class JdbcGenerationStoreTest {
       // the same statement after publication is rejected by the guard
       try (java.sql.PreparedStatement ins =
           a.prepareStatement(
-              "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed)"
-                  + " VALUES (?, 2, ?, ?, false)")) {
+              "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed, chain)"
+                  + " VALUES (?, 2, ?, ?, false, 'direct')")) {
         ins.setLong(1, id);
         ins.setBytes(2, t1.bytes());
         ins.setBytes(3, first);
@@ -728,8 +729,8 @@ class JdbcGenerationStoreTest {
                     java.sql.PreparedStatement ins =
                         a.prepareStatement(
                             "INSERT INTO generation_entry"
-                                + " (generation_id, ordinal, request, result, typed)"
-                                + " VALUES (?, 2, ?, ?, false)")) {
+                                + " (generation_id, ordinal, request, result, typed, chain)"
+                                + " VALUES (?, 2, ?, ?, false, 'direct')")) {
                   ins.setLong(1, id);
                   ins.setBytes(2, requests().get(0).bytes());
                   ins.setBytes(3, first);

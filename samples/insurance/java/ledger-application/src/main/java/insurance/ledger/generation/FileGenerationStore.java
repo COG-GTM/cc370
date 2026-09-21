@@ -398,7 +398,12 @@ public final class FileGenerationStore implements GenerationStore {
       long ordinal = info.lastOrdinal() + 1;
       String chain =
           PrefixVerifier.chain(
-              checkpoints.get(k), ordinal, request.bytes(), evaluation.result().bytes(), successor);
+              checkpoints.get(k),
+              ordinal,
+              request.bytes(),
+              evaluation.result().bytes(),
+              typed,
+              successor);
       byte[] entry = new byte[ENTRY];
       System.arraycopy(request.bytes(), 0, entry, 0, TransactionRecord.LENGTH);
       System.arraycopy(
@@ -447,6 +452,8 @@ public final class FileGenerationStore implements GenerationStore {
                 seed,
                 entries(journal, lease.generation()),
                 info.lastOrdinal(),
+                info.typedRequests(),
+                info.rawRequests(),
                 state,
                 checkpoints.get(key(lease.namespace(), lease.generation())),
                 binding);
@@ -589,14 +596,40 @@ public final class FileGenerationStore implements GenerationStore {
     synchronized (lock) {
       requireOpen();
       String k = key(namespace, generation);
-      if (pendingInfo.containsKey(k)) {
-        throw new FencedException(
-            generation
-                + " is held by live fence "
-                + pendingInfo.get(k).fence()
-                + " in this process; a live writer is never displaced");
-      }
       Path pdir = pendingDir(namespace, generation);
+      if (pendingInfo.containsKey(k)) {
+        // This process already holds the generation (its claim or begin completed): hand back the
+        // same fence after re-verifying the journal. The file store has one writer per process and
+        // no lease, so the only "other" writer is another process, which never gets this far.
+        GenerationInfo held = pendingInfo.get(k);
+        if (!ReceiptContext.manifestSha256(manifest).equals(held.expectedManifestSha256())) {
+          throw new CheckpointException(
+              "supplied manifest "
+                  + ReceiptContext.manifestSha256(manifest)
+                  + " is not the manifest pinned at creation "
+                  + held.expectedManifestSha256());
+        }
+        byte[] seed = read(pdir.resolve("seed.bin"));
+        List<PrefixVerifier.Entry> entries = entries(read(pdir.resolve("journal.bin")), generation);
+        PrefixVerifier.Verified verified =
+            PrefixVerifier.verify(
+                seed,
+                entries,
+                held.lastOrdinal(),
+                held.typedRequests(),
+                held.rawRequests(),
+                null,
+                checkpoints.get(k),
+                binding);
+        return new Claimed(
+            new Lease(namespace, generation, held.parent(), held.fence()),
+            claims(namespace, generation).size(),
+            held.lastOrdinal(),
+            verified.typedRequests(),
+            verified.rawRequests(),
+            Sha256.of(verified.requests()),
+            verified.checkpoint());
+      }
       if (!Files.isDirectory(pdir)) {
         Optional<GenerationInfo> other = info(namespace, generation);
         throw new GenerationException(
@@ -653,15 +686,36 @@ public final class FileGenerationStore implements GenerationStore {
                 + stored.lastOrdinal()
                 + " (more than the single append the summary can lag)");
       }
-      int typed = 0;
-      for (int i = 0; i < entries.size(); i++) {
-        if (journal[i * ENTRY + TransactionRecord.LENGTH + ResultRecord.LENGTH] == 1) {
-          typed++;
+      // The summary may lag the journal by the one entry whose generation.json write was lost, so
+      // its counters must account for exactly the entries it claims to describe.
+      int summarised = (int) stored.lastOrdinal();
+      int typedInSummary = 0;
+      for (int i = 0; i < summarised; i++) {
+        if (entries.get(i).typed()) {
+          typedInSummary++;
         }
       }
-      int raw = entries.size() - typed;
+      if (stored.typedRequests() != typedInSummary
+          || stored.rawRequests() != summarised - typedInSummary) {
+        throw new CheckpointException(
+            "summary counts "
+                + stored.typedRequests()
+                + " typed / "
+                + stored.rawRequests()
+                + " raw requests but the journal carries "
+                + typedInSummary
+                + " / "
+                + (summarised - typedInSummary));
+      }
+      int typed =
+          typedInSummary + (durable > summarised && entries.get(summarised).typed() ? 1 : 0);
+      int raw = (int) durable - typed;
+      String lastChain =
+          entries.isEmpty()
+              ? PrefixVerifier.seedChain(seed)
+              : entries.get(entries.size() - 1).chain();
       PrefixVerifier.Verified verified =
-          PrefixVerifier.verify(seed, entries, durable, null, null, binding);
+          PrefixVerifier.verify(seed, entries, durable, typed, raw, null, lastChain, binding);
       long fence = Math.max(stored.fence(), ++nextFence) + 1;
       nextFence = fence;
       GenerationInfo claimed =
@@ -858,6 +912,11 @@ public final class FileGenerationStore implements GenerationStore {
               journal,
               base + TransactionRecord.LENGTH,
               base + TransactionRecord.LENGTH + ResultRecord.LENGTH);
+      byte flag = journal[base + TransactionRecord.LENGTH + ResultRecord.LENGTH];
+      if (flag != 0 && flag != 1) {
+        throw new CheckpointException(
+            "entry " + (i + 1) + " of " + generation + " has an invalid typed flag " + flag);
+      }
       byte[] successor =
           java.util.Arrays.copyOfRange(
               journal, base + ENTRY - CHAIN - PolicyRecord.LENGTH, base + ENTRY - CHAIN);
@@ -867,7 +926,9 @@ public final class FileGenerationStore implements GenerationStore {
       }
       String chain =
           Hex.of(java.util.Arrays.copyOfRange(journal, base + ENTRY - CHAIN, base + ENTRY));
-      out.add(new PrefixVerifier.Entry(i + 1, request, result, zeros ? null : successor, chain));
+      out.add(
+          new PrefixVerifier.Entry(
+              i + 1, request, result, flag == 1, zeros ? null : successor, chain));
     }
     return out;
   }

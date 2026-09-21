@@ -459,6 +459,10 @@ public final class JdbcGenerationStore implements GenerationStore {
                                       + " under a live lease"));
               long id = adv.id();
               long ordinal = adv.lastOrdinal();
+              if (adv.checkpoint() == null) {
+                throw new CheckpointException(
+                    lease.generation() + " has no checkpoint; refusing to commit onto nothing");
+              }
               Optional<PolicyRecord> master =
                   db.sql("SELECT bytes FROM policy_state WHERE generation_id = ? AND policy_id = ?")
                       .params(id, request.id())
@@ -473,6 +477,7 @@ public final class JdbcGenerationStore implements GenerationStore {
                       ordinal,
                       request.bytes(),
                       evaluation.result().bytes(),
+                      typed,
                       successor);
               db.sql(
                       "INSERT INTO generation_entry (generation_id, ordinal, request, result,"
@@ -688,7 +693,8 @@ public final class JdbcGenerationStore implements GenerationStore {
           if (row.generationStatus() != GenerationStatus.PENDING) {
             throw new GenerationException(generation + " is " + row.status() + ", not pending");
           }
-          if (locked.live()) {
+          boolean mine = writerId.equals(row.writerId());
+          if (locked.live() && !mine) {
             throw new FencedException(
                 generation
                     + " is held by live writer "
@@ -731,6 +737,20 @@ public final class JdbcGenerationStore implements GenerationStore {
           }
           manifest.verifySeed(seed);
           PrefixVerifier.Verified verified = verifiedPrefix(row, seed);
+          if (mine && locked.live()) {
+            // This instance already owns the row: its earlier claim (or begin) committed but the
+            // caller never saw the answer. Re-verify and hand back the same fence -- no ownership
+            // change, no new fence, no claim-history row, no lease renewal (the heartbeat does
+            // that).
+            return new Claimed(
+                new Lease(namespace, generation, parentName(row), row.fence()),
+                row.claims(),
+                row.lastOrdinal(),
+                verified.typedRequests(),
+                verified.rawRequests(),
+                Sha256.of(verified.requests()),
+                verified.checkpoint());
+          }
           long fence = db.sql("SELECT nextval('generation_fence_seq')").query(Long.class).single();
           int moved =
               db.sql(
@@ -771,8 +791,8 @@ public final class JdbcGenerationStore implements GenerationStore {
               new Lease(namespace, generation, parentName(row), fence),
               claimNo,
               row.lastOrdinal(),
-              row.typedRequests(),
-              row.rawRequests(),
+              verified.typedRequests(),
+              verified.rawRequests(),
               Sha256.of(verified.requests()),
               verified.checkpoint());
         });
@@ -979,9 +999,13 @@ public final class JdbcGenerationStore implements GenerationStore {
    * with the running contract ({@link PrefixVerifier}); used by claim and by publication.
    */
   private PrefixVerifier.Verified verifiedPrefix(GenerationRow row, byte[] seed) {
+    if (row.contractIdentity() == null || row.checkpoint() == null) {
+      throw new CheckpointException(
+          row.name() + " lacks its pinned contract identity or checkpoint; nothing is verifiable");
+    }
     List<PrefixVerifier.Entry> entries =
         db.sql(
-                "SELECT ordinal, request, result, successor, chain FROM generation_entry"
+                "SELECT ordinal, request, result, typed, successor, chain FROM generation_entry"
                     + " WHERE generation_id = ? ORDER BY ordinal")
             .param(row.id())
             .query(
@@ -990,6 +1014,7 @@ public final class JdbcGenerationStore implements GenerationStore {
                         rs.getLong("ordinal"),
                         rs.getBytes("request"),
                         rs.getBytes("result"),
+                        rs.getBoolean("typed"),
                         rs.getBytes("successor"),
                         rs.getString("chain")))
             .list();
@@ -1000,7 +1025,14 @@ public final class JdbcGenerationStore implements GenerationStore {
             .list();
     byte[] state = concat(stateRows, PolicyRecord.LENGTH);
     return PrefixVerifier.verify(
-        seed, entries, row.lastOrdinal(), state, row.checkpoint(), binding);
+        seed,
+        entries,
+        row.lastOrdinal(),
+        row.typedRequests(),
+        row.rawRequests(),
+        state,
+        row.checkpoint(),
+        binding);
   }
 
   // ---------------------------------------------------------------- helpers

@@ -239,15 +239,88 @@ class FileGenerationStoreTest {
   }
 
   @Test
-  void claimRefusesALiveWriterAndAnUnknownOrPublishedGeneration() {
+  void claimByTheHoldingProcessIsIdempotentAndRefusesUnknownOrPublishedGenerations() {
     FileGenerationStore store = bootstrapped();
     PolicyLedgerService svc = service(store);
     Lease live = begin(svc, "root", "g1", stageManifest());
-    assertThrows(FencedException.class, () -> svc.claim(NS, "g1", stageManifest()));
+    svc.apply(live, requests().get(0), true);
+    // the process that holds the generation gets its own fence back: no ownership change
+    GenerationStore.Claimed same = svc.claim(NS, "g1", stageManifest());
+    assertEquals(live, same.lease());
+    assertEquals(0, same.claims());
+    assertEquals(1, same.lastOrdinal());
+    assertEquals(1, same.typedRequests());
+    assertEquals(0, same.rawRequests());
+    assertThrows(
+        GenerationStore.CheckpointException.class,
+        () -> svc.claim(NS, "g1", manifest("b", 2, 4, seed(), txnin())));
     assertThrows(GenerationException.class, () -> svc.claim(NS, "nope", stageManifest()));
     assertThrows(GenerationException.class, () -> svc.claim(NS, "root", stageManifest()));
-    svc.apply(live, requests().get(0), false);
+    assertEquals(2, svc.apply(live, requests().get(1), false).ordinal());
     assertEquals(0, store.claims(NS, "g1").size());
+  }
+
+  @Test
+  void claimFailsClosedOnTypedFlagOrCounterCorruption() throws IOException {
+    FileGenerationStore store = bootstrapped();
+    Lease lease = begin(service(store), "root", "g1", stageManifest());
+    service(store).apply(lease, requests().get(0), true);
+    service(store).apply(lease, requests().get(1), false);
+    store.close();
+    Path pdir = dir.resolve(NS).resolve("pending").resolve("g1");
+    Path journal = pdir.resolve("journal.bin");
+    Path summary = pdir.resolve("generation.json");
+    byte[] good = Files.readAllBytes(journal);
+    byte[] goodSummary = Files.readAllBytes(summary);
+    int flag = TransactionRecord.LENGTH + ResultRecord.LENGTH;
+    FileGenerationStore reopened = open();
+
+    // a flipped per-entry typed flag: the chain no longer reproduces
+    byte[] flipped = good.clone();
+    flipped[flag] = 0;
+    Files.write(journal, flipped);
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+
+    // an out-of-range flag byte
+    byte[] invalid = good.clone();
+    invalid[flag] = 2;
+    Files.write(journal, invalid);
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+    Files.write(journal, good);
+
+    // intact journal but a summary whose typed/raw counters disagree with the entries
+    GenerationInfo info = insurance.ledger.Json.read(summary, GenerationInfo.class);
+    assertEquals(1, info.typedRequests());
+    assertEquals(1, info.rawRequests());
+    Files.write(summary, insurance.ledger.Json.bytes(withCounts(info, 0, 2)));
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+    Files.write(summary, insurance.ledger.Json.bytes(withCounts(info, 1, 0)));
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+
+    Files.write(summary, goodSummary);
+    GenerationStore.Claimed claimed = reopened.claim(NS, "g1", stageManifest());
+    assertEquals(2, claimed.lastOrdinal());
+    assertEquals(1, claimed.typedRequests());
+    assertEquals(1, claimed.rawRequests());
+  }
+
+  private static GenerationInfo withCounts(GenerationInfo info, int typed, int raw) {
+    return new GenerationInfo(
+        info.namespace(),
+        info.generation(),
+        info.parent(),
+        info.status(),
+        info.fence(),
+        info.policiesCount(),
+        info.lastOrdinal(),
+        typed,
+        raw,
+        info.seedPolinSha256(),
+        info.expectedManifestSha256());
   }
 
   @Test

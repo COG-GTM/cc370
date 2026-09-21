@@ -29,6 +29,7 @@ import insurance.ledger.generation.GenerationStore.Claimed;
 import insurance.ledger.generation.GenerationStore.FencedException;
 import insurance.ledger.generation.GenerationStore.GenerationException;
 import insurance.ledger.generation.GenerationStore.Lease;
+import insurance.ledger.generation.PrefixVerifier;
 import insurance.ledger.generation.ReceiptContext;
 import insurance.legacy.codec.Records;
 import insurance.legacy.codec.TransactionRecord;
@@ -672,6 +673,205 @@ class JdbcTakeoverTest {
     long id = generationId("g1");
     corrupt("generation", "UPDATE generation SET checkpoint = repeat('0', 64) WHERE id = ?", id);
     assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  // ------------------------------------------------- typed/raw admission metadata (R1)
+
+  /** Request 1 typed, request 2 raw, then the writer dies: counters 1/1. */
+  private void abandonedMixedAfterTwo() {
+    Lease lease = begin(svcA, "g1");
+    svcA.apply(lease, requests().get(0), true);
+    svcA.apply(lease, requests().get(1), false);
+    a.close();
+    expire("g1");
+    assertEquals("1", column("g1", "typed_requests"));
+    assertEquals("1", column("g1", "raw_requests"));
+  }
+
+  @Test
+  void flippedEntryTypedFlagBreaksTheChainAndFailsTheClaim() {
+    abandonedMixedAfterTwo();
+    long id = generationId("g1");
+    corrupt(
+        "generation_entry",
+        "UPDATE generation_entry SET typed = NOT typed WHERE generation_id = ? AND ordinal = 1",
+        id);
+    assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  @Test
+  void flippedTypedFlagWithAReforgedChainStillFailsOnTheCounters() {
+    abandonedMixedAfterTwo();
+    long id = generationId("g1");
+    // Flip entry 1 to raw and re-derive a chain that is internally consistent with the flipped
+    // flag, request/result/successor bytes untouched; only the row counters now disagree.
+    List<Object[]> rows =
+        db.sql(
+                "SELECT ordinal, request, result, successor FROM generation_entry"
+                    + " WHERE generation_id = ? ORDER BY ordinal")
+            .param(id)
+            .query(
+                (rs, i) ->
+                    new Object[] {
+                      rs.getLong("ordinal"),
+                      rs.getBytes("request"),
+                      rs.getBytes("result"),
+                      rs.getBytes("successor")
+                    })
+            .list();
+    String chain = PrefixVerifier.seedChain(seed());
+    for (Object[] r : rows) {
+      long ordinal = (Long) r[0];
+      boolean typed = false; // every entry raw after the flip
+      chain =
+          PrefixVerifier.chain(chain, ordinal, (byte[]) r[1], (byte[]) r[2], typed, (byte[]) r[3]);
+      corrupt(
+          "generation_entry",
+          "UPDATE generation_entry SET typed = ?, chain = ?"
+              + " WHERE generation_id = ? AND ordinal = ?",
+          typed,
+          chain,
+          id,
+          ordinal);
+    }
+    corrupt("generation", "UPDATE generation SET checkpoint = ? WHERE id = ?", chain, id);
+    CheckpointException e =
+        assertThrows(
+            CheckpointException.class, () -> service(open()).claim(NS, "g1", stageManifest()));
+    assertTrue(e.getMessage().contains("typed-request counter"), e.getMessage());
+    assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  @Test
+  void wrongTypedOrRawCounterFailsTheClaimWithIntactEntries() {
+    abandonedMixedAfterTwo();
+    long id = generationId("g1");
+    // counters swapped: sum still equals last_ordinal, entries and chain untouched
+    corrupt(
+        "generation",
+        "UPDATE generation SET typed_requests = 0, raw_requests = 2 WHERE id = ?",
+        id);
+    assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  @Test
+  void countersNotAccountingForEveryEntryFailTheClaim() {
+    abandonedMixedAfterTwo();
+    long id = generationId("g1");
+    corrupt("generation", "UPDATE generation SET raw_requests = 0 WHERE id = ?", id);
+    assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  @Test
+  void claimReportsTheVerifiedTypedAndRawCounts() {
+    abandonedMixedAfterTwo();
+    Claimed claimed = service(open()).claim(NS, "g1", stageManifest());
+    assertEquals(2, claimed.lastOrdinal());
+    assertEquals(1, claimed.typedRequests());
+    assertEquals(1, claimed.rawRequests());
+  }
+
+  // ------------------------------------------------- mandatory V3 metadata (R2)
+
+  @Test
+  void schemaRefusesMissingCheckpointMetadata() {
+    abandonedAfter("g1", 2);
+    long id = generationId("g1");
+    for (String sql :
+        List.of(
+            "UPDATE generation SET checkpoint = NULL WHERE id = ?",
+            "UPDATE generation SET contract_identity = NULL WHERE id = ?",
+            "UPDATE generation_entry SET chain = NULL WHERE generation_id = ? AND ordinal = 1")) {
+      String table = sql.contains("generation_entry") ? "generation_entry" : "generation";
+      assertThrows(
+          org.springframework.dao.DataAccessException.class, () -> corrupt(table, sql, id), sql);
+    }
+    assertEquals(2, service(open()).claim(NS, "g1", stageManifest()).lastOrdinal());
+  }
+
+  @Test
+  void missingGenerationCheckpointFailsClosedEvenIfTheSchemaAllowedIt() {
+    abandonedAfter("g1", 2);
+    long id = generationId("g1");
+    db.sql("ALTER TABLE generation ALTER COLUMN checkpoint DROP NOT NULL").update();
+    corrupt("generation", "UPDATE generation SET checkpoint = NULL WHERE id = ?", id);
+    assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  @Test
+  void missingContractIdentityFailsClosedEvenIfTheSchemaAllowedIt() {
+    abandonedAfter("g1", 2);
+    long id = generationId("g1");
+    db.sql("ALTER TABLE generation ALTER COLUMN contract_identity DROP NOT NULL").update();
+    corrupt("generation", "UPDATE generation SET contract_identity = NULL WHERE id = ?", id);
+    assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  @Test
+  void missingEntryChainFailsClosedEvenIfTheSchemaAllowedIt() {
+    abandonedAfter("g1", 2);
+    long id = generationId("g1");
+    db.sql("ALTER TABLE generation_entry ALTER COLUMN chain DROP NOT NULL").update();
+    corrupt(
+        "generation_entry",
+        "UPDATE generation_entry SET chain = NULL WHERE generation_id = ? AND ordinal = 2",
+        id);
+    CheckpointException e =
+        assertThrows(
+            CheckpointException.class, () -> service(open()).claim(NS, "g1", stageManifest()));
+    assertTrue(e.getMessage().contains("no chain value"), e.getMessage());
+    assertClaimFailsClosed(CheckpointException.class, stageManifest());
+  }
+
+  // ------------------------------------------------- lost claim response (R3)
+
+  @Test
+  void lostClaimResponseIsReconciledByTheSameReplacementWriterWithoutASecondTransition() {
+    abandonedAfter("g1", 2);
+    JdbcGenerationStore b = open();
+    PolicyLedgerService svcB = service(b);
+    Claimed first = svcB.claim(NS, "g1", stageManifest());
+    // the claim committed but B never saw the answer: B simply asks again
+    String leaseBefore = column("g1", "lease_expires_at");
+    Claimed retry = svcB.claim(NS, "g1", stageManifest());
+    assertEquals(first, retry, "same fence, claim number, prefix and checkpoint");
+    assertEquals("1", column("g1", "claims"));
+    assertEquals(String.valueOf(first.lease().fence()), column("g1", "fence"));
+    assertEquals(b.writerId(), column("g1", "writer_id"));
+    assertEquals(1, b.claims(NS, "g1").size(), "no second claim-history row");
+    assertEquals(leaseBefore, column("g1", "lease_expires_at"), "reconciliation renews nothing");
+    // a third writer is still refused while B's lease is live
+    JdbcGenerationStore c = open();
+    FencedException e =
+        assertThrows(FencedException.class, () -> service(c).claim(NS, "g1", stageManifest()));
+    assertTrue(e.getMessage().contains("live writer"), e.getMessage());
+    // and B continues from the reconciled fence to the uninterrupted output
+    int next = PolicyLedgerService.resumeIndex(b.peekRequests(NS, "g1"), requests());
+    assertEquals(2, next);
+    for (int i = next; i < requests().size(); i++) {
+      assertEquals(i + 1, svcB.apply(retry.lease(), requests().get(i), false).ordinal());
+    }
+    assertMatchesOracle(b, "g1", svcB.publish(retry.lease(), "http"));
+  }
+
+  @Test
+  void reconciliationStillVerifiesThePrefixAndThePinnedManifest() {
+    abandonedAfter("g1", 2);
+    JdbcGenerationStore b = open();
+    PolicyLedgerService svcB = service(b);
+    Claimed first = svcB.claim(NS, "g1", stageManifest());
+    assertThrows(
+        CheckpointException.class,
+        () -> svcB.claim(NS, "g1", manifest("b", 2, 4, seed(), txnin())));
+    long id = generationId("g1");
+    corrupt(
+        "generation_entry",
+        "UPDATE generation_entry SET result = set_byte(result, 16, get_byte(result, 16) # 1)"
+            + " WHERE generation_id = ? AND ordinal = 1",
+        id);
+    assertThrows(CheckpointException.class, () -> svcB.claim(NS, "g1", stageManifest()));
+    assertEquals(String.valueOf(first.lease().fence()), column("g1", "fence"));
+    assertEquals("1", column("g1", "claims"));
   }
 
   @Test

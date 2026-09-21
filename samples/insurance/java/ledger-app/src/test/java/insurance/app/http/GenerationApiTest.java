@@ -401,10 +401,17 @@ class GenerationApiTest {
     apply(raw(old, reqs.get(1).bytes()));
     byte[] prefix = Records.join(reqs.subList(0, 2));
 
-    // a live writer is never displaced
+    // the instance that holds the live lease is not displaced: a claim addressed to it is
+    // reconciliation and hands back the fence it already holds (no transition, no claim row)
     ResponseEntity<String> live = claim("g1", pinned);
-    assertEquals(HttpStatus.CONFLICT, live.getStatusCode(), live.getBody());
-    assertTrue(live.getBody().contains("\"kind\":\"fenced\""), live.getBody());
+    assertEquals(HttpStatus.OK, live.getStatusCode(), live.getBody());
+    ClaimResponse held =
+        Json.read(live.getBody().getBytes(StandardCharsets.UTF_8), ClaimResponse.class);
+    assertEquals(old.fence(), held.fence());
+    assertEquals(0, held.claims());
+    assertEquals(2, held.lastOrdinal());
+    assertEquals(Sha256.of(prefix), held.committedRequestsSha256());
+    // (a live lease held by ANOTHER writer is refused: JdbcTakeoverTest, ServiceKillTest)
 
     expireLease("g1");
     // the expired writer cannot commit or publish any more
@@ -426,6 +433,12 @@ class GenerationApiTest {
     assertEquals(1, c.claims());
     assertTrue(c.fence() > old.fence());
     assertEquals(Sha256.of(prefix), c.committedRequestsSha256());
+    // the claim's response was lost: the same replacement writer asks again and gets the
+    // same fence, claim number and prefix back without another ownership transition
+    ResponseEntity<String> lost = claim("g1", pinned);
+    assertEquals(HttpStatus.OK, lost.getStatusCode(), lost.getBody());
+    assertEquals(
+        c, Json.read(lost.getBody().getBytes(StandardCharsets.UTF_8), ClaimResponse.class));
     byte[] committed =
         http.getForEntity(NS + "/generations/g1/peek/requests", byte[].class).getBody();
     assertArrayEquals(prefix, committed);
