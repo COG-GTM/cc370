@@ -24,9 +24,16 @@ at the first failing stage. tools/compare.py is imported unchanged; Java receipt
 here, with every hash recomputed from the actual bytes rather than trusted from the receipt.
 
 Observed authorities (a2/a3) are accepted only after their guest receipt passes the UNCHANGED
-legacy validator (compare.validate_receipt) with every hash recomputed here from the four files:
-a missing/failed/timed-out/ABENDed/nonzero-RC receipt, a missing file, a hash mismatch or a count
-that disagrees with coverage.json stops the run before any Java code is executed.
+legacy validator (compare.validate_receipt) with the SAME seven hashes tools/compare.py's main()
+recomputes, every one from bytes read here, none trusted from the receipt: polin/txnin from the
+pinned golden input files of the stage (the same-directory polin.bin/txnin.bin must be identical
+to them), polout/resout from the observed files, build_manifest/guest_manifest from the path's
+provenance files (<authority-dir>/../<path>-provenance/{build,guest}.json or the explicit
+--build-manifest/--guest-manifest), rates from golden/rates.json. The golden inventory
+(SHA256SUMS) is verified first. A missing provenance file, a build manifest for another backend,
+a receipt lacking any of the seven keys, a missing/failed/timed-out/ABENDed/nonzero-RC receipt, a
+missing observed file, a hash mismatch or a count that disagrees with coverage.json stops the run
+before any Java code is executed (see test_parity_authority.py for the per-key negative checks).
 
 HTTP modes additionally check, per request: the echoed request bytes equal the bytes sent, the
 ordinal is the physical position, the typed/raw flag equals the driver's own decision, the raw
@@ -192,9 +199,27 @@ class AuthorityError(Exception):
     """The observed authority could not be trusted; nothing was compared."""
 
 
+GUEST_RECEIPT_HASH_KEYS = ("polin_sha256", "txnin_sha256", "polout_sha256", "resout_sha256",
+                          "build_manifest_sha256", "guest_manifest_sha256", "rates_sha256")
+
+
+def verify_golden_inventory(golden: Path) -> None:
+    """Same check as tools/compare.py main(): every listed golden artifact is unmodified."""
+    inventory = golden / "SHA256SUMS"
+    if not inventory.is_file():
+        raise AuthorityError(f"golden inventory {inventory} is missing")
+    for line in inventory.read_text().splitlines():
+        digest, name = line.split("  ", 1)
+        f = golden / name
+        if not f.is_file() or sha(f.read_bytes()) != digest:
+            raise AuthorityError(f"modified or missing golden artifact: {name}")
+
+
 class Authority:
-    def __init__(self, kind: str, root: Path, golden: Path):
+    def __init__(self, kind: str, root: Path, golden: Path,
+                 build_manifest: Path | None = None, guest_manifest: Path | None = None):
         self.kind, self.root, self.golden = kind, root, golden
+        verify_golden_inventory(golden)
         self.coverage = json.loads((golden / "coverage.json").read_text())
         self.stages = {s["name"]: s for s in self.coverage["stages"]}
         cases = [json.loads(l) for l in (golden / "cases.jsonl").read_text().splitlines()]
@@ -202,14 +227,56 @@ class Authority:
         for c in cases:
             self.case_ids.setdefault(c["stage"], {})[c["record"]] = c["id"]
         self.receipts: dict[str, dict] = {}
+        self.build_manifest = build_manifest
+        self.guest_manifest = guest_manifest
+        self._provenance: dict[str, str] | None = None
+
+    def provenance(self) -> dict[str, str]:
+        """Build/guest manifests of the observed path and the frozen rate table, hashed here.
+
+        The default location is the archive layout (<runtime>/<path>-provenance/{build,guest}.json
+        next to <runtime>/<path>/); the build manifest must name this path as its backend so a
+        manifest of another toolchain path cannot be substituted. Absent files fail closed.
+        """
+        if self._provenance is not None:
+            return self._provenance
+        path_name = self.root.name
+        d = self.root.parent / f"{path_name}-provenance"
+        build = self.build_manifest or d / "build.json"
+        guest = self.guest_manifest or d / "guest.json"
+        for label, f in (("build manifest", build), ("guest manifest", guest)):
+            if not f.is_file():
+                raise AuthorityError(f"{self.kind} {path_name}: missing {label} {f} (archive layout "
+                                     f"<runtime>/{path_name}-provenance/ or --build-manifest/"
+                                     f"--guest-manifest)")
+        build_bytes, guest_bytes = build.read_bytes(), guest.read_bytes()
+        try:
+            build_doc, guest_doc = json.loads(build_bytes), json.loads(guest_bytes)
+        except ValueError as e:
+            raise AuthorityError(f"{self.kind} {path_name}: unreadable provenance manifest: {e}")
+        if not isinstance(build_doc, dict) or build_doc.get("backend") != path_name:
+            raise AuthorityError(f"{self.kind} {path_name}: build manifest {build} is for backend "
+                                 f"{build_doc.get('backend') if isinstance(build_doc, dict) else None!r}")
+        if not isinstance(guest_doc, dict) or not guest_doc:
+            raise AuthorityError(f"{self.kind} {path_name}: guest manifest {guest} is not an object")
+        self._provenance = {
+            "path": path_name,
+            "build_manifest": str(build), "build_manifest_sha256": sha(build_bytes),
+            "guest_manifest": str(guest), "guest_manifest_sha256": sha(guest_bytes),
+            "rates_json": str(self.golden / "rates.json"),
+            "rates_sha256": sha((self.golden / "rates.json").read_bytes()),
+        }
+        return self._provenance
 
     def stage_bytes(self, stage: str) -> dict[str, bytes]:
         """Authority bytes for a stage; a2/a3 are refused unless the guest receipt validates."""
         s = self.stages[stage]
+        golden_polin = (self.golden / s["input_master"]).read_bytes()
+        golden_txnin = (self.golden / s["transactions"]).read_bytes()
         if self.kind == "a1":
             return {
-                "polin": (self.golden / s["input_master"]).read_bytes(),
-                "txnin": (self.golden / s["transactions"]).read_bytes(),
+                "polin": golden_polin,
+                "txnin": golden_txnin,
                 "polout": (self.golden / s["expected_master"]).read_bytes(),
                 "resout": (self.golden / s["expected_results"]).read_bytes(),
             }
@@ -220,6 +287,12 @@ class Authority:
             if not f.is_file():
                 raise AuthorityError(f"{self.kind} {stage}: missing {f}")
             data[k] = f.read_bytes()
+        if data["polin"] != golden_polin:
+            raise AuthorityError(f"{self.kind} {stage}: polin.bin differs from the pinned golden "
+                                 f"input master {s['input_master']}")
+        if data["txnin"] != golden_txnin:
+            raise AuthorityError(f"{self.kind} {stage}: txnin.bin differs from the pinned golden "
+                                 f"transactions {s['transactions']}")
         receipt_path = d / "receipt.json"
         if not receipt_path.is_file():
             raise AuthorityError(f"{self.kind} {stage}: missing guest receipt {receipt_path}")
@@ -229,8 +302,20 @@ class Authority:
             raise AuthorityError(f"{self.kind} {stage}: unreadable guest receipt: {e}") from None
         if not isinstance(receipt, dict):
             raise AuthorityError(f"{self.kind} {stage}: guest receipt is not an object")
+        prov = self.provenance()
+        hashes = {
+            "polin_sha256": sha(golden_polin), "txnin_sha256": sha(golden_txnin),
+            "polout_sha256": sha(data["polout"]), "resout_sha256": sha(data["resout"]),
+            "build_manifest_sha256": prov["build_manifest_sha256"],
+            "guest_manifest_sha256": prov["guest_manifest_sha256"],
+            "rates_sha256": prov["rates_sha256"],
+        }
+        assert tuple(hashes) == GUEST_RECEIPT_HASH_KEYS
+        missing = [k for k in GUEST_RECEIPT_HASH_KEYS if k not in receipt]
+        if missing:
+            raise AuthorityError(f"{self.kind} {stage}: guest receipt lacks {missing}")
         try:
-            validate_receipt(receipt, {f"{k}_sha256": sha(v) for k, v in data.items()})
+            validate_receipt(receipt, hashes)
         except ValueError as e:
             raise AuthorityError(f"{self.kind} {stage}: guest receipt rejected: {e}")
         policies, txns = self.counts(stage)
@@ -532,7 +617,13 @@ def main() -> None:
     p.add_argument("--mode", choices=MODES, default="batch")
     p.add_argument("--authority", choices=["a1", "a2", "a3"], required=True)
     p.add_argument("--authority-dir", type=Path,
-                   help="a2/a3: directory holding <stage>/{polin,txnin,polout,resout}.bin")
+                   help="a2/a3: <runtime>/<path> directory holding <stage>/{polin,txnin,polout,"
+                        "resout}.bin and receipt.json; <runtime>/<path>-provenance/{build,guest}"
+                        ".json are the default provenance manifests")
+    p.add_argument("--build-manifest", type=Path,
+                   help="a2/a3: build manifest the guest receipts bind (default: archive layout)")
+    p.add_argument("--guest-manifest", type=Path,
+                   help="a2/a3: guest manifest the guest receipts bind (default: archive layout)")
     p.add_argument("--golden", type=Path, default=SAMPLE / "golden" / "v1",
                    help="golden dir for coverage.json/cases.jsonl/rates.json (record ids, counts)")
     p.add_argument("--jar", type=Path, required=True,
@@ -550,7 +641,12 @@ def main() -> None:
     args = p.parse_args()
     if args.authority != "a1" and not args.authority_dir:
         p.error("--authority-dir is required for a2/a3")
-    auth = Authority(args.authority, args.authority_dir or args.golden, args.golden)
+    try:
+        auth = Authority(args.authority, args.authority_dir or args.golden, args.golden,
+                         args.build_manifest, args.guest_manifest)
+        provenance = auth.provenance() if args.authority != "a1" else None
+    except AuthorityError as e:
+        raise SystemExit(f"FAIL: authority rejected before any Java code ran: {e}")
     args.work.mkdir(parents=True, exist_ok=True)
     jar_sha = sha(args.jar.read_bytes())
     rates_sha = rate_table_sha(args.golden / "rates.json")
@@ -560,7 +656,8 @@ def main() -> None:
         "authority": {"kind": args.authority, "label": args.label,
                       "dir": str(args.authority_dir or args.golden),
                       "golden_rates_json_sha256": sha((args.golden / "rates.json").read_bytes()),
-                      "rate_table_canonical_sha256": rates_sha},
+                      "rate_table_canonical_sha256": rates_sha,
+                      "provenance": provenance},
         "jar_sha256": jar_sha, "source_commit": args.source_commit,
         "base_url": args.base_url if args.mode != "batch" else None,
         "java_version": subprocess.run([os.environ.get("JAVA", "java"), "-version"],

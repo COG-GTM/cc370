@@ -19,9 +19,24 @@ The only new tooling is on the Java side (`java/tools/targeted_a3.py`,
 `java/tools/routine_parity.py`, and the negative-control pair
 `java/tools/mutant_proxy.py` / `java/tools/negative_response_control.sh`).
 Before any A2/A3 bytes are used as an authority, `parity_java.py` runs the
-unchanged legacy receipt validator with independently recomputed hashes and
-rejects missing, failed, timed-out, nonzero-RC or ABEND receipts, missing
-files and hash/count mismatches.
+unchanged legacy receipt validator (`compare.validate_receipt`) with all seven
+hashes recomputed independently — `polin_sha256`, `txnin_sha256`,
+`polout_sha256`, `resout_sha256` from the files, `build_manifest_sha256` and
+`guest_manifest_sha256` from the run's `<path>-provenance/{build,guest}.json`
+manifests (archive layout, or explicit `--build-manifest`/`--guest-manifest`),
+`rates_sha256` from the frozen `golden/v1/rates.json` (whose inventory in
+`SHA256SUMS` is verified first) — and additionally checks
+the observed `POLIN`/`TXNIN` against the pinned golden input bytes, not
+against the same-directory receipt. It rejects missing, failed, timed-out,
+nonzero-RC or ABEND receipts, a missing or wrong value for any of the seven
+keys, missing manifests or files and hash/count mismatches.
+`targeted_a3.py compare` applies the same rule to the targeted cases (positive
+cases through the unchanged validator; the intentional RC=12 controls through
+an explicit control-receipt validator that still fails closed on schema,
+job identity, outcome, timeout, ABEND, wrong RC and provenance) and pins the
+cases directory's `POLIN`/`TXNIN`. `tools/test_parity_authority.py` (33
+tests) is the negative-control suite: one mutation per key/manifest/input,
+each of which must be rejected.
 
 ## 1. Full application corpus (`fresh-run/`)
 
@@ -194,8 +209,8 @@ Test names refer to `contract-v001` (`ContractV001Test`, `ContractBreadthTest`,
 | T-08 comparator detects structural output mutations | closed | `tools/compare.py` unchanged; `parity_java.py` fails a stage on count mismatch, missing/extra/reordered records and receipt-hash mismatch; negative controls in section 2 and `../../README.md` § Parity (FAST regression) (one-byte authority mutation → hash rejection + field diff; wrong JAR/commit → receipt rejection) |
 | T-09a genuine empty inputs | closed | GUEST `empty-txnin`, `empty-polin`; JAVA `batchEmptyTransactionsLeavesMasterUnchangedWithZeroResults`, `batchEmptyMasterYieldsNpolForEveryTransactionAndEmptyPolout`, `emptyTxninPublishesUnchangedMasterAndZeroResults` |
 | T-09b truncated / short input (controller) | closed | JAVA `manifestRejectsAlignedTruncation`, `manifestRejectsPartialRecordAndUnexpectedlyEmptyDelivery`, `manifestRejectsWrongBytesOfRightLength`, `batchRejectsPartialMasterRecord`, `manifestPinnedAtCreationIsEnforcedAtPublishWith422AndDiscards`, `wrongTxninHashIsRejectedEvenWhenCountsMatch` — the manifest is bound at generation creation, before any request |
-| T-10 timeout / errors / crash | **partial** | JAVA (file store, real `SIGKILL`-equivalent `Runtime.halt` of a child JVM) `ProcessKillTest`: before commit, after commit before response, before publish, between the two publication renames, after publish; each followed by a restart and a re-drive from the parent that matches the oracle. JAVA (PostgreSQL) in-process fault injection at both commit boundaries (`failureBeforeCommitLeavesNoOrdinalSoRetryIsOkay`, `retryAfterCommittedRequestIsDupl…`) and fail-closed restart tests. **Not done:** killing the PostgreSQL-backed process itself, a DB-outage mid-generation, or an HTTP client timeout; and no verified-prefix *resume* — see deviation D2 |
-| T-11 race / retry / fencing / CAS | **partial** | (a) `oneWriterPerGenerationAndStaleFencesAreRejected`, `onlyOneOpenWriterPerGenerationAndStaleFencesAreRejected` — no `claim` endpoint, see D1; (b) `twoHundredConcurrentRequestsCommitInAdmissionOrder` (200 concurrent raw requests, 32 threads; ordinals equal the servlet-level admission ticket of `AdmissionSequencer`, each exactly once, echoed bytes and persisted `RESOUT` re-read after publish) — the admission order is defined and observed at the servlet filter, see D3; (c) `siblingPublishRaceHasExactlyOneWinnerAndTheLoserIsDiscarded`, `publishCasFailsWhenCurrentMovedUnderTheLease`; (d1–d3) as in T-10 plus real kills in `ProcessKillTest`; `Prefer: return=original` not implemented (optional, off); (e) `applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched`, `directChildWriteBegunWhilePendingBlocksPublicationUntilItEnds`, `directChildWriteWaitsForThePublisherLockAndIsRejectedAfterTheFlip` (two connections) |
+| T-10 timeout / errors / crash | **partial** | JAVA (file store, real `SIGKILL`-equivalent `Runtime.halt` of a child JVM) `ProcessKillTest`: before commit, after commit before response, before publish, between the two publication renames, after publish; each followed by a restart and a re-drive from the parent that matches the oracle. JAVA (PostgreSQL, the real Spring Boot service in a child JVM against a Testcontainers PostgreSQL, `ChildService` + `KillSwitch`) `ServiceKillTest`: halt inside the commit transaction (no ordinal, restart, re-drive matches the oracle), halt after the commit before the response (commit kept, restart, retry → `DUPL`, publication matches), halt inside the publication transaction before the status flip (output rolled back, parent stays current, restart discards the pending generation), halt after publication before the receipt response (published, restart serves it, `RESOUT` matches the oracle). JAVA (PostgreSQL, real HTTP client through a TCP fault proxy, `HttpBoundaryTest`) client `HttpTimeoutException` with the request dropped before the service (no commit, retry → `OKAY`) and with the response dropped after the commit (commit present, retry → `DUPL`; with an intervening transaction → `ORDR`), gateway 503 unsent and 503 after the service committed, and an actual server 500 thrown inside the commit transaction (rolled back, retry → `OKAY`) and after it (kept, retry → `DUPL`); the DB is inspected directly after every fault, so a timeout is never read as proof of rollback. Retained runtime evidence: `runtime/` (section 9). In-process fault injection (`failureBeforeCommitLeavesNoOrdinalSoRetryIsOkay`, `retryAfterCommittedRequestIsDupl…`) and fail-closed restart tests remain as unit-level coverage. **Not done:** a DB outage mid-generation, and no verified-prefix *resume* — see deviation D2 |
+| T-11 race / retry / fencing / CAS | **partial** | (a) `oneWriterPerGenerationAndStaleFencesAreRejected`, `onlyOneOpenWriterPerGenerationAndStaleFencesAreRejected` — no `claim` endpoint, see D1; (b) `twoHundredConcurrentRequestsCommitInAdmissionOrder` (200 concurrent accepted single raw requests, 32 threads; in that special case each ordinal equals the servlet-level admission ticket of `AdmissionSequencer`, each exactly once, echoed bytes and persisted `RESOUT` re-read after publish) and `mixedRejectedAndBatchCallsPreserveAdmissionOrderWithoutTicketOrdinalEquality` (60 concurrent calls mixing accepted single requests, 3-record batches and malformed 39-byte envelopes: committed ordinals follow ticket order, tickets are dense, rejected envelopes consume a ticket but no ordinal, a batch consumes one ticket for three contiguous ordinals, and ticket ≠ ordinal is asserted explicitly) — the admission order is defined and observed at the servlet filter within one JVM, see D3; (c) `siblingPublishRaceHasExactlyOneWinnerAndTheLoserIsDiscarded`, `publishCasFailsWhenCurrentMovedUnderTheLease`; (d1–d3) as in T-10: real kills in `ProcessKillTest` and `ServiceKillTest`, real client timeout / 503 / 500 at both commit boundaries in `HttpBoundaryTest` (before commit → `OKAY` on retry; committed-but-response-lost → `DUPL` while still latest; intervening transaction → `ORDR`); `Prefer: return=original` not implemented (optional, off); **still partial** because D1/D2 (no claim/takeover, no resume) are open; (e) `applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched`, `directChildWriteBegunWhilePendingBlocksPublicationUntilItEnds`, `directChildWriteWaitsForThePublisherLockAndIsRejectedAfterTheFlip` (two connections) |
 | T-12 blind docs-only oracle | **optional — not authorized, not done** | separate approval per the v3 plan; nothing here depends on it |
 | T-13 512 cap / order / NPOL | closed | GUEST `control-master-513`, `control-master-unordered`, `control-master-duplicate` (RC=12, no output) and `NPOL` cases; JAVA `bootstrapEnforcesTheLegacyMasterTableCapAndOrder`, `batchRejectsInvalidMasterWithRc12AndNoOutput` |
 | T-14 `TYPE` after interest | closed | GUEST `malformed` precedence pair OVER<TYPE and TYPE cases; JAVA `typeAmntFundAfterInterest` |
@@ -203,6 +218,12 @@ Test names refer to `contract-v001` (`ContractV001Test`, `ContractBreadthTest`,
 | T-16 envelope vs domain boundary | closed | JAVA `envelopeFailuresAreHttp400AndConsumeNoOrdinal` (10^13, `99999-01-01`), `representableDomainFailuresAreHttp200WithLegacyStatus` (10^12 → OVER, 2100-01-01 → DATE, unknown policy → NPOL); GUEST `date-bounds` raw cases (999990101, negative, 0 → DATE) |
 
 ## 5. Deviations from the v3 plan (explicit)
+
+Review findings F1–F10 have each been addressed as a *bounded* implementation
+area with tests and evidence; that does not make the v3 plan universally
+closed. T-10 and T-11 stay **partial** because D1, D2 and D4 below are
+deliberate deviations from the approved plan that are left for the user's
+decision, not silently re-scoped; T-12 is optional and not authorized.
 
 - **D1 — no `claim`/takeover endpoint.** The plan described a `claim` that
   invalidates a previous writer's fence and resumes. Implemented: one writer
@@ -222,12 +243,18 @@ Test names refer to `contract-v001` (`ContractV001Test`, `ContractBreadthTest`,
   labelled "resume".
 - **D3 — admission order is defined at the servlet filter, per JVM.**
   `AdmissionSequencer` assigns a per-namespace/generation ticket at filter
-  entry for `requests`, `requests:raw` and `batch` and serves tickets in
-  order; the ticket is returned as `X-Admission-Sequence` and equals the
-  committed ordinal. This is *the service's admission order*, observed
-  independently by the client from the header. It is **not** TCP/network
-  arrival order, and it is not defined across instances; the plan's "server
-  arrival order" is therefore met only in this bounded sense.
+  entry for `requests`, `requests:raw` and `batch` and admits tickets to the
+  controller in order; the ticket is returned as `X-Admission-Sequence`. The
+  bounded claim is **order preservation for accepted calls**: committed
+  ordinals are assigned in ticket order. Ticket and ordinal are equal only for
+  runs of accepted single-record envelopes with no rejected calls — a
+  rejected envelope (400) consumes a ticket but creates no ordinal, and a
+  `batch` call consumes one ticket while committing N contiguous ordinals
+  (`mixedRejectedAndBatchCallsPreserveAdmissionOrderWithoutTicketOrdinalEquality`).
+  This is *the service's admission order*, observed independently by the
+  client from the header. It is **not** TCP/network arrival order, and it is
+  not defined across instances; the plan's "server arrival order" is
+  therefore met only in this bounded sense.
 - **D4 — failed publication discards rather than parking.** The plan
   mentioned an unpublishable-pending state; implemented behaviour is that a
   publication whose pinned manifest check fails (422) or whose parent CAS
@@ -239,9 +266,10 @@ Test names refer to `contract-v001` (`ContractV001Test`, `ContractBreadthTest`,
 
 Maven suite: `./mvnw test` runs the whole reactor. At the previously reviewed
 head the total was 70 across all four modules (29 of them in `ledger-app`);
-after the F1–F8 remediation it is 98 = `legacy-codec` 7 + `contract-v001` 21
-+ `ledger-application` 33 + `ledger-app` 37 (the `ledger-app` figure alone is
-not the suite). The last run is in section 8.
+after the F1–F8 remediation it was 98; with the F9/F10 subprocess and HTTP
+boundary suites and the mixed admission-order test it is 106 = `legacy-codec`
+7 + `contract-v001` 21 + `ledger-application` 33 + `ledger-app` 45 (the
+`ledger-app` figure alone is not the suite). The last run is in section 8.
 
 ## 6. What is Java-only (not guest-observed)
 
@@ -261,16 +289,23 @@ are also Java-only beyond the guest cases listed above.
   HLASM, production rules or scale.
 - The guest run is single-writer QSAM batch; no power-loss, fsync, or
   cut-power test was performed for either the guest or the Java file store.
-- Guest credentials were supplied through environment variables only and do
-  not appear in this directory; the JCL and spool files, which would echo
-  them, were deliberately not copied.
+- No TK5 credentials were used. `tools/tk5_job.py` adds a `USER=`/`PASSWORD=`
+  card only when the optional `TK5_JOB_USER`/`TK5_JOB_PASSWORD` variables are
+  set; they were not set for this run, the submitted decks carry no such
+  card, and the guest's reader exit stamped its own default
+  `USER=IBMUSER,PASSWORD=,` (empty) in the spool. Nothing in this directory
+  or in the sanitized fresh-guest evidence archive contains a credential. Full
+  JCL decks and spool listings are kept in that archive (attached to the PR
+  conversation) rather than copied here to avoid duplicating the evidence in
+  the repository.
 - The per-routine comparison (section 3) is against the reviewed harness
   evidence at routine-harness commit `5a71041`; if that harness changes its
   fixtures or observed schema, `routine_parity.py` must be re-pinned and
   re-run — nothing is inferred from `expected.json`.
-- The kill tests cover the file store; the PostgreSQL store's crash behaviour
-  is covered by in-process fault injection and two-connection races only
-  (T-10, D2).
+- The kill and HTTP-boundary tests terminate or fault one service process on
+  one host; the PostgreSQL container itself is never killed and no DB outage
+  mid-generation is tested (T-10). Recovery is fail-closed discard, not
+  resume (D2). No power-loss/fsync claim is made for either store.
 - Source-derived oracle agreement (`oracle_agrees`) is a cross-check, not
   independent business-intent validation; no production, estate or
   performance claim is made.
@@ -279,16 +314,17 @@ are also Java-only beyond the guest cases listed above.
 
 Last full verification (working directory `samples/insurance/java`, Java
 21.0.12, offline Maven): `./mvnw spotless:check`, `./mvnw checkstyle:check`,
-`./mvnw test` (98 tests, 0 failures, 0 errors, 0 skipped: 7 + 21 + 33 + 37),
+`./mvnw test` (106 tests, 0 failures, 0 errors, 0 skipped: 7 + 21 + 33 + 45),
 `./mvnw package` → `ledger-app-0.1.0-SNAPSHOT.jar` SHA-256
-`f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db` — the
+`JAR_SHA_PLACEHOLDER` — the
 JAR every report in `reports/`, `routines/` and `../fast/` was produced with
-(`source_commit` `f20edae3`, whose Java sources are identical to the head that
-carries the reports; the later commit adds only evidence, docs and Python/shell
-tooling).
+(`source_commit` `SRC_PLACEHOLDER`, whose Java sources are identical to the
+head that carries the reports; the later commit adds only evidence and docs).
+`runtime/` is written by the Maven test run itself (`ServiceKillTest`,
+`HttpBoundaryTest` from the test classpath), not by the JAR.
 
 Working directory `samples/insurance/java`, with the guest already reachable
-via the pinned `tools/tk5.py` setup (`TK5_*` environment for credentials):
+via the pinned `tools/tk5_setup.sh` / `tk5_start.sh` (no credentials):
 
 ```sh
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
@@ -327,4 +363,26 @@ python3 tools/routine_parity.py --archive <insurance-routines-evidence.tar.gz> \
 
 # response-only mutation must FAIL both HTTP modes (negative control)
 JAVA=$JAVA_HOME/bin/java tools/negative_response_control.sh $JAR $SHA <work>/negative
+
+# authority negative controls (receipt keys, manifests, rates, pinned inputs, RC12 controls)
+python3 -m unittest tools/test_parity_authority.py
+
+# F9/F10 real service-kill and HTTP-boundary runs with retained runtime evidence
+./mvnw -o test -pl ledger-app -Dtest='ServiceKillTest,HttpBoundaryTest' \
+    -Dsurefire.failIfNoSpecifiedTests=false \
+    -DargLine="-Dledger.evidence.dir=$PWD/evidence/acceptance/runtime"
 ```
+
+## 9. Retained runtime evidence (`runtime/`)
+
+One JSON per test method, written by the test itself only when
+`-Dledger.evidence.dir` is set (schemas `insurance-java-service-kill-v1`,
+`insurance-java-http-boundary-v1`), plus the surefire summaries. Each file
+records the Java runtime, the PostgreSQL image, and per scenario: the fault
+spec, the child's exit code (137 for a halt) and its last stderr line, the
+generation status / `last_ordinal` / entry count read directly from
+PostgreSQL after the fault, the restart outcome, the retry status, and for
+published generations the `RESOUT` SHA-256 against the batch oracle. No
+credentials or hostnames appear in them (Testcontainers credentials are not
+recorded). These are Java-only controller evidence (section 6), not guest
+parity.

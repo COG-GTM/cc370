@@ -1,0 +1,25 @@
+{
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "publication" : {
+    "matches_oracle" : true,
+    "resout_sha256" : "5b272ebdf666d4d5562155504120cf0aad03bae8ecb577ac29c5b60fdfd6345b",
+    "results_count" : 2
+  },
+  "recorded_at" : "2026-09-21T07:12:48.754429452Z",
+  "schema" : "insurance-java-http-boundary-v1",
+  "server_500_before_commit" : {
+    "client_status" : 500,
+    "db_after_fault" : {
+      "entries" : 0,
+      "last_ordinal" : 0,
+      "last_status" : null,
+      "status" : "PENDING"
+    },
+    "retry" : {
+      "ordinal" : 1,
+      "status" : "OKAY"
+    }
+  },
+  "test" : "server500InsideTheCommitTransactionRollsBackAndTheRetrySucceeds"
+}

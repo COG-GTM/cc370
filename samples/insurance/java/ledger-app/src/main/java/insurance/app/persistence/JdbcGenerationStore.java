@@ -82,6 +82,27 @@ public final class JdbcGenerationStore implements GenerationStore {
 
   public static final Duration DEFAULT_LEASE = Duration.ofSeconds(60);
 
+  /**
+   * Lifecycle boundaries the process-kill tests halt the JVM at. Inside a transaction ("before")
+   * the database rolls the work back; after one ("after") the work is durable but the caller never
+   * receives the response.
+   */
+  public enum Boundary {
+    BEFORE_COMMIT,
+    AFTER_COMMIT,
+    BEFORE_PUBLISH_FLIP,
+    AFTER_PUBLISH
+  }
+
+  /** Test hook invoked at every {@link Boundary}; the default does nothing. */
+  @FunctionalInterface
+  public interface FaultPoint {
+    FaultPoint NONE = (boundary, ordinal) -> {};
+
+    /** {@code ordinal} is the ordinal being committed, or the last ordinal at publication. */
+    void reached(Boundary boundary, long ordinal);
+  }
+
   private final JdbcClient db;
   private final TransactionTemplate tx;
   private final GenerationRepository generations;
@@ -90,13 +111,19 @@ public final class JdbcGenerationStore implements GenerationStore {
   private final List<String> discardedOnOpen = new ArrayList<>();
   private final List<String> liveOnOpen = new ArrayList<>();
   private final ScheduledExecutorService heartbeat;
+  private final FaultPoint faults;
 
   private JdbcGenerationStore(
-      JdbcClient db, TransactionTemplate tx, GenerationRepository repo, Duration lease) {
+      JdbcClient db,
+      TransactionTemplate tx,
+      GenerationRepository repo,
+      Duration lease,
+      FaultPoint faults) {
     this.db = db;
     this.tx = tx;
     this.generations = repo;
     this.lease = lease;
+    this.faults = faults;
     this.writerId = ProcessHandle.current().pid() + "@" + hostName() + "/" + UUID.randomUUID();
     this.heartbeat =
         Executors.newSingleThreadScheduledExecutor(
@@ -119,7 +146,16 @@ public final class JdbcGenerationStore implements GenerationStore {
    */
   public static JdbcGenerationStore open(
       JdbcClient db, TransactionTemplate tx, GenerationRepository repo, Duration lease) {
-    JdbcGenerationStore store = new JdbcGenerationStore(db, tx, repo, lease);
+    return open(db, tx, repo, lease, FaultPoint.NONE);
+  }
+
+  public static JdbcGenerationStore open(
+      JdbcClient db,
+      TransactionTemplate tx,
+      GenerationRepository repo,
+      Duration lease,
+      FaultPoint faults) {
+    JdbcGenerationStore store = new JdbcGenerationStore(db, tx, repo, lease, faults);
     store.tx.executeWithoutResult(
         s -> {
           List<PendingLease> pending =
@@ -302,132 +338,145 @@ public final class JdbcGenerationStore implements GenerationStore {
       TransactionRecord request,
       Function<Optional<PolicyRecord>, Evaluation> evaluator,
       boolean typed) {
-    return tx.execute(
-        s -> {
-          Long ordinal =
+    Applied applied =
+        tx.execute(
+            s -> {
+              Long ordinal =
+                  db.sql(
+                          "UPDATE generation SET last_ordinal = last_ordinal + 1,"
+                              + " typed_requests = typed_requests + ?,"
+                              + " raw_requests = raw_requests + ?,"
+                              + " lease_expires_at = now() + ?::interval"
+                              + " WHERE namespace = ? AND name = ? AND status = 'PENDING'"
+                              + " AND fence = ? AND writer_id = ?"
+                              + " RETURNING last_ordinal")
+                      .params(
+                          typed ? 1 : 0,
+                          typed ? 0 : 1,
+                          this.lease.toMillis() + " milliseconds",
+                          lease.namespace(),
+                          lease.generation(),
+                          lease.fence(),
+                          writerId)
+                      .query(Long.class)
+                      .optional()
+                      .orElseThrow(
+                          () ->
+                              new FencedException(
+                                  lease.generation()
+                                      + " is not an open pending generation held by fence "
+                                      + lease.fence()
+                                      + " and writer "
+                                      + writerId));
+              long id = idOf(lease.namespace(), lease.generation());
+              Optional<PolicyRecord> master =
+                  db.sql("SELECT bytes FROM policy_state WHERE generation_id = ? AND policy_id = ?")
+                      .params(id, request.id())
+                      .query(byte[].class)
+                      .optional()
+                      .map(PolicyRecord::new);
+              Evaluation evaluation = evaluator.apply(master);
+              byte[] successor = evaluation.accepted() ? evaluation.master().bytes() : null;
               db.sql(
-                      "UPDATE generation SET last_ordinal = last_ordinal + 1,"
-                          + " typed_requests = typed_requests + ?, raw_requests = raw_requests + ?,"
-                          + " lease_expires_at = now() + ?::interval"
-                          + " WHERE namespace = ? AND name = ? AND status = 'PENDING' AND fence = ?"
-                          + " AND writer_id = ?"
-                          + " RETURNING last_ordinal")
+                      "INSERT INTO generation_entry (generation_id, ordinal, request, result,"
+                          + " typed, successor) VALUES (?, ?, ?, ?, ?, ?)")
                   .params(
-                      typed ? 1 : 0,
-                      typed ? 0 : 1,
-                      this.lease.toMillis() + " milliseconds",
-                      lease.namespace(),
-                      lease.generation(),
-                      lease.fence(),
-                      writerId)
-                  .query(Long.class)
-                  .optional()
-                  .orElseThrow(
-                      () ->
-                          new FencedException(
-                              lease.generation()
-                                  + " is not an open pending generation held by fence "
-                                  + lease.fence()
-                                  + " and writer "
-                                  + writerId));
-          long id = idOf(lease.namespace(), lease.generation());
-          Optional<PolicyRecord> master =
-              db.sql("SELECT bytes FROM policy_state WHERE generation_id = ? AND policy_id = ?")
-                  .params(id, request.id())
-                  .query(byte[].class)
-                  .optional()
-                  .map(PolicyRecord::new);
-          Evaluation evaluation = evaluator.apply(master);
-          byte[] successor = evaluation.accepted() ? evaluation.master().bytes() : null;
-          db.sql(
-                  "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed,"
-                      + " successor) VALUES (?, ?, ?, ?, ?, ?)")
-              .params(id, ordinal, request.bytes(), evaluation.result().bytes(), typed, successor)
-              .update();
-          if (successor != null) {
-            int n =
-                db.sql(
-                        "UPDATE policy_state SET bytes = ?"
-                            + " WHERE generation_id = ? AND policy_id = ?")
-                    .params(successor, id, evaluation.master().id())
-                    .update();
-            if (n != 1) {
-              throw new IntegrityException(
-                  "accepted request for unknown policy " + Hex.of(evaluation.master().id()));
-            }
-          }
-          return new Applied(ordinal, evaluation);
-        });
+                      id, ordinal, request.bytes(), evaluation.result().bytes(), typed, successor)
+                  .update();
+              if (successor != null) {
+                int n =
+                    db.sql(
+                            "UPDATE policy_state SET bytes = ?"
+                                + " WHERE generation_id = ? AND policy_id = ?")
+                        .params(successor, id, evaluation.master().id())
+                        .update();
+                if (n != 1) {
+                  throw new IntegrityException(
+                      "accepted request for unknown policy " + Hex.of(evaluation.master().id()));
+                }
+              }
+              faults.reached(Boundary.BEFORE_COMMIT, ordinal);
+              return new Applied(ordinal, evaluation);
+            });
+    faults.reached(Boundary.AFTER_COMMIT, applied.ordinal());
+    return applied;
   }
 
   @Override
   public Receipt publish(Lease lease, ReceiptContext context) {
+    Receipt receipt;
     try {
-      return tx.execute(
-          s -> {
-            GenerationRow row =
-                db.sql(
-                        "SELECT id, namespace, name, parent_id, status, fence, policies_count,"
-                            + " last_ordinal, typed_requests, raw_requests, seed_polin_sha256,"
-                            + " manifest_sha256"
-                            + " FROM generation WHERE namespace = ? AND name = ? FOR UPDATE")
-                    .params(lease.namespace(), lease.generation())
-                    .query(GenerationRow.class)
-                    .optional()
-                    .orElseThrow(() -> new FencedException(lease.generation() + " does not exist"));
-            if (row.generationStatus() != GenerationStatus.PENDING
-                || row.fence() != lease.fence()
-                || !writerId.equals(writerOf(row.id()))) {
-              throw new FencedException(
-                  lease.generation() + " is " + row.status() + " or held by another writer");
-            }
-            Long current =
-                db.sql("SELECT current_generation_id FROM namespace WHERE name = ? FOR UPDATE")
-                    .param(lease.namespace())
-                    .query(Long.class)
-                    .optional()
-                    .orElse(null);
-            if (current == null || !current.equals(row.parentId())) {
-              throw new CasException(
-                  "current generation of "
-                      + lease.namespace()
-                      + " is no longer "
-                      + lease.parent()
-                      + "; expected-parent CAS failed");
-            }
-            byte[] seed = seed(row.id());
-            ExpectedManifest manifest = manifestOf(row.id(), row.manifestSha256());
-            Rebuilt r = rebuild(row, seed);
-            context.validatePublication(manifest, seed, r.requests, r.state, r.results);
-            GenerationInfo published = row.toInfo(lease.parent()).with(GenerationStatus.PUBLISHED);
-            Receipt receipt =
-                context.complete(
-                    published,
-                    manifest,
-                    seed,
-                    r.requests,
-                    r.state,
-                    r.results,
-                    BuildIdentity.runtime());
-            insertOutput(row.id(), r.state, r.results, r.requests, receipt);
-            flipToPublished(row.id(), lease.fence());
-            int moved =
-                db.sql(
-                        "UPDATE namespace SET current_generation_id = ? WHERE name = ?"
-                            + " AND current_generation_id = ?")
-                    .params(row.id(), lease.namespace(), row.parentId())
-                    .update();
-            if (moved != 1) {
-              throw new CasException("expected-parent CAS failed at pointer update");
-            }
-            return receipt;
-          });
+      receipt =
+          tx.execute(
+              s -> {
+                GenerationRow row =
+                    db.sql(
+                            "SELECT id, namespace, name, parent_id, status, fence, policies_count,"
+                                + " last_ordinal, typed_requests, raw_requests, seed_polin_sha256,"
+                                + " manifest_sha256"
+                                + " FROM generation WHERE namespace = ? AND name = ? FOR UPDATE")
+                        .params(lease.namespace(), lease.generation())
+                        .query(GenerationRow.class)
+                        .optional()
+                        .orElseThrow(
+                            () -> new FencedException(lease.generation() + " does not exist"));
+                if (row.generationStatus() != GenerationStatus.PENDING
+                    || row.fence() != lease.fence()
+                    || !writerId.equals(writerOf(row.id()))) {
+                  throw new FencedException(
+                      lease.generation() + " is " + row.status() + " or held by another writer");
+                }
+                Long current =
+                    db.sql("SELECT current_generation_id FROM namespace WHERE name = ? FOR UPDATE")
+                        .param(lease.namespace())
+                        .query(Long.class)
+                        .optional()
+                        .orElse(null);
+                if (current == null || !current.equals(row.parentId())) {
+                  throw new CasException(
+                      "current generation of "
+                          + lease.namespace()
+                          + " is no longer "
+                          + lease.parent()
+                          + "; expected-parent CAS failed");
+                }
+                byte[] seed = seed(row.id());
+                ExpectedManifest manifest = manifestOf(row.id(), row.manifestSha256());
+                Rebuilt r = rebuild(row, seed);
+                context.validatePublication(manifest, seed, r.requests, r.state, r.results);
+                GenerationInfo published =
+                    row.toInfo(lease.parent()).with(GenerationStatus.PUBLISHED);
+                Receipt done =
+                    context.complete(
+                        published,
+                        manifest,
+                        seed,
+                        r.requests,
+                        r.state,
+                        r.results,
+                        BuildIdentity.runtime());
+                insertOutput(row.id(), r.state, r.results, r.requests, done);
+                faults.reached(Boundary.BEFORE_PUBLISH_FLIP, row.lastOrdinal());
+                flipToPublished(row.id(), lease.fence());
+                int moved =
+                    db.sql(
+                            "UPDATE namespace SET current_generation_id = ? WHERE name = ?"
+                                + " AND current_generation_id = ?")
+                        .params(row.id(), lease.namespace(), row.parentId())
+                        .update();
+                if (moved != 1) {
+                  throw new CasException("expected-parent CAS failed at pointer update");
+                }
+                return done;
+              });
     } catch (FencedException e) {
       throw e;
     } catch (GenerationException | ExpectedManifest.ManifestException e) {
       discardQuietly(lease);
       throw e;
     }
+    faults.reached(Boundary.AFTER_PUBLISH, receipt.transactionsCount());
+    return receipt;
   }
 
   @Override

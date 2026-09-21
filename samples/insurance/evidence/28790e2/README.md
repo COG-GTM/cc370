@@ -16,6 +16,10 @@ Included verbatim from the archive:
   five stages (`anchors`, `a`, `a-replay`, `b`, `b-replay`).
 - `runtime/<path>/<stage>/{generation,receipt,comparison}.json` — the original
   guest-run receipt and the legacy comparator's verdict for that stage.
+- `runtime/<path>-provenance/{build,guest}.json` — the build and guest
+  manifests whose SHA-256 the receipts carry as `build_manifest_sha256` /
+  `guest_manifest_sha256`, so a consumer can recompute them independently
+  instead of trusting the receipt's own values.
 
 Not included: JCL/spool logs, AWS tapes, transport artifacts, decks, recovery
 and control runs, screenshots. Those remain in the archive.

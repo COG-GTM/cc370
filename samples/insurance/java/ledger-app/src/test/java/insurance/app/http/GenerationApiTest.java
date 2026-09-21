@@ -616,6 +616,172 @@ class GenerationApiTest {
     }
   }
 
+  /**
+   * Mixed admission: single raw requests, envelope-rejected requests and multi-record batches
+   * interleaved concurrently. A ticket is consumed by every call; a rejected envelope commits no
+   * ordinal, a batch commits one ordinal per record. So tickets do not equal ordinals here — what
+   * holds is that committed ordinals (and the persisted request stream) follow the admission order
+   * of the accepted calls, with each batch occupying a contiguous ordinal run.
+   */
+  @Test
+  void mixedRejectedAndBatchCallsPreserveAdmissionOrderWithoutTicketOrdinalEquality()
+      throws Exception {
+    int singles = 40;
+    int rejected = 10;
+    int batches = 10;
+    int perBatch = 3;
+    int policies = singles + batches * perBatch;
+    byte[][] masters = new byte[policies][];
+    for (int i = 0; i < policies; i++) {
+      masters[i] = fresh(String.format("%08d", i + 1), 500_000, 20_000 + i, 0).bytes();
+    }
+    byte[] seed = concat(masters);
+    assertEquals(
+        HttpStatus.CREATED,
+        http.postForEntity(
+                NS + "/import",
+                new ImportRequest(
+                    "root",
+                    b64(seed),
+                    manifestB64(manifest("bootstrap", policies, 0, seed, new byte[0]))),
+                String.class)
+            .getStatusCode());
+    ResponseEntity<String> begun =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest(
+                "root",
+                "mixed",
+                b64(seed),
+                manifestB64(manifest("a", policies, policies, seed, new byte[40 * policies]))),
+            String.class);
+    assertEquals(HttpStatus.CREATED, begun.getStatusCode(), begun.getBody());
+    LeaseResponse lease =
+        Json.read(begun.getBody().getBytes(StandardCharsets.UTF_8), LeaseResponse.class);
+
+    // kind: 0 = accepted single, 1 = rejected envelope (39-byte record), 2 = batch of perBatch
+    record Call(
+        long ticket,
+        int kind,
+        org.springframework.http.HttpStatusCode status,
+        List<byte[]> requests,
+        long first,
+        long last) {}
+    java.util.concurrent.ExecutorService pool =
+        java.util.concurrent.Executors.newFixedThreadPool(24);
+    java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+    List<java.util.concurrent.Future<Call>> futures = new java.util.ArrayList<>();
+    try {
+      int policy = 1;
+      int[] pattern = {0, 0, 2, 0, 0, 1}; // 4 singles, 1 batch, 1 rejection per 6 calls
+      for (int i = 0; i < singles + rejected + batches; i++) {
+        final int k = pattern[i % pattern.length];
+        final List<byte[]> requests = new java.util.ArrayList<>();
+        if (k == 0) {
+          requests.add(txn(String.format("%08d", policy++), 1, VALUATION, 'P', 100 + i).bytes());
+        } else if (k == 2) {
+          for (int j = 0; j < perBatch; j++) {
+            requests.add(txn(String.format("%08d", policy++), 1, VALUATION, 'P', 100 + i).bytes());
+          }
+        }
+        futures.add(
+            pool.submit(
+                () -> {
+                  go.await();
+                  if (k == 1) {
+                    ResponseEntity<String> r =
+                        http.postForEntity(
+                            NS + "/generations/mixed/requests:raw",
+                            new RawRequest(lease.fence(), Hex.of(new byte[39])),
+                            String.class);
+                    long ticket =
+                        Long.parseLong(r.getHeaders().getFirst(AdmissionSequencer.HEADER));
+                    return new Call(ticket, k, r.getStatusCode(), requests, 0, 0);
+                  }
+                  if (k == 2) {
+                    ResponseEntity<String> r =
+                        http.postForEntity(
+                            NS + "/generations/mixed/batch",
+                            new BatchRequest(
+                                lease.fence(),
+                                b64(
+                                    Records.join(
+                                        requests.stream().map(TransactionRecord::new).toList()))),
+                            String.class);
+                    long ticket =
+                        Long.parseLong(r.getHeaders().getFirst(AdmissionSequencer.HEADER));
+                    BatchResponse b =
+                        Json.read(
+                            r.getBody().getBytes(StandardCharsets.UTF_8), BatchResponse.class);
+                    return new Call(
+                        ticket, k, r.getStatusCode(), requests, b.firstOrdinal(), b.lastOrdinal());
+                  }
+                  ResponseEntity<String> r = raw(lease, requests.get(0));
+                  long ticket = Long.parseLong(r.getHeaders().getFirst(AdmissionSequencer.HEADER));
+                  ApplyResponse a = apply(r);
+                  return new Call(ticket, k, r.getStatusCode(), requests, a.ordinal(), a.ordinal());
+                }));
+      }
+      go.countDown();
+      List<Call> calls = new java.util.ArrayList<>();
+      for (java.util.concurrent.Future<Call> f : futures) {
+        calls.add(f.get(120, java.util.concurrent.TimeUnit.SECONDS));
+      }
+      calls.sort(java.util.Comparator.comparingLong(Call::ticket));
+
+      List<byte[]> persisted = new java.util.ArrayList<>();
+      try (java.sql.Connection c = dataSource.getConnection();
+          java.sql.PreparedStatement ps =
+              c.prepareStatement(
+                  "SELECT e.request FROM generation_entry e JOIN generation g ON g.id ="
+                      + " e.generation_id WHERE g.namespace = 'api' AND g.name = 'mixed' ORDER BY"
+                      + " e.ordinal");
+          java.sql.ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          persisted.add(rs.getBytes(1));
+        }
+      }
+
+      long nextOrdinal = 1;
+      int rejectedSeen = 0;
+      int batchesSeen = 0;
+      boolean ticketDiffersFromOrdinal = false;
+      for (int i = 0; i < calls.size(); i++) {
+        Call call = calls.get(i);
+        assertEquals(i + 1, call.ticket(), "every call consumes exactly one ticket");
+        if (call.kind() == 1) {
+          assertEquals(HttpStatus.BAD_REQUEST, call.status(), "envelope rejection");
+          rejectedSeen++;
+          continue; // no ordinal
+        }
+        assertEquals(HttpStatus.OK, call.status());
+        assertEquals(
+            nextOrdinal, call.first(), "ordinals follow the admission order of accepted calls");
+        assertEquals(
+            nextOrdinal + call.requests().size() - 1, call.last(), "batch run is contiguous");
+        for (byte[] request : call.requests()) {
+          assertArrayEquals(request, persisted.get((int) nextOrdinal - 1), "physical order");
+          nextOrdinal++;
+        }
+        ticketDiffersFromOrdinal |= call.ticket() != call.first();
+        if (call.kind() == 2) {
+          batchesSeen++;
+        }
+      }
+      assertEquals(10, rejectedSeen);
+      assertEquals(10, batchesSeen);
+      assertEquals(persisted.size(), nextOrdinal - 1);
+      assertEquals(40 + 10 * perBatch, persisted.size());
+      assertEquals(
+          persisted.size(),
+          http.getForObject(NS + "/generations/mixed", JsonNode.class).get("last_ordinal").asInt());
+      assertTrue(
+          ticketDiffersFromOrdinal, "tickets are not ordinals once a call is rejected or batched");
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
   // ---------------------------------------------------------------- stateless probe
 
   @Test

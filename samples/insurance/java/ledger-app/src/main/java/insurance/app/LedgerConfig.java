@@ -2,6 +2,7 @@ package insurance.app;
 
 import insurance.app.persistence.GenerationRepository;
 import insurance.app.persistence.JdbcGenerationStore;
+import insurance.app.persistence.KillSwitch;
 import insurance.contract.v001.ContractV001;
 import insurance.ledger.BuildIdentity;
 import insurance.ledger.PolicyLedgerService;
@@ -34,15 +35,18 @@ public class LedgerConfig {
 
   /**
    * The writer lease is how another instance's startup distinguishes a live writer from an orphaned
-   * pending generation; it is renewed by every commit and by the store heartbeat.
+   * pending generation; it is renewed by every commit and by the store heartbeat. {@code
+   * ledger.kill-switch} is the process-kill test hook ({@link KillSwitch}); unset in normal use.
    */
   @Bean(destroyMethod = "close")
   public JdbcGenerationStore generationStore(
       JdbcClient db,
       PlatformTransactionManager txManager,
       GenerationRepository repo,
-      @Value("${ledger.writer-lease:PT60S}") Duration writerLease) {
-    return JdbcGenerationStore.open(db, new TransactionTemplate(txManager), repo, writerLease);
+      @Value("${ledger.writer-lease:PT60S}") Duration writerLease,
+      @Value("${ledger.kill-switch:}") String killSwitch) {
+    return JdbcGenerationStore.open(
+        db, new TransactionTemplate(txManager), repo, writerLease, KillSwitch.parse(killSwitch));
   }
 
   @Bean

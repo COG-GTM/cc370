@@ -13,14 +13,32 @@ Subcommands (run from anywhere; every path is explicit):
       Write <case>/polin.bin and <case>/txnin.bin plus cases.json (description, expected status
       list derived from tools/oracle.py, which is source-derived and only used as a sanity check).
   capture  --cases DIR --evidence DIR --root MVSROOT --prefix HLQ --load-prefix HLQ
+           --build-manifest FILE --guest-manifest FILE
       Execute every case on the guest (one job per case, one dataset prefix per case). Stores
-      <case>/polout.bin, <case>/resout.bin, the guest job receipt and SHA-256 of everything in
-      DIR/authority/. Cases marked "control" are allowed to fail (their guest RC is the evidence).
+      <case>/polout.bin, <case>/resout.bin and a guest receipt in the UNCHANGED legacy
+      insurance-run-v1 shape (derived from the raw tk5_job result.json exactly as
+      tools/tk5_validate.py derives it) that binds the pinned case inputs, the observed outputs,
+      the build/guest manifests of the load library actually used and the frozen rate table, in
+      DIR/authority/; the manifests are copied to DIR/provenance/. Cases marked "control" are
+      allowed to fail (their guest RC=12 is the evidence).
+  rederive --cases DIR --authority DIR --guest DIR --build-manifest FILE --guest-manifest FILE
+      Rebuild every <case>/receipt.json of an existing capture from the retained raw guest
+      evidence (DIR/<NN>-<case>-run/result.json, whose SHA-256 the capture-time receipt already
+      pinned as job_result_sha256) without running the guest again. Fails closed if the raw
+      result.json does not match the pinned hash or the manifests do not name the load library.
   compare  --cases DIR --authority DIR --jar JAR --work DIR --report FILE --source-commit SHA
            [--mode batch|http-gen|http-json] [--base-url URL] [--namespace-prefix P]
-      Run the Java implementation over each captured case in its own namespace and compare the
-      published POLOUT/RESOUT with the guest bytes using tools/compare.py's comparator. The
-      decoded guest statuses must also equal the case's intended status list, so a case that
+           [--build-manifest FILE --guest-manifest FILE]
+      Before any Java code runs, every case's authority is validated: golden inventory intact;
+      cases-dir POLIN/TXNIN equal cases.json's pinned hashes and the authority's polin/txnin bytes;
+      the receipt passes compare.validate_receipt (unchanged legacy validator) with all seven
+      hashes recomputed here (pinned inputs, observed outputs, build/guest manifest bytes, golden
+      rates.json), or - for RC=12 controls only - validate_control_receipt, which keeps every
+      fail-closed rule (schema, timeout, ABEND, provenance, hashes) and additionally requires the
+      guest to have REJECTED the job (outcome failed, RUN RC=12 and nothing else). Then the Java
+      implementation runs each case in its own namespace and the published POLOUT/RESOUT are
+      compared with the guest bytes using tools/compare.py's comparator. The statuses decoded
+      here from the observed RESOUT must equal the case's intended status list, so a case that
       silently stopped exercising its intended path is reported as failed.
 
 Guest credentials come only from TK5_JOB_USER / TK5_JOB_PASSWORD in the environment (tk5_job.py).
@@ -44,10 +62,13 @@ sys.path.insert(0, str(HERE))
 
 import codec  # noqa: E402
 import oracle  # noqa: E402
-from compare import differences  # noqa: E402
+from compare import differences, validate_receipt  # noqa: E402
 import parity_java as pj  # noqa: E402
+from parity_java import AuthorityError  # noqa: E402
 
 MAX = 99_999_999_999
+TARGETED_RECEIPT = "insurance-a3-targeted-v2"
+CONTROL_RC = 12
 
 
 def sha(raw: bytes) -> str:
@@ -258,14 +279,173 @@ def write_cases(out: Path) -> None:
     print(f"{len(index)} cases written to {out}")
 
 
+# ---------------------------------------------------------------------------- authority binding
+
+
+def load_provenance(build: Path, guest: Path, golden: Path, load_prefix: str) -> dict[str, str]:
+    """Hash the build/guest manifests of the load library the capture used, and the rate table.
+
+    The build manifest must name the captured load library (load_prefix), so a manifest of a
+    different build cannot be substituted. Absent or unreadable files fail closed.
+    """
+    for label, f in (("build manifest", build), ("guest manifest", guest)):
+        if not f.is_file():
+            raise AuthorityError(f"targeted: missing {label} {f} (--build-manifest/--guest-manifest "
+                                 f"or <authority>/../provenance/)")
+    build_bytes, guest_bytes = build.read_bytes(), guest.read_bytes()
+    try:
+        build_doc, guest_doc = json.loads(build_bytes), json.loads(guest_bytes)
+    except ValueError as e:
+        raise AuthorityError(f"targeted: unreadable provenance manifest: {e}")
+    if not isinstance(build_doc, dict) or build_doc.get("load_prefix") != load_prefix:
+        got = build_doc.get("load_prefix") if isinstance(build_doc, dict) else None
+        raise AuthorityError(f"targeted: build manifest {build} is for load library {got!r}, "
+                             f"the capture used {load_prefix!r}")
+    if not isinstance(guest_doc, dict) or not guest_doc:
+        raise AuthorityError(f"targeted: guest manifest {guest} is not an object")
+    return {
+        "load_prefix": load_prefix, "backend": build_doc.get("backend"),
+        "build_manifest": str(build), "build_manifest_sha256": sha(build_bytes),
+        "guest_manifest": str(guest), "guest_manifest_sha256": sha(guest_bytes),
+        "rates_json": str(golden / "rates.json"),
+        "rates_sha256": sha((golden / "rates.json").read_bytes()),
+    }
+
+
+def default_manifests(args) -> tuple[Path, Path]:
+    d = args.authority.parent / "provenance"
+    return (args.build_manifest or d / "build.json", args.guest_manifest or d / "guest.json")
+
+
+def decoded_statuses(resout: bytes) -> list[str] | None:
+    if len(resout) % 96:
+        return None
+    return [codec.decode(r, "result")["status"] for r in codec.records(resout, "result")]
+
+
+def build_receipt(case: dict, job: dict, job_result: bytes, data: dict[str, bytes],
+                  prov: dict[str, str], dataset_prefix: str, seconds: float) -> dict:
+    """Guest receipt in the legacy insurance-run-v1 shape (derivation of tools/tk5_validate.py:
+    outcome from passed, timed_out from purged, abend None) plus the targeted-case fields."""
+    statuses = decoded_statuses(data["resout"])
+    return {
+        "schema": "insurance-run-v1", "targeted": TARGETED_RECEIPT,
+        "case": case["name"], "control": bool(case["control"]), "job_id": job["job_id"],
+        "outcome": "completed" if job["passed"] else "failed",
+        "timed_out": not job["purged"], "abend": None,
+        "step_rc": {s: int(c) for s, c in job["steps"]},
+        "passed": job["passed"], "purged": job["purged"], "errors": job["errors"],
+        "dataset_prefix": dataset_prefix, "load_prefix": prov["load_prefix"],
+        "seconds": round(seconds, 1),
+        "polin_sha256": sha(data["polin"]), "txnin_sha256": sha(data["txnin"]),
+        "polout_sha256": sha(data["polout"]), "resout_sha256": sha(data["resout"]),
+        "build_manifest_sha256": prov["build_manifest_sha256"],
+        "guest_manifest_sha256": prov["guest_manifest_sha256"],
+        "rates_sha256": prov["rates_sha256"],
+        "job_result_sha256": sha(job_result),
+        "observed_statuses": statuses,
+        "oracle_statuses": case["oracle_statuses"],
+        "oracle_agrees": statuses == case["oracle_statuses"] if statuses is not None else None,
+    }
+
+
+def validate_control_receipt(receipt: dict, hashes: dict[str, str]) -> None:
+    """Receipt of a case the guest must have REJECTED (host validation RC=12).
+
+    Same fail-closed rules as compare.validate_receipt (schema, job id, no timeout, no ABEND,
+    every supplied hash) except the outcome: the run must have failed with RUN RC=12 exactly and
+    no other step; a control the guest accepted is not evidence of rejection.
+    """
+    if receipt.get("schema") != "insurance-run-v1":
+        raise ValueError("missing/unsupported run receipt schema")
+    if not isinstance(receipt.get("job_id"), str) or not receipt["job_id"]:
+        raise ValueError("missing job_id")
+    if receipt.get("timed_out") is not False:
+        raise ValueError("control run timed out or lacks timeout evidence")
+    if "abend" not in receipt or receipt["abend"] is not None:
+        raise ValueError("ABEND or missing ABEND evidence")
+    if receipt.get("outcome") != "failed" or receipt.get("passed") is not False:
+        raise ValueError("control run was not rejected by the guest")
+    rc = receipt.get("step_rc")
+    if not isinstance(rc, dict) or set(rc) != {"RUN"} or type(rc["RUN"]) is not int \
+            or rc["RUN"] != CONTROL_RC:
+        raise ValueError(f"control RUN RC is not exactly {CONTROL_RC}: {rc}")
+    for name, value in hashes.items():
+        if receipt.get(name) != value:
+            raise ValueError(f"receipt hash mismatch: {name}")
+
+
+def validate_case_authority(case: dict, authority: Path, cases: Path,
+                            prov: dict[str, str]) -> tuple[dict, dict[str, bytes]]:
+    """Refuse a captured case unless its bytes and receipt bind to pinned inputs and provenance."""
+    name = case["name"]
+    pinned = {}
+    for k in ("polin", "txnin"):
+        f = cases / name / f"{k}.bin"
+        if not f.is_file():
+            raise AuthorityError(f"{name}: missing pinned case input {f}")
+        pinned[k] = f.read_bytes()
+        if sha(pinned[k]) != case[f"{k}_sha256"]:
+            raise AuthorityError(f"{name}: cases-dir {k}.bin differs from cases.json")
+    d = authority / name
+    data = {}
+    for k in ("polin", "txnin", "polout", "resout"):
+        f = d / f"{k}.bin"
+        if not f.is_file():
+            raise AuthorityError(f"{name}: missing {f}")
+        data[k] = f.read_bytes()
+    for k in ("polin", "txnin"):
+        if data[k] != pinned[k]:
+            raise AuthorityError(f"{name}: authority {k}.bin differs from the pinned case input")
+    receipt_path = d / "receipt.json"
+    if not receipt_path.is_file():
+        raise AuthorityError(f"{name}: missing guest receipt {receipt_path}")
+    try:
+        receipt = json.loads(receipt_path.read_text())
+    except ValueError as e:
+        raise AuthorityError(f"{name}: unreadable guest receipt: {e}") from None
+    if not isinstance(receipt, dict):
+        raise AuthorityError(f"{name}: guest receipt is not an object")
+    if receipt.get("case") != name or receipt.get("control") is not bool(case["control"]):
+        raise AuthorityError(f"{name}: guest receipt is for another case/kind")
+    hashes = {
+        "polin_sha256": sha(pinned["polin"]), "txnin_sha256": sha(pinned["txnin"]),
+        "polout_sha256": sha(data["polout"]), "resout_sha256": sha(data["resout"]),
+        "build_manifest_sha256": prov["build_manifest_sha256"],
+        "guest_manifest_sha256": prov["guest_manifest_sha256"],
+        "rates_sha256": prov["rates_sha256"],
+    }
+    assert tuple(hashes) == pj.GUEST_RECEIPT_HASH_KEYS
+    missing = [k for k in pj.GUEST_RECEIPT_HASH_KEYS if k not in receipt]
+    if missing:
+        raise AuthorityError(f"{name}: guest receipt lacks {missing}")
+    try:
+        if case["control"]:
+            validate_control_receipt(receipt, hashes)
+        else:
+            validate_receipt(receipt, hashes)  # unchanged legacy validator
+    except ValueError as e:
+        raise AuthorityError(f"{name}: guest receipt rejected: {e}")
+    if receipt.get("observed_statuses") != decoded_statuses(data["resout"]):
+        raise AuthorityError(f"{name}: receipt observed_statuses differ from the observed RESOUT")
+    return receipt, data
+
+
 # ---------------------------------------------------------------------------- guest capture
 
 
 def capture(args) -> None:
     from tk5 import Guest  # noqa: E402  (unchanged guest transport)
     index = json.loads((args.cases / "cases.json").read_text())
+    golden = SAMPLE / "golden" / "v1"
+    pj.verify_golden_inventory(golden)
+    prov = load_provenance(args.build_manifest, args.guest_manifest, golden, args.load_prefix)
     authority = args.evidence / "authority"
     authority.mkdir(parents=True, exist_ok=False)
+    provenance = args.evidence / "provenance"
+    provenance.mkdir()
+    (provenance / "build.json").write_bytes(args.build_manifest.read_bytes())
+    (provenance / "guest.json").write_bytes(args.guest_manifest.read_bytes())
     summary = []
     with Guest(args.evidence / "guest", args.root) as guest:
         for n, case in enumerate(index, 1):
@@ -280,31 +460,66 @@ def capture(args) -> None:
                                               allow_failure=bool(case["control"]))
             out = authority / case["name"]
             out.mkdir()
-            (out / "polin.bin").write_bytes(polin)
-            (out / "txnin.bin").write_bytes(txnin)
-            (out / "polout.bin").write_bytes(polout)
-            (out / "resout.bin").write_bytes(resout)
-            statuses = [codec.decode(r, "result")["status"] for r in codec.records(resout, "result")] \
-                if len(resout) % 96 == 0 else None
-            receipt = {
-                "schema": "insurance-a3-targeted-v1", "case": case["name"], "job_id": job["job_id"],
-                "dataset_prefix": prefix, "step_rc": {s: int(c) for s, c in job["steps"]},
-                "passed": job["passed"], "purged": job["purged"], "errors": job["errors"],
-                "seconds": round(time.time() - started, 1),
-                "polin_sha256": sha(polin), "txnin_sha256": sha(txnin),
-                "polout_sha256": sha(polout), "resout_sha256": sha(resout),
-                "job_result_sha256": sha((guest.evidence / (label + "-run") / "result.json").read_bytes()),
-                "observed_statuses": statuses,
-                "oracle_statuses": case["oracle_statuses"],
-                "oracle_agrees": statuses == case["oracle_statuses"] if statuses is not None else None,
-            }
+            data = {"polin": polin, "txnin": txnin, "polout": polout, "resout": resout}
+            for k, v in data.items():
+                (out / f"{k}.bin").write_bytes(v)
+            job_result = (guest.evidence / (label + "-run") / "result.json").read_bytes()
+            receipt = build_receipt(case, job, job_result, data, prov, prefix,
+                                    time.time() - started)
             (out / "receipt.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
             summary.append(receipt)
-            print(f"{case['name']}: RUN RC={receipt['step_rc'].get('RUN')} statuses={statuses}",
-                  flush=True)
+            print(f"{case['name']}: RUN RC={receipt['step_rc'].get('RUN')} "
+                  f"statuses={receipt['observed_statuses']}", flush=True)
     (authority / "capture.json").write_text(json.dumps({
-        "schema": "insurance-a3-targeted-capture-v1", "load_prefix": args.load_prefix,
-        "prefix": args.prefix, "cases": summary}, indent=2, sort_keys=True) + "\n")
+        "schema": "insurance-a3-targeted-capture-v2", "load_prefix": args.load_prefix,
+        "prefix": args.prefix, "provenance": prov, "cases": summary},
+        indent=2, sort_keys=True) + "\n")
+
+
+def rederive(args) -> None:
+    """Rebuild receipts from retained raw guest evidence; no guest job is executed."""
+    index = json.loads((args.cases / "cases.json").read_text())
+    golden = SAMPLE / "golden" / "v1"
+    pj.verify_golden_inventory(golden)
+    capture_path = args.authority / "capture.json"
+    summary_doc = json.loads(capture_path.read_text())
+    prov = load_provenance(args.build_manifest, args.guest_manifest, golden,
+                           summary_doc["load_prefix"])
+    provenance = args.authority.parent / "provenance"
+    provenance.mkdir(exist_ok=True)
+    (provenance / "build.json").write_bytes(args.build_manifest.read_bytes())
+    (provenance / "guest.json").write_bytes(args.guest_manifest.read_bytes())
+    summary = []
+    for n, case in enumerate(index, 1):
+        name = case["name"]
+        d = args.authority / name
+        old = json.loads((d / "receipt.json").read_text())
+        data = {k: (d / f"{k}.bin").read_bytes() for k in ("polin", "txnin", "polout", "resout")}
+        for k in ("polin", "txnin"):
+            if sha(data[k]) != case[f"{k}_sha256"] or \
+                    data[k] != (args.cases / name / f"{k}.bin").read_bytes():
+                raise AuthorityError(f"{name}: authority {k}.bin is not the pinned case input")
+        result_path = args.guest / f"{n:02d}-{name}-run" / "result.json"
+        if not result_path.is_file():
+            raise AuthorityError(f"{name}: missing raw guest evidence {result_path}")
+        job_result = result_path.read_bytes()
+        if sha(job_result) != old.get("job_result_sha256"):
+            raise AuthorityError(f"{name}: raw guest result.json differs from the capture-time "
+                                 f"receipt's job_result_sha256")
+        job = json.loads(job_result)
+        if job["job_id"] != old["job_id"] or {s: int(c) for s, c in job["steps"]} != old["step_rc"]:
+            raise AuthorityError(f"{name}: raw guest evidence disagrees with the capture-time receipt")
+        receipt = build_receipt(case, job, job_result, data, prov, old["dataset_prefix"],
+                                old["seconds"])
+        receipt["derived_from"] = {"capture_receipt_sha256": sha((d / "receipt.json").read_bytes()),
+                                   "guest_result_json": str(result_path.relative_to(args.guest))}
+        (d / "receipt.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+        summary.append(receipt)
+        print(f"{name}: receipt rederived from {result_path.name} (RUN RC="
+              f"{receipt['step_rc'].get('RUN')})", flush=True)
+    summary_doc.update({"schema": "insurance-a3-targeted-capture-v2", "provenance": prov,
+                        "cases": summary, "rederived": True})
+    capture_path.write_text(json.dumps(summary_doc, indent=2, sort_keys=True) + "\n")
 
 
 # ---------------------------------------------------------------------------- java comparison
@@ -315,23 +530,34 @@ def compare(args) -> None:
     args.work.mkdir(parents=True, exist_ok=True)
     jar_sha = sha(args.jar.read_bytes())
     golden = SAMPLE / "golden" / "v1"
+    try:
+        pj.verify_golden_inventory(golden)
+        capture_doc = json.loads((args.authority / "capture.json").read_text())
+        build, guest = default_manifests(args)
+        prov = load_provenance(build, guest, golden, capture_doc["load_prefix"])
+    except (AuthorityError, OSError, KeyError, ValueError) as e:
+        raise SystemExit(f"FAIL: targeted authority rejected before any Java code ran: {e}")
     rates_sha = pj.rate_table_sha(golden / "rates.json")
     runner = pj.BatchRunner(args) if args.mode == "batch" else pj.HttpRunner(args, args.mode)
-    report = {"schema": "insurance-java-targeted-parity-v1", "mode": args.mode,
-              "authority": {"kind": "a3-targeted", "dir": str(args.authority)},
+    report = {"schema": "insurance-java-targeted-parity-v2", "mode": args.mode,
+              "authority": {"kind": "a3-targeted", "dir": str(args.authority),
+                            "cases_dir": str(args.cases), "provenance": prov},
               "jar_sha256": jar_sha, "source_commit": args.source_commit, "cases": []}
     for n, case in enumerate(index, 1):
         name = case["name"]
-        d = args.authority / name
-        receipt = json.loads((d / "receipt.json").read_text())
-        data = {k: (d / f"{k}.bin").read_bytes() for k in ("polin", "txnin", "polout", "resout")}
         entry = {"case": name, "description": case["description"], "control": case["control"],
-                 "guest_job_id": receipt["job_id"], "guest_step_rc": receipt["step_rc"],
-                 "observed_statuses": receipt["observed_statuses"],
                  "oracle_statuses": case["oracle_statuses"], "errors": [], "mismatches": []}
-        for k, v in data.items():
-            if sha(v) != receipt[f"{k}_sha256"]:
-                entry["errors"].append(f"authority {k}.bin hash differs from the guest receipt")
+        try:
+            receipt, data = validate_case_authority(case, args.authority, args.cases, prov)
+        except AuthorityError as e:
+            entry["errors"].append(f"authority rejected: {e}")
+            entry["passed"] = False
+            report["cases"].append(entry)
+            print(f"{name}: AUTHORITY REJECTED ({e}) -> FAIL", flush=True)
+            continue
+        entry.update({"guest_job_id": receipt["job_id"], "guest_step_rc": receipt["step_rc"],
+                      "guest_receipt_validated": "control" if case["control"] else "legacy",
+                      "observed_statuses": receipt["observed_statuses"]})
         ns = f"{args.namespace_prefix}t{n:02d}"
         gen = f"{ns}-run"
         policies, txns = len(data["polin"]) // 128, len(data["txnin"]) // 40
@@ -339,10 +565,10 @@ def compare(args) -> None:
                                            rates_sha)
         boot_error = runner.bootstrap(ns, f"{ns}-root", data["polin"], root_manifest)
         if case["control"]:
-            entry["guest_rejected"] = receipt["step_rc"].get("RUN") == 12 and not receipt["passed"]
+            entry["guest_rejected"] = True  # validate_control_receipt required RUN RC=12
             entry["java_rejected"] = boot_error is not None
             entry["java_error"] = boot_error
-            entry["passed"] = entry["guest_rejected"] and entry["java_rejected"] and not entry["errors"]
+            entry["passed"] = entry["java_rejected"] and not entry["errors"]
             report["cases"].append(entry)
             print(f"{name}: guest RC={receipt['step_rc'].get('RUN')} java_rejected={boot_error is not None}"
                   f" -> {'PASS' if entry['passed'] else 'FAIL'}", flush=True)
@@ -352,8 +578,6 @@ def compare(args) -> None:
             entry["passed"] = False
             report["cases"].append(entry)
             continue
-        if receipt["step_rc"].get("RUN") != 0 or not receipt["passed"]:
-            entry["errors"].append("guest run did not complete with RC=0; no authority for this case")
         if receipt["observed_statuses"] != case["oracle_statuses"]:
             entry["errors"].append("guest statuses differ from the source-derived oracle's expectation "
                                    "(case may not exercise the intended path; inspect)")
@@ -414,7 +638,21 @@ def main() -> None:
     g.add_argument("--root", type=Path, default=Path.home() / "mvs-demo")
     g.add_argument("--prefix", required=True, help="dataset HLQ for this capture (fresh)")
     g.add_argument("--load-prefix", required=True, help="HLQ of the guest-built LOAD library")
+    g.add_argument("--build-manifest", type=Path, required=True,
+                   help="build.json of the guest build that produced --load-prefix")
+    g.add_argument("--guest-manifest", type=Path, required=True, help="guest.json of that run")
+    r = sub.add_parser("rederive")
+    r.add_argument("--cases", type=Path, required=True)
+    r.add_argument("--authority", type=Path, required=True)
+    r.add_argument("--guest", type=Path, required=True,
+                   help="retained raw guest evidence directory of the capture (<NN>-<case>-run/)")
+    r.add_argument("--build-manifest", type=Path, required=True)
+    r.add_argument("--guest-manifest", type=Path, required=True)
     j = sub.add_parser("compare")
+    j.add_argument("--build-manifest", type=Path,
+                   help="default: <authority>/../provenance/build.json")
+    j.add_argument("--guest-manifest", type=Path,
+                   help="default: <authority>/../provenance/guest.json")
     j.add_argument("--cases", type=Path, required=True)
     j.add_argument("--authority", type=Path, required=True)
     j.add_argument("--mode", choices=pj.MODES, default="batch")
@@ -429,6 +667,8 @@ def main() -> None:
         write_cases(args.out)
     elif args.command == "capture":
         capture(args)
+    elif args.command == "rederive":
+        rederive(args)
     else:
         compare(args)
 

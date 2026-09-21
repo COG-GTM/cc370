@@ -160,9 +160,14 @@ Current results (`evidence/fast/`), A1 and all three A2 paths, 5/5 stages and
 | `http-json` | 7,424 | 1,280 (512 malformed packed, 256 negative zero, 256 F sign, 256 nonzero reserved/tail) |
 
 Before A2/A3 bytes are used as an authority the driver runs the unchanged
-legacy receipt validator (`../tools/compare.py`) with independently recomputed
-hashes; a missing, failed, timed-out, nonzero-RC or ABEND receipt, a missing
-file or a hash/count mismatch rejects the stage before any comparison.
+legacy receipt validator (`../tools/compare.py`) with all seven receipt hashes
+recomputed independently (`polin`/`txnin`/`polout`/`resout` from the files,
+`build_manifest`/`guest_manifest` from the run's `provenance/` manifests,
+`rates` from the frozen `data/rates`) and checks the observed inputs against
+the pinned golden bytes; a missing, failed, timed-out, nonzero-RC or ABEND
+receipt, a missing or wrong value for any key, a missing manifest or file, or
+a hash/count mismatch rejects the stage before any comparison
+(`tools/test_parity_authority.py`, 33 negative controls).
 
 Negative controls: flipping one byte of an authority's `resout.bin` makes the
 same driver stop at that stage with the first mismatching record, field,
@@ -203,6 +208,13 @@ evidence only.
   stores, receipts, stateful raw/typed HTTP, `batch`/`http-gen`/`http-json`
   FAST parity against A1 and A2, Java-only lifecycle tests (fence, CAS race,
   retry commit boundaries, truncation, immutability, fail-closed restart).
+- Done (bounded): real child-JVM kills of the PostgreSQL-backed service
+  (`ServiceKillTest`: inside the commit, after the commit before the
+  response, inside publication before the flip, after publication) and real
+  HTTP client timeout / 503 / server-500 at both commit boundaries through a
+  TCP fault proxy (`HttpBoundaryTest`), each followed by direct DB inspection,
+  restart and retry; runtime evidence in `evidence/acceptance/runtime/`. Not
+  covered: a PostgreSQL outage mid-generation, power loss.
 - Done: A3 fresh guest acceptance (full corpus on three paths, 16 targeted
   cases) with Java `batch`/`http-gen`/`http-json` parity against it
   (`evidence/acceptance/`).
@@ -231,4 +243,8 @@ evidence only.
   resume of a pending generation, an unpublishable-pending state (failed
   publication discards), and `Prefer: return=original`. Admission order in the
   HTTP adapter is defined at servlet-filter entry per namespace/generation
-  within one JVM, not TCP arrival or cross-instance order.
+  within one JVM, not TCP arrival or cross-instance order; the claim is order
+  preservation for accepted calls — a rejected envelope consumes a ticket but
+  no ordinal and a `batch` call consumes one ticket for N contiguous
+  ordinals, so the `X-Admission-Sequence` ticket is not in general equal to
+  the committed ordinal.

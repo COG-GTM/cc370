@@ -1,9 +1,18 @@
 {
+  "abend": null,
+  "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
   "case": "age-rate-bands",
+  "control": false,
   "dataset_prefix": "IBMUSER.INSJ4.X.C06",
+  "derived_from": {
+    "capture_receipt_sha256": "eb3e94cbe481e51dcf07f2c5cb7109f323199b1723d55e7b679e299b623c3119",
+    "guest_result_json": "06-age-rate-bands-run/result.json"
+  },
   "errors": [],
+  "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
   "job_id": "JOB00183",
   "job_result_sha256": "659d442ad6f295714ec5c0d737567b2a7c8ae1d0ec7c7108cc42b8c36edab8c8",
+  "load_prefix": "IBMUSER.INSJ4.I",
   "observed_statuses": [
     "OKAY",
     "OKAY",
@@ -29,15 +38,19 @@
     "OKAY",
     "OKAY"
   ],
+  "outcome": "completed",
   "passed": true,
   "polin_sha256": "6326cfcf4b08b4a46416a4e90a983388339b473fc56cb0a1640a8ec0cc37fb63",
   "polout_sha256": "83c3a24e9ad585c30fa71ddb03bce8a58f1667c1fcbfae7b0f5bcd6d6849ff9a",
   "purged": true,
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
   "resout_sha256": "6b761f7d936fa9e0b88a10c34711b3b2ae0a0a31f75f90d361b91754bef30f9c",
-  "schema": "insurance-a3-targeted-v1",
+  "schema": "insurance-run-v1",
   "seconds": 3.9,
   "step_rc": {
     "RUN": 0
   },
+  "targeted": "insurance-a3-targeted-v2",
+  "timed_out": false,
   "txnin_sha256": "887bcf3fec96463b66e772ff1d1cdba66b4cf29479dc847e6144987856a9fcce"
 }

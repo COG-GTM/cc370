@@ -1,9 +1,18 @@
 {
+  "abend": null,
+  "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
   "case": "packed-signs",
+  "control": false,
   "dataset_prefix": "IBMUSER.INSJ4.X.C07",
+  "derived_from": {
+    "capture_receipt_sha256": "04ec97ce0e3bba16612b4f70a20556c896137410f6148fef4eb137e0c1bbd993",
+    "guest_result_json": "07-packed-signs-run/result.json"
+  },
   "errors": [],
+  "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
   "job_id": "JOB00186",
   "job_result_sha256": "9dad780c300cc6bcb019ddd171c9c5ea19fc6e96d581e1d52492e3f78cff8f2a",
+  "load_prefix": "IBMUSER.INSJ4.I",
   "observed_statuses": [
     "OKAY",
     "OKAY",
@@ -23,15 +32,19 @@
     "NEGA",
     "OKAY"
   ],
+  "outcome": "completed",
   "passed": true,
   "polin_sha256": "a6d8631b8b676816d82d5c4f321b79d980cc0e5dfad9cfa7005cec9edea23254",
   "polout_sha256": "fcc4eab5327d5323d1ae355a15ab9f5e1c7537558c099a79eb8fba3c8949b2d9",
   "purged": true,
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
   "resout_sha256": "752ed0a6bf3a354066e0841b9446657aaabf0cf909e0c19a57de0de98fc48ef4",
-  "schema": "insurance-a3-targeted-v1",
+  "schema": "insurance-run-v1",
   "seconds": 3.9,
   "step_rc": {
     "RUN": 0
   },
+  "targeted": "insurance-a3-targeted-v2",
+  "timed_out": false,
   "txnin_sha256": "1c1f63daed7f9f47ffa160bd12d653a46c2d5538213e9c118ebdc9a2194db591"
 }
