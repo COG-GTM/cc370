@@ -1,0 +1,29 @@
+{
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "publication" : {
+    "matches_oracle" : true,
+    "resout_sha256" : "5b272ebdf666d4d5562155504120cf0aad03bae8ecb577ac29c5b60fdfd6345b",
+    "results_count" : 2
+  },
+  "recorded_at" : "2026-09-21T16:37:45.913254223Z",
+  "schema" : "insurance-java-http-boundary-v1",
+  "server_500_before_commit" : {
+    "client_status" : 500,
+    "db_after_fault" : {
+      "entries" : 0,
+      "last_ordinal" : 0,
+      "last_status" : null,
+      "status" : "PENDING"
+    },
+    "retry" : {
+      "ordinal" : 1,
+      "status" : "OKAY"
+    }
+  },
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
+  "test" : "server500InsideTheCommitTransactionRollsBackAndTheRetrySucceeds"
+}

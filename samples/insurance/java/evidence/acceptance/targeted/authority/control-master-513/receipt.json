@@ -1,0 +1,37 @@
+{
+  "abend": null,
+  "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+  "case": "control-master-513",
+  "control": true,
+  "dataset_prefix": "IBMUSER.INSJ4.X.C16",
+  "derived_from": {
+    "capture_receipt_sha256": "7e24293e372ef168cda2ecb27394cc3957e7eb387c3a88180d96b11e25efb590",
+    "guest_result_json": "16-control-master-513-run/result.json"
+  },
+  "errors": [
+    "RUN: expected one RC=0, found [12]",
+    "RUN: nonzero RC=0012"
+  ],
+  "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+  "job_id": "JOB00213",
+  "job_result_sha256": "1366cf2b1e2713a931a4cbf40df069fbd6346f9c45817d51de84b912c1930633",
+  "load_prefix": "IBMUSER.INSJ4.I",
+  "observed_statuses": [],
+  "oracle_agrees": false,
+  "oracle_statuses": null,
+  "outcome": "failed",
+  "passed": false,
+  "polin_sha256": "4280046e7213a8011ac0401f2b434f6bb4989bbb5374d62a5b55525dcbb8dcb2",
+  "polout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "purged": true,
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+  "resout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema": "insurance-run-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 12
+  },
+  "targeted": "insurance-a3-targeted-v2",
+  "timed_out": false,
+  "txnin_sha256": "59d6a3667b984f90b4319010bec9031a565032cbb10118e3b08a53cbe9b87c4d"
+}

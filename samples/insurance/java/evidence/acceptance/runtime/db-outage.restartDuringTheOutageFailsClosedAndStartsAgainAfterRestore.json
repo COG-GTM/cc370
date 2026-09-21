@@ -1,0 +1,66 @@
+{
+  "container_owned_by_test" : true,
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "recorded_at" : "2026-09-21T16:39:03.404190667Z",
+  "restart_during_outage" : {
+    "claim" : {
+      "namespace" : "outage",
+      "generation" : "g1",
+      "parent" : "root",
+      "fence" : 2,
+      "claims" : 1,
+      "lastOrdinal" : 2,
+      "typedRequests" : 0,
+      "rawRequests" : 2,
+      "committedRequestsSha256" : "2518384f7bb1e839e61286957b038e6cd8612e0f677b5f4a4e5ec4b8ff61cb05",
+      "checkpoint" : "89bb0fc7a7b386f100263805db08cce62143b31db2b2f0ac546da0bd8097e7da"
+    },
+    "db_after_restart" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 16:39:07.51281",
+      "status" : "PENDING"
+    },
+    "db_before_outage" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 16:39:07.51281",
+      "status" : "PENDING"
+    },
+    "outage" : {
+      "container_state" : "exited",
+      "direct_jdbc_connect" : "PSQLException: Connection to localhost:36165 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
+      "restart_exit" : 1,
+      "restart_root_cause" : "PSQLException: Connection to localhost:36165 refused"
+    },
+    "restore" : {
+      "container_state" : "running",
+      "direct_jdbc_connect" : "ok"
+    },
+    "resume" : {
+      "generation" : "g1",
+      "matches_oracle" : true,
+      "polout_sha256" : "410586a6e97a0d31e57fb176284d2fdfd18ef32cff916ebbf8f6d70dbdc28409",
+      "resout_sha256" : "b61cfb4fd4930046b559c8ae6566aed5f01b676982d3553dd3ae6affbe80e6ca",
+      "transactions_count" : 4
+    },
+    "resumed_from_ordinal" : 3
+  },
+  "schema" : "insurance-java-db-outage-v1",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
+  "test" : "restartDuringTheOutageFailsClosedAndStartsAgainAfterRestore"
+}

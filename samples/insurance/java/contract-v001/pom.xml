@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>insurance.sample</groupId>
+    <artifactId>insurance-java</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>contract-v001</artifactId>
+  <name>contract-v001</name>
+  <description>Framework-free implementation of the V001 business contract (INSVAL, INSPACK, INSDATE, INSRATE, INSCALC, INSBAT semantics)</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>insurance.sample</groupId>
+      <artifactId>legacy-codec</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

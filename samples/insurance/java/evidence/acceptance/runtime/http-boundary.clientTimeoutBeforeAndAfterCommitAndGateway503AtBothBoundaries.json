@@ -1,0 +1,84 @@
+{
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
+  "gateway_503_after_commit" : {
+    "client_status" : 503,
+    "db_after_fault" : {
+      "entries" : 8,
+      "last_ordinal" : 8,
+      "last_status" : "OKAY",
+      "status" : "PENDING"
+    },
+    "retry" : {
+      "ordinal" : 9,
+      "status" : "DUPL"
+    }
+  },
+  "gateway_503_before_commit" : {
+    "client_status" : 503,
+    "db_after_fault" : {
+      "entries" : 6,
+      "last_ordinal" : 6,
+      "last_status" : "ORDR",
+      "status" : "PENDING"
+    },
+    "retry" : {
+      "ordinal" : 7,
+      "status" : "OKAY"
+    }
+  },
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "publication" : {
+    "matches_oracle" : true,
+    "resout_sha256" : "5e50a9d4c5e69084a32a1ddfd94cf4338fae41fbc6011f3207f93857bdf026e8",
+    "results_count" : 9
+  },
+  "recorded_at" : "2026-09-21T16:37:48.164998903Z",
+  "schema" : "insurance-java-http-boundary-v1",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
+  "test" : "clientTimeoutBeforeAndAfterCommitAndGateway503AtBothBoundaries",
+  "timeout_after_commit" : {
+    "client_exception" : "java.net.http.HttpTimeoutException",
+    "db_after_fault" : {
+      "entries" : 2,
+      "last_ordinal" : 2,
+      "last_status" : "OKAY",
+      "status" : "PENDING"
+    },
+    "retry" : {
+      "ordinal" : 3,
+      "status" : "DUPL"
+    }
+  },
+  "timeout_after_commit_intervening" : {
+    "db_after_fault" : {
+      "entries" : 4,
+      "last_ordinal" : 4,
+      "last_status" : "OKAY",
+      "status" : "PENDING"
+    },
+    "intervening" : {
+      "ordinal" : 5,
+      "status" : "OKAY"
+    },
+    "retry" : {
+      "ordinal" : 6,
+      "status" : "ORDR"
+    }
+  },
+  "timeout_before_commit" : {
+    "client_exception" : "java.net.http.HttpTimeoutException",
+    "db_after_fault" : {
+      "entries" : 0,
+      "last_ordinal" : 0,
+      "last_status" : null,
+      "status" : "PENDING"
+    },
+    "retry" : {
+      "ordinal" : 1,
+      "status" : "OKAY"
+    }
+  }
+}

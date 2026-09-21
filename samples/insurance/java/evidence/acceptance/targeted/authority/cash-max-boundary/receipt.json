@@ -1,0 +1,42 @@
+{
+  "abend": null,
+  "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+  "case": "cash-max-boundary",
+  "control": false,
+  "dataset_prefix": "IBMUSER.INSJ4.X.C03",
+  "derived_from": {
+    "capture_receipt_sha256": "ab2a0505d78d667f461a22b10a9db8097c04bafb465c2385664839bdcccb4dfc",
+    "guest_result_json": "03-cash-max-boundary-run/result.json"
+  },
+  "errors": [],
+  "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+  "job_id": "JOB00174",
+  "job_result_sha256": "ab4e22e1fd9942d09bcf33020d2ed6a2497aa781b049ebf41bda79710f24cdd1",
+  "load_prefix": "IBMUSER.INSJ4.I",
+  "observed_statuses": [
+    "OKAY",
+    "OKAY",
+    "OVER"
+  ],
+  "oracle_agrees": true,
+  "oracle_statuses": [
+    "OKAY",
+    "OKAY",
+    "OVER"
+  ],
+  "outcome": "completed",
+  "passed": true,
+  "polin_sha256": "af0a5a075ac2f26ebf479a129255c0aa9caca3dbaeff1c962493c96fba9d738e",
+  "polout_sha256": "2a0caf8b929b823fe6e4f6128b219cb0ac182797c216bfe85d668cd8e9bc3055",
+  "purged": true,
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+  "resout_sha256": "e6cc69c9ca0ea80c671f2d6430beb0a66f64386825b4a7a7eebe16dc70aa61fb",
+  "schema": "insurance-run-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 0
+  },
+  "targeted": "insurance-a3-targeted-v2",
+  "timed_out": false,
+  "txnin_sha256": "03a967f4a220cdc4ae3f5b86c150e58c66ad492ec74d996dfab158a6615bb9f8"
+}

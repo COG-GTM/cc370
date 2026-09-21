@@ -1,0 +1,63 @@
+{
+  "container_owned_by_test" : true,
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "recorded_at" : "2026-09-21T16:39:22.346817645Z",
+  "schema" : "insurance-java-db-outage-v1",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
+  "stop_between_requests" : {
+    "db_after_restore" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 16:39:39.662085",
+      "status" : "PENDING"
+    },
+    "db_before_outage" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 16:39:39.662085",
+      "status" : "PENDING"
+    },
+    "heartbeat_after_restore" : {
+      "lease_expires_at" : "2026-09-21 16:39:49.967976",
+      "next" : "2026-09-21 16:39:54.178312"
+    },
+    "outage" : {
+      "container_state" : "exited",
+      "current_read_status" : 500,
+      "direct_jdbc_connect" : "PSQLException: Connection to localhost:36165 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
+      "heartbeat_failure_logged" : true,
+      "request_3_body" : "{\"timestamp\":\"2026-09-21T16:39:24.832+00:00\",\"status\":500,\"error\":\"Internal Server Error\",\"message\":\"PreparedStatementCallback; SQL [SELECT \\\"generation\\\".\\\"id\\\" AS \\\"id\\\", \\\"generation\\\".\\\"name\\\" AS \\\"name\\\", \\\"generation\\\".\\\"fence\\\" AS \\\"fence\\\", \\\"generation\\\".\\\"claims\\\" AS \\\"claims\\\", \\\"generation\\\".\\\"status\\\" AS \\\"status\\\", \\\"generation\\\".\\\"writer_id\\\" AS \\\"writer_id\\\", \\\"generation\\\".\\\"parent_id\\\" AS \\\"parent_id\\\", \\\"generation\\\".\\\"namespace\\\" AS \\\"namespace\\\", \\\"generation\\\".\\\"checkpoint\\\" AS \\\"checkpoint\\\", \\\"generation\\\".\\\"last_ordinal\\\" AS \\\"last_ordinal\\\", \\\"generation\\\".\\\"raw_requests\\\" AS \\\"raw_requests\\\", \\\"generation\\\".\\\"policies_count\\\" AS \\\"policies_count\\\", \\\"generation\\\".\\\"typed_requests\\\" AS \\\"typed_requests\\\", \\\"generation\\\".\\\"manifest_sha256\\\" AS \\\"manifest_sha256\\\", \\\"generation\\\".\\\"seed_polin_sha256\\\" AS \\\"seed_polin_sha256\\\", \\\"generation\\\".\\\"contract_identity\\\" AS \\\"contract_identity\\\" FROM \\\"generation\\\" WHERE \\\"generation\\\".\\\"namespace\\\" = ? AND (\\\"generation\\\".\\\"name\\\" = ?)]; FATAL: terminating connection due to administrator command\",\"path\":\"/v1/namespaces/outage/generations/g1/requests:raw\"}",
+      "request_3_status" : 500
+    },
+    "publication" : {
+      "generation" : "g1",
+      "matches_oracle" : true,
+      "polout_sha256" : "410586a6e97a0d31e57fb176284d2fdfd18ef32cff916ebbf8f6d70dbdc28409",
+      "resout_sha256" : "b61cfb4fd4930046b559c8ae6566aed5f01b676982d3553dd3ae6affbe80e6ca",
+      "transactions_count" : 4
+    },
+    "restore" : {
+      "container_state" : "running",
+      "direct_jdbc_connect" : "ok"
+    },
+    "retry" : {
+      "ordinal" : 3,
+      "status" : "OKAY"
+    }
+  },
+  "test" : "stopAfterCommittedPrefixFailsTheRequestAndTheSameWriterResumesAfterRestart"
+}

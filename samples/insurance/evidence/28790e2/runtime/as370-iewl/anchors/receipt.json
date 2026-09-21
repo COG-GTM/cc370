@@ -1,0 +1,19 @@
+{
+  "abend": null,
+  "build_manifest_sha256": "8512305f2d9786e94f396e5170ca769cf9bf1a276c6c95339b7642938a2dc0f6",
+  "guest_manifest_sha256": "6d7a8a32c772a34300bebe3edf779ff56ac6fb24e3e1e657034db49c6fa027e4",
+  "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/anchors.polin.bin",
+  "job_id": "JOB00183",
+  "job_result_sha256": "659d442ad6f295714ec5c0d737567b2a7c8ae1d0ec7c7108cc42b8c36edab8c8",
+  "outcome": "completed",
+  "polin_sha256": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80",
+  "polout_sha256": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+  "resout_sha256": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a",
+  "schema": "insurance-run-v1",
+  "step_rc": {
+    "RUN": 0
+  },
+  "timed_out": false,
+  "txnin_sha256": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876"
+}

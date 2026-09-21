@@ -1,0 +1,62 @@
+{
+  "abend": null,
+  "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+  "case": "sequence-matrix",
+  "control": false,
+  "dataset_prefix": "IBMUSER.INSJ4.X.C09",
+  "derived_from": {
+    "capture_receipt_sha256": "f2a9d19be7c55c7aa6cb247edc9f3ad48359cd84711d26ec4b9de101c6a7e6d0",
+    "guest_result_json": "09-sequence-matrix-run/result.json"
+  },
+  "errors": [],
+  "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+  "job_id": "JOB00192",
+  "job_result_sha256": "2db5cf5d75a1807ceb0d1012d67f37bfeb388889f6d62f979ae462f4c32fa653",
+  "load_prefix": "IBMUSER.INSJ4.I",
+  "observed_statuses": [
+    "ORDR",
+    "ORDR",
+    "OKAY",
+    "DUPL",
+    "CNFL",
+    "CNFL",
+    "ORDR",
+    "OKAY",
+    "ORDR",
+    "DATE",
+    "OKAY",
+    "NPOL",
+    "NPOL"
+  ],
+  "oracle_agrees": true,
+  "oracle_statuses": [
+    "ORDR",
+    "ORDR",
+    "OKAY",
+    "DUPL",
+    "CNFL",
+    "CNFL",
+    "ORDR",
+    "OKAY",
+    "ORDR",
+    "DATE",
+    "OKAY",
+    "NPOL",
+    "NPOL"
+  ],
+  "outcome": "completed",
+  "passed": true,
+  "polin_sha256": "ac783e3753fa5e4b2f1c0a684058c66103735b1a7d91ed4b00f83dae1e32f15b",
+  "polout_sha256": "ec520d96e3cc7667b073b7d7abfdcd9a9a7085e4d354ef1195c65ba0ce2b275f",
+  "purged": true,
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+  "resout_sha256": "c70466a917dee130242086309e18a5edc2ba304190c9f5eefae53db2ede779de",
+  "schema": "insurance-run-v1",
+  "seconds": 3.9,
+  "step_rc": {
+    "RUN": 0
+  },
+  "targeted": "insurance-a3-targeted-v2",
+  "timed_out": false,
+  "txnin_sha256": "da8ed7e7c1b1007ee2364e6ee33b91d6b9443dc7cc3e2397ccea7ca9b898a7d9"
+}

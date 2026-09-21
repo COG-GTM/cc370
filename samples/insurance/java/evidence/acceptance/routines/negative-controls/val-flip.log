@@ -1,0 +1,3 @@
+ifox-iewl: 183/184 cases  INSPACK=20/20  INSDATE=26/26  INSRATE=20/20  INSVAL=33/34  INSCALC=84/84
+  FAIL VL001 INSVAL: WVALID: guest 00000000 (changed=True), Java 00000008; R15: guest 0, Java validity implies 8
+FAILED

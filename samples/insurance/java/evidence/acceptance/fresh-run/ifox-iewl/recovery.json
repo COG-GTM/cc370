@@ -1,0 +1,80 @@
+{
+  "fault": "Only half of stage B transactions delivered; strict receipt and byte checks rejected it",
+  "partial_generation_discarded": true,
+  "passed": true,
+  "phases": [
+    {
+      "command": [
+        "/usr/bin/python3",
+        "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py",
+        "--root",
+        "/home/ubuntu/mvs-demo",
+        "--load-prefix",
+        "IBMUSER.INSJ4.I",
+        "--build-manifest",
+        "/home/ubuntu/a3/run-01/ifox-iewl-provenance/build.json",
+        "--guest-manifest",
+        "/home/ubuntu/a3/run-01/ifox-iewl-provenance/guest.json",
+        "--evidence",
+        "/home/ubuntu/a3/run-01/ifox-iewl-recovery/checkpoint",
+        "--prefix",
+        "IBMUSER.INSJ4.IC.R1",
+        "--stages",
+        "a,a-replay"
+      ],
+      "controller_rc": 0,
+      "phase": "checkpoint"
+    },
+    {
+      "command": [
+        "/usr/bin/python3",
+        "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py",
+        "--root",
+        "/home/ubuntu/mvs-demo",
+        "--load-prefix",
+        "IBMUSER.INSJ4.I",
+        "--build-manifest",
+        "/home/ubuntu/a3/run-01/ifox-iewl-provenance/build.json",
+        "--guest-manifest",
+        "/home/ubuntu/a3/run-01/ifox-iewl-provenance/guest.json",
+        "--evidence",
+        "/home/ubuntu/a3/run-01/ifox-iewl-recovery/partial",
+        "--prefix",
+        "IBMUSER.INSJ4.IC.R2",
+        "--stages",
+        "b",
+        "--resume-from",
+        "/home/ubuntu/a3/run-01/ifox-iewl-recovery/checkpoint/current.json",
+        "--fault-stage",
+        "b"
+      ],
+      "controller_rc": 1,
+      "phase": "partial"
+    },
+    {
+      "command": [
+        "/usr/bin/python3",
+        "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py",
+        "--root",
+        "/home/ubuntu/mvs-demo",
+        "--load-prefix",
+        "IBMUSER.INSJ4.I",
+        "--build-manifest",
+        "/home/ubuntu/a3/run-01/ifox-iewl-provenance/build.json",
+        "--guest-manifest",
+        "/home/ubuntu/a3/run-01/ifox-iewl-provenance/guest.json",
+        "--evidence",
+        "/home/ubuntu/a3/run-01/ifox-iewl-recovery/restart",
+        "--prefix",
+        "IBMUSER.INSJ4.IC.R3",
+        "--stages",
+        "b,b-replay",
+        "--resume-from",
+        "/home/ubuntu/a3/run-01/ifox-iewl-recovery/checkpoint/current.json"
+      ],
+      "controller_rc": 0,
+      "phase": "restart"
+    }
+  ],
+  "restart_master_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27"
+}

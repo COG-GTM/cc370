@@ -1,0 +1,329 @@
+{
+  "authority": {
+    "dir": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1",
+    "golden_rates_json_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+    "kind": "a1",
+    "label": "",
+    "provenance": null,
+    "rate_table_canonical_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a"
+  },
+  "base_url": "http://127.0.0.1:18080",
+  "jar_sha256": "2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+  "java_version": "openjdk version \"21.0.12\" 2026-07-21\nOpenJDK Runtime Environment (build 21.0.12+8-1-22.04-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12+8-1-22.04-Ubuntu, mixed mode, sharing)",
+  "mode": "http-gen",
+  "passed": true,
+  "raw_requests": 8704,
+  "results_compared": 8704,
+  "roots": [
+    {
+      "error": null,
+      "generation": "http-gen-a1-anchors-root",
+      "namespace": "http-gen-a1-anchors",
+      "polin_sha256": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80"
+    },
+    {
+      "error": null,
+      "generation": "http-gen-a1-a-root",
+      "namespace": "http-gen-a1-a",
+      "polin_sha256": "20a3704db57bbc4bbbbf12c600c68d2ac0b67624dbf32290dbc6dfc108bb023d"
+    }
+  ],
+  "schema": "insurance-java-parity-v1",
+  "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+  "stages": [
+    {
+      "authority_expected_sha256": {
+        "polout": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+        "resout": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a"
+      },
+      "authority_input_sha256": {
+        "polin": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80",
+        "txnin": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876"
+      },
+      "errors": [],
+      "expected_counts": {
+        "policies": 10,
+        "transactions": 10
+      },
+      "first_result_mismatch_record": null,
+      "generation": "http-gen-a1-anchors-anchors",
+      "mismatches": [],
+      "namespace": "http-gen-a1-anchors",
+      "observed_sha256": {
+        "polout": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+        "requests": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876",
+        "resout": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a"
+      },
+      "parent": "http-gen-a1-anchors-root",
+      "passed": true,
+      "raw_requests": 10,
+      "receipt": {
+        "build_identity": "jar:sha256:2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+        "expected_manifest_sha256": "51980942935bb51532ec4ac8f9ae200a2970eaaa35c213fcb7e2c772c2da729b",
+        "generation": "http-gen-a1-anchors-anchors",
+        "mode": "http-gen",
+        "namespace": "http-gen-a1-anchors",
+        "outcome": "completed",
+        "parent_generation": "http-gen-a1-anchors-root",
+        "policies_count": 10,
+        "polin_sha256": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80",
+        "polout_sha256": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+        "publication_status": "PUBLISHED",
+        "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a",
+        "raw_requests": 10,
+        "record_schema": "POLIN/POLOUT FB128, TXNIN FB40, RESOUT FB96, CP037",
+        "resout_sha256": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a",
+        "results_count": 10,
+        "return_code": 0,
+        "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
+        "schema": "insurance-java-run-v1",
+        "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+        "stage": "anchors",
+        "transactions_count": 10,
+        "txnin_sha256": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876",
+        "typed_requests": 0
+      },
+      "receipt_errors": [],
+      "request_errors": [],
+      "seconds": 0.19,
+      "stage": "anchors",
+      "typed_requests": 0
+    },
+    {
+      "authority_expected_sha256": {
+        "polout": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "resout": "6215239a1821b50feb0134bb6e4b4eebe0b1ed5b9afbee9fec91389cca787742"
+      },
+      "authority_input_sha256": {
+        "polin": "20a3704db57bbc4bbbbf12c600c68d2ac0b67624dbf32290dbc6dfc108bb023d",
+        "txnin": "0f87af931a83dbcbe2084d452af5aa32f81abb6110fe52993eb741984328b005"
+      },
+      "errors": [],
+      "expected_counts": {
+        "policies": 256,
+        "transactions": 4097
+      },
+      "first_result_mismatch_record": null,
+      "generation": "http-gen-a1-a-a",
+      "mismatches": [],
+      "namespace": "http-gen-a1-a",
+      "observed_sha256": {
+        "polout": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "requests": "0f87af931a83dbcbe2084d452af5aa32f81abb6110fe52993eb741984328b005",
+        "resout": "6215239a1821b50feb0134bb6e4b4eebe0b1ed5b9afbee9fec91389cca787742"
+      },
+      "parent": "http-gen-a1-a-root",
+      "passed": true,
+      "raw_requests": 4097,
+      "receipt": {
+        "build_identity": "jar:sha256:2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+        "expected_manifest_sha256": "b717036b35704155e9e4fa9945aa09020ff01c2335f22b07986730c12f4d9cd4",
+        "generation": "http-gen-a1-a-a",
+        "mode": "http-gen",
+        "namespace": "http-gen-a1-a",
+        "outcome": "completed",
+        "parent_generation": "http-gen-a1-a-root",
+        "policies_count": 256,
+        "polin_sha256": "20a3704db57bbc4bbbbf12c600c68d2ac0b67624dbf32290dbc6dfc108bb023d",
+        "polout_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "publication_status": "PUBLISHED",
+        "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a",
+        "raw_requests": 4097,
+        "record_schema": "POLIN/POLOUT FB128, TXNIN FB40, RESOUT FB96, CP037",
+        "resout_sha256": "6215239a1821b50feb0134bb6e4b4eebe0b1ed5b9afbee9fec91389cca787742",
+        "results_count": 4097,
+        "return_code": 0,
+        "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
+        "schema": "insurance-java-run-v1",
+        "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+        "stage": "a",
+        "transactions_count": 4097,
+        "txnin_sha256": "0f87af931a83dbcbe2084d452af5aa32f81abb6110fe52993eb741984328b005",
+        "typed_requests": 0
+      },
+      "receipt_errors": [],
+      "request_errors": [],
+      "seconds": 10.397,
+      "stage": "a",
+      "typed_requests": 0
+    },
+    {
+      "authority_expected_sha256": {
+        "polout": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "resout": "f9e4860d519851c789b9012029a678119997961001a354d71c2bb60cf2d9f8ff"
+      },
+      "authority_input_sha256": {
+        "polin": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "txnin": "b1e20d2fcf727142b4a47b6aeee0d3fb4abf171e1f79bf68014c100754976bb2"
+      },
+      "errors": [],
+      "expected_counts": {
+        "policies": 256,
+        "transactions": 244
+      },
+      "first_result_mismatch_record": null,
+      "generation": "http-gen-a1-a-a-replay",
+      "mismatches": [],
+      "namespace": "http-gen-a1-a",
+      "observed_sha256": {
+        "polout": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "requests": "b1e20d2fcf727142b4a47b6aeee0d3fb4abf171e1f79bf68014c100754976bb2",
+        "resout": "f9e4860d519851c789b9012029a678119997961001a354d71c2bb60cf2d9f8ff"
+      },
+      "parent": "http-gen-a1-a-a",
+      "passed": true,
+      "raw_requests": 244,
+      "receipt": {
+        "build_identity": "jar:sha256:2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+        "expected_manifest_sha256": "bb02976bbb80790ada06e2e2671fed086ef3e7de8c29c72b222442ec74acdbb6",
+        "generation": "http-gen-a1-a-a-replay",
+        "mode": "http-gen",
+        "namespace": "http-gen-a1-a",
+        "outcome": "completed",
+        "parent_generation": "http-gen-a1-a-a",
+        "policies_count": 256,
+        "polin_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "polout_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "publication_status": "PUBLISHED",
+        "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a",
+        "raw_requests": 244,
+        "record_schema": "POLIN/POLOUT FB128, TXNIN FB40, RESOUT FB96, CP037",
+        "resout_sha256": "f9e4860d519851c789b9012029a678119997961001a354d71c2bb60cf2d9f8ff",
+        "results_count": 244,
+        "return_code": 0,
+        "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
+        "schema": "insurance-java-run-v1",
+        "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+        "stage": "a-replay",
+        "transactions_count": 244,
+        "txnin_sha256": "b1e20d2fcf727142b4a47b6aeee0d3fb4abf171e1f79bf68014c100754976bb2",
+        "typed_requests": 0
+      },
+      "receipt_errors": [],
+      "request_errors": [],
+      "seconds": 0.561,
+      "stage": "a-replay",
+      "typed_requests": 0
+    },
+    {
+      "authority_expected_sha256": {
+        "polout": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "resout": "5ceca4e5e3e06fd2b2cd69b3431675ba27d6e82d72598ec1325acf8229bc8f9d"
+      },
+      "authority_input_sha256": {
+        "polin": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "txnin": "a090b6b3dbfe69f1cf03587f01aaaeb2cac78bb707d22c8718ddf67dbe2b60be"
+      },
+      "errors": [],
+      "expected_counts": {
+        "policies": 256,
+        "transactions": 4097
+      },
+      "first_result_mismatch_record": null,
+      "generation": "http-gen-a1-a-b",
+      "mismatches": [],
+      "namespace": "http-gen-a1-a",
+      "observed_sha256": {
+        "polout": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "requests": "a090b6b3dbfe69f1cf03587f01aaaeb2cac78bb707d22c8718ddf67dbe2b60be",
+        "resout": "5ceca4e5e3e06fd2b2cd69b3431675ba27d6e82d72598ec1325acf8229bc8f9d"
+      },
+      "parent": "http-gen-a1-a-a-replay",
+      "passed": true,
+      "raw_requests": 4097,
+      "receipt": {
+        "build_identity": "jar:sha256:2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+        "expected_manifest_sha256": "ed8c918c370d377ff1f000f248fbf8f1bd86b35344a8c13b42cd79b47012581c",
+        "generation": "http-gen-a1-a-b",
+        "mode": "http-gen",
+        "namespace": "http-gen-a1-a",
+        "outcome": "completed",
+        "parent_generation": "http-gen-a1-a-a-replay",
+        "policies_count": 256,
+        "polin_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+        "polout_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "publication_status": "PUBLISHED",
+        "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a",
+        "raw_requests": 4097,
+        "record_schema": "POLIN/POLOUT FB128, TXNIN FB40, RESOUT FB96, CP037",
+        "resout_sha256": "5ceca4e5e3e06fd2b2cd69b3431675ba27d6e82d72598ec1325acf8229bc8f9d",
+        "results_count": 4097,
+        "return_code": 0,
+        "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
+        "schema": "insurance-java-run-v1",
+        "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+        "stage": "b",
+        "transactions_count": 4097,
+        "txnin_sha256": "a090b6b3dbfe69f1cf03587f01aaaeb2cac78bb707d22c8718ddf67dbe2b60be",
+        "typed_requests": 0
+      },
+      "receipt_errors": [],
+      "request_errors": [],
+      "seconds": 8.597,
+      "stage": "b",
+      "typed_requests": 0
+    },
+    {
+      "authority_expected_sha256": {
+        "polout": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "resout": "983ab6ae00d6ca445381482cbe16a060322caacb6f8da0ac86e7b6c955bc90ac"
+      },
+      "authority_input_sha256": {
+        "polin": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "txnin": "31d53d3bc51d92ad4d4f9f491d323e59a1080029ec057cbbc6a9c5c55e727708"
+      },
+      "errors": [],
+      "expected_counts": {
+        "policies": 256,
+        "transactions": 256
+      },
+      "first_result_mismatch_record": null,
+      "generation": "http-gen-a1-a-b-replay",
+      "mismatches": [],
+      "namespace": "http-gen-a1-a",
+      "observed_sha256": {
+        "polout": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "requests": "31d53d3bc51d92ad4d4f9f491d323e59a1080029ec057cbbc6a9c5c55e727708",
+        "resout": "983ab6ae00d6ca445381482cbe16a060322caacb6f8da0ac86e7b6c955bc90ac"
+      },
+      "parent": "http-gen-a1-a-b",
+      "passed": true,
+      "raw_requests": 256,
+      "receipt": {
+        "build_identity": "jar:sha256:2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+        "expected_manifest_sha256": "f94dc387327ab5199ee72bc481a817be286851a45582293c78966ff26b8c2511",
+        "generation": "http-gen-a1-a-b-replay",
+        "mode": "http-gen",
+        "namespace": "http-gen-a1-a",
+        "outcome": "completed",
+        "parent_generation": "http-gen-a1-a-b",
+        "policies_count": 256,
+        "polin_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "polout_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+        "publication_status": "PUBLISHED",
+        "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a",
+        "raw_requests": 256,
+        "record_schema": "POLIN/POLOUT FB128, TXNIN FB40, RESOUT FB96, CP037",
+        "resout_sha256": "983ab6ae00d6ca445381482cbe16a060322caacb6f8da0ac86e7b6c955bc90ac",
+        "results_count": 256,
+        "return_code": 0,
+        "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
+        "schema": "insurance-java-run-v1",
+        "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+        "stage": "b-replay",
+        "transactions_count": 256,
+        "txnin_sha256": "31d53d3bc51d92ad4d4f9f491d323e59a1080029ec057cbbc6a9c5c55e727708",
+        "typed_requests": 0
+      },
+      "receipt_errors": [],
+      "request_errors": [],
+      "seconds": 0.62,
+      "stage": "b-replay",
+      "typed_requests": 0
+    }
+  ],
+  "stages_expected": 5,
+  "stages_passed": 5,
+  "stopped_at": null,
+  "typed_requests": 0
+}

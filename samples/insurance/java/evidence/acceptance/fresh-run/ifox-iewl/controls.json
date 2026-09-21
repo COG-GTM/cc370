@@ -1,0 +1,227 @@
+[
+  {
+    "competing_process_rc": 1,
+    "control": "single_writer"
+  },
+  {
+    "control": "duplicate",
+    "input_unchanged_sha256": "45480555579e9b7e2e0e557e7a675ff1b9f2639618d77ccaa3a209795cd52d59",
+    "job": {
+      "errors": [
+        "RUN: expected one RC=0, found [12]",
+        "RUN: nonzero RC=0012"
+      ],
+      "job": "INSRUN",
+      "job_id": "JOB00031",
+      "passed": false,
+      "purged": true,
+      "steps": [
+        [
+          "RUN",
+          "0012"
+        ]
+      ]
+    },
+    "output_bytes": [
+      0,
+      0
+    ]
+  },
+  {
+    "control": "packed",
+    "input_unchanged_sha256": "ead8a0dfe694911934ebf1a2ff89d346cbd65f24c906015f350253e84936cf7e",
+    "job": {
+      "errors": [
+        "RUN: expected one RC=0, found [12]",
+        "RUN: nonzero RC=0012"
+      ],
+      "job": "INSRUN",
+      "job_id": "JOB00035",
+      "passed": false,
+      "purged": true,
+      "steps": [
+        [
+          "RUN",
+          "0012"
+        ]
+      ]
+    },
+    "output_bytes": [
+      0,
+      0
+    ]
+  },
+  {
+    "control": "oversize",
+    "input_unchanged_sha256": "6b2d9ce91f801923a0f106126757bb318cb5875373991b93839183c9f4c9124b",
+    "job": {
+      "errors": [
+        "RUN: expected one RC=0, found [12]",
+        "RUN: nonzero RC=0012"
+      ],
+      "job": "INSRUN",
+      "job_id": "JOB00039",
+      "passed": false,
+      "purged": true,
+      "steps": [
+        [
+          "RUN",
+          "0012"
+        ]
+      ]
+    },
+    "output_bytes": [
+      0,
+      0
+    ]
+  },
+  {
+    "control": "abend",
+    "job": {
+      "errors": [
+        "RUN: expected one RC=0, found []",
+        "ABEND, skipped step, or JCL error in spool"
+      ],
+      "job": "INSABEND",
+      "job_id": "JOB00042",
+      "passed": false,
+      "purged": true,
+      "steps": []
+    },
+    "observed_abend": "S806"
+  },
+  {
+    "commit_job": {
+      "errors": [],
+      "job": "INSRUN",
+      "job_id": "JOB00044",
+      "passed": true,
+      "purged": true,
+      "steps": [
+        [
+          "RUN",
+          "0000"
+        ]
+      ]
+    },
+    "control": "immutable_rejections",
+    "decoded_results": [
+      {
+        "age": 0,
+        "cash": 113259,
+        "charge": 0,
+        "date": 20250101,
+        "death": 0,
+        "fee": 0,
+        "id": "00000001",
+        "interest": 0,
+        "loan": 0,
+        "op": "P",
+        "rate": 0,
+        "reserved": "000000",
+        "seq": 10,
+        "status": "DUPL",
+        "surrender": 0,
+        "tail": "00000000000000000000000000000000",
+        "version": "V001"
+      },
+      {
+        "age": 0,
+        "cash": 113259,
+        "charge": 0,
+        "date": 20250101,
+        "death": 0,
+        "fee": 0,
+        "id": "00000001",
+        "interest": 0,
+        "loan": 0,
+        "op": "P",
+        "rate": 0,
+        "reserved": "000000",
+        "seq": 10,
+        "status": "CNFL",
+        "surrender": 0,
+        "tail": "00000000000000000000000000000000",
+        "version": "V001"
+      },
+      {
+        "age": 0,
+        "cash": 113259,
+        "charge": 0,
+        "date": 20250101,
+        "death": 0,
+        "fee": 0,
+        "id": "00000001",
+        "interest": 0,
+        "loan": 0,
+        "op": "Q",
+        "rate": 0,
+        "reserved": "000000",
+        "seq": 9,
+        "status": "ORDR",
+        "surrender": 0,
+        "tail": "00000000000000000000000000000000",
+        "version": "V001"
+      },
+      {
+        "age": 0,
+        "cash": 113259,
+        "charge": 0,
+        "date": 20250101,
+        "death": 0,
+        "fee": 0,
+        "id": "00000001",
+        "interest": 0,
+        "loan": 0,
+        "op": "P",
+        "rate": 0,
+        "reserved": "000000",
+        "seq": 11,
+        "status": "PACK",
+        "surrender": 0,
+        "tail": "00000000000000000000000000000000",
+        "version": "V001"
+      },
+      {
+        "age": 0,
+        "cash": 113259,
+        "charge": 0,
+        "date": 20250230,
+        "death": 0,
+        "fee": 0,
+        "id": "00000001",
+        "interest": 0,
+        "loan": 0,
+        "op": "Q",
+        "rate": 0,
+        "reserved": "000000",
+        "seq": 11,
+        "status": "DATE",
+        "surrender": 0,
+        "tail": "00000000000000000000000000000000",
+        "version": "V001"
+      }
+    ],
+    "rejection_job": {
+      "errors": [],
+      "job": "INSRUN",
+      "job_id": "JOB00047",
+      "passed": true,
+      "purged": true,
+      "steps": [
+        [
+          "RUN",
+          "0000"
+        ]
+      ]
+    },
+    "statuses": [
+      "DUPL",
+      "CNFL",
+      "ORDR",
+      "PACK",
+      "DATE"
+    ],
+    "unchanged_master_sha256": "9c5d974f1ed5fdb2729701626ce11b0d05142ba73acbbe86bf137766abe32966"
+  }
+]

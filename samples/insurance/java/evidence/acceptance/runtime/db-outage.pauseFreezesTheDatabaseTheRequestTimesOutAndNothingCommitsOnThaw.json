@@ -1,0 +1,53 @@
+{
+  "container_owned_by_test" : true,
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "pause_in_flight" : {
+    "db_after_restore" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 16:39:33.200926",
+      "status" : "PENDING"
+    },
+    "db_before_outage" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 16:39:33.200926",
+      "status" : "PENDING"
+    },
+    "paused" : true,
+    "publication" : {
+      "generation" : "g1",
+      "matches_oracle" : true,
+      "polout_sha256" : "410586a6e97a0d31e57fb176284d2fdfd18ef32cff916ebbf8f6d70dbdc28409",
+      "resout_sha256" : "b61cfb4fd4930046b559c8ae6566aed5f01b676982d3553dd3ae6affbe80e6ca",
+      "transactions_count" : 4
+    },
+    "request_3" : {
+      "elapsed_ms" : 4032,
+      "status" : 500
+    },
+    "retry" : {
+      "ordinal" : 3,
+      "status" : "OKAY"
+    },
+    "unpaused" : true
+  },
+  "postgres_image" : "postgres:15-alpine",
+  "recorded_at" : "2026-09-21T16:39:15.874267233Z",
+  "schema" : "insurance-java-db-outage-v1",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
+  "test" : "pauseFreezesTheDatabaseTheRequestTimesOutAndNothingCommitsOnThaw"
+}

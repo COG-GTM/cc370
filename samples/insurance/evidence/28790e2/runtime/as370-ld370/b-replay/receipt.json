@@ -1,0 +1,19 @@
+{
+  "abend": null,
+  "build_manifest_sha256": "a4b2772aba00abeaf6219c3751ccc7c1d421741ac2c7079c019066047c837f62",
+  "guest_manifest_sha256": "e64c0159fe32a10dc7b7dad55f339c827af53389a93ddf0497f56d36b9f97299",
+  "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-ld370/b/polout.bin",
+  "job_id": "JOB00246",
+  "job_result_sha256": "23e51d8966664877f6e3aa276115ec8791973e196decefb20ffbad7e8f321f44",
+  "outcome": "completed",
+  "polin_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+  "polout_sha256": "01dc633d6eedf4004b803f071d3b188bdc2f08c8077d6f83629571925f2fde27",
+  "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+  "resout_sha256": "983ab6ae00d6ca445381482cbe16a060322caacb6f8da0ac86e7b6c955bc90ac",
+  "schema": "insurance-run-v1",
+  "step_rc": {
+    "RUN": 0
+  },
+  "timed_out": false,
+  "txnin_sha256": "31d53d3bc51d92ad4d4f9f491d323e59a1080029ec057cbbc6a9c5c55e727708"
+}

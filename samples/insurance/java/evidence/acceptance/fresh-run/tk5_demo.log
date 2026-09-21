@@ -1,0 +1,355 @@
+
+==========================================================================
+1. Host build and exact FB128 / FB40 / FB96 transport
+==========================================================================
+make -C ../.. as370/as370 ld370/ld370 file370/file370
+make[1]: Entering directory '/home/ubuntu/repos/cc370'
+make[1]: 'as370/as370' is up to date.
+make[1]: 'ld370/ld370' is up to date.
+make[1]: 'file370/file370' is up to date.
+make[1]: Leaving directory '/home/ubuntu/repos/cc370'
+python3 tools/build.py batch --maclib /home/ubuntu/mvs-demo/export/ascii
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -I /home/ubuntu/mvs-demo/export/ascii -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSCALC.asm
+DSECT and codec layouts: PASS (INSCALC.sym)
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -I /home/ubuntu/mvs-demo/export/ascii -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSVAL.asm
+DSECT and codec layouts: PASS (INSVAL.sym)
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -I /home/ubuntu/mvs-demo/export/ascii -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSPACK.asm
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -I /home/ubuntu/mvs-demo/export/ascii -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSDATE.asm
+DSECT and codec layouts: PASS (INSDATE.sym)
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -I /home/ubuntu/mvs-demo/export/ascii -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSRATE.asm
+DSECT and codec layouts: PASS (INSRATE.sym)
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -I /home/ubuntu/mvs-demo/export/ascii -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSSMOK.asm
+DSECT and codec layouts: PASS (INSSMOK.sym)
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -I /home/ubuntu/mvs-demo/export/ascii -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSBAT.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSBAT.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSBAT.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSBAT.asm
+DSECT and codec layouts: PASS (INSBAT.sym)
+/home/ubuntu/repos/cc370/ld370/ld370 --norent --noreus --entry INSSMOK --name INSSMOK -o /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK -iebcopy /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.obj
+/home/ubuntu/repos/cc370/ld370/ld370 --norent --noreus --entry INSBAT --name INSBAT -o /home/ubuntu/repos/cc370/samples/insurance/build/INSBAT -iebcopy /home/ubuntu/repos/cc370/samples/insurance/build/INSBAT.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.obj
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5.py prove --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/transport --prefix IBMUSER.INSJ4.T
+JOB00009 INSTRANS: C001=0000 C002=0000 C003=0000
+JOB00010 INSTRANS: C001=0000 C002=0000 C003=0000
+PASS: FB128, FB40 and FB96 preserved exactly, including blank records
+
+==========================================================================
+2. IFOX00 assembles seven modules; IEWL links; INSSMOK executes
+==========================================================================
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5.py build --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/ifox-build --prefix IBMUSER.INSJ4.I
+JOB00011 INSALLOC: ALLOC=0000
+JOB00012 INSTRANS: C001=0000 C002=0000 C003=0000 C004=0000 C005=0000 C006=0000 C007=0000 C008=0000 C009=0000 C010=0000
+JOB00013 INSBUILD: ACALC=0000 AVAL=0000 APACK=0000 ADATE=0000 ARATE=0000 ASMOK=0000 ABAT=0000 LSMOK=0000 LBAT=0000 SMOKE=0000
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_decks.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/decks --prefix IBMUSER.INSJ4.I
+JOB00014 INSTRANS: C001=0000 C002=0000 C003=0000 C004=0000 C005=0000 C006=0000 C007=0000
+INSBAT MATCH 19 non-END cards
+INSCALC MATCH 24 non-END cards
+INSDATE MATCH 8 non-END cards
+INSPACK MATCH 5 non-END cards
+INSRATE MATCH 5 non-END cards
+INSSMOK MATCH 10 non-END cards
+INSVAL MATCH 10 non-END cards
+
+==========================================================================
+3. Real IFOX00 batch results, five stages and business calculation
+==========================================================================
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_provenance.py --root /home/ubuntu/mvs-demo --output /home/ubuntu/a3/run-01/ifox-iewl-provenance --build-evidence /home/ubuntu/a3/run-01/ifox-build/build --backend ifox-iewl --load-prefix IBMUSER.INSJ4.I --macro-export /home/ubuntu/mvs-demo/export/ascii
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/ifox-iewl --prefix IBMUSER.INSJ4.IR --build-manifest /home/ubuntu/a3/run-01/ifox-iewl-provenance/build.json --guest-manifest /home/ubuntu/a3/run-01/ifox-iewl-provenance/guest.json --load-prefix IBMUSER.INSJ4.I
+JOB00015 INSTRANS: C001=0000 C002=0000
+JOB00016 INSRUN: RUN=0000
+JOB00017 INSTRANS: C001=0000 C002=0000
+PASS: anchors; all result/state fields and receipt hashes match
+A001 ACTUAL MVS OUTPUT: {"age": 1, "cash": 113259, "charge": 3964, "date": 20250101, "death": 1000000, "fee": 350, "id": "00000001", "interest": 3259, "loan": 0, "op": "P", "rate": 325, "reserved": "000000", "seq": 1, "status": "OKAY", "surrender": 109295, "tail": "00000000000000000000000000000000", "version": "V001"}
+JOB00018 INSTRANS: C001=0000 C002=0000
+JOB00019 INSRUN: RUN=0000
+JOB00020 INSTRANS: C001=0000 C002=0000
+PASS: a; all result/state fields and receipt hashes match
+JOB00021 INSTRANS: C001=0000 C002=0000
+JOB00022 INSRUN: RUN=0000
+JOB00023 INSTRANS: C001=0000 C002=0000
+PASS: a-replay; all result/state fields and receipt hashes match
+JOB00024 INSTRANS: C001=0000 C002=0000
+JOB00025 INSRUN: RUN=0000
+JOB00026 INSTRANS: C001=0000 C002=0000
+PASS: b; all result/state fields and receipt hashes match
+JOB00027 INSTRANS: C001=0000 C002=0000
+JOB00028 INSRUN: RUN=0000
+JOB00029 INSTRANS: C001=0000 C002=0000
+PASS: b-replay; all result/state fields and receipt hashes match
+
+ACTUAL A001 / policy 00000001 / status OKAY
+BR-007: half-up(100000 cents * 325 bps * 366 days / 3650000)
+  Interest $32.59; cash $1,132.59
+BR-008: cash = initial cash + interest + $100 premium
+BR-009/010: cash less 350-bps charge and loan; max(face,cash) less loan
+  Charge $39.64; surrender $1,092.95
+  Death quote $10,000.00; quote does not settle a claim
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_controls.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/ifox-iewl-controls --prefix IBMUSER.INSJ4.IN --load-prefix IBMUSER.INSJ4.I
+JOB00030 INSTRANS: C001=0000 C002=0000
+JOB00031 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00032 INSTRANS: C001=0000 C002=0000
+JOB00033 INSTRANS: C001=0000
+JOB00034 INSTRANS: C001=0000 C002=0000
+JOB00035 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00036 INSTRANS: C001=0000 C002=0000
+JOB00037 INSTRANS: C001=0000
+JOB00038 INSTRANS: C001=0000 C002=0000
+JOB00039 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00040 INSTRANS: C001=0000 C002=0000
+JOB00041 INSTRANS: C001=0000
+JOB00042 INSABEND: 
+REJECTED: RUN: expected one RC=0, found []
+REJECTED: ABEND, skipped step, or JCL error in spool
+JOB00043 INSTRANS: C001=0000 C002=0000
+JOB00044 INSRUN: RUN=0000
+JOB00045 INSTRANS: C001=0000 C002=0000
+JOB00046 INSTRANS: C001=0000 C002=0000
+JOB00047 INSRUN: RUN=0000
+JOB00048 INSTRANS: C001=0000 C002=0000
+PASS: RC12, S806, duplicate/conflict/order/malformed immutability and writer lock
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_recovery.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/ifox-iewl-recovery --prefix IBMUSER.INSJ4.IC --build-manifest /home/ubuntu/a3/run-01/ifox-iewl-provenance/build.json --guest-manifest /home/ubuntu/a3/run-01/ifox-iewl-provenance/guest.json --load-prefix IBMUSER.INSJ4.I
+JOB00049 INSTRANS: C001=0000 C002=0000
+JOB00050 INSRUN: RUN=0000
+JOB00051 INSTRANS: C001=0000 C002=0000
+PASS: a; all result/state fields and receipt hashes match
+JOB00052 INSTRANS: C001=0000 C002=0000
+JOB00053 INSRUN: RUN=0000
+JOB00054 INSTRANS: C001=0000 C002=0000
+PASS: a-replay; all result/state fields and receipt hashes match
+JOB00055 INSTRANS: C001=0000 C002=0000
+JOB00056 INSRUN: RUN=0000
+JOB00057 INSTRANS: C001=0000 C002=0000
+FAIL: 1 acceptance errors, 3039 differences; /home/ubuntu/a3/run-01/ifox-iewl-recovery/partial/b/comparison.json
+Traceback (most recent call last):
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 126, in <module>
+    main()
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 121, in main
+    run(guest, args.load_prefix, args.prefix, args.build_manifest, args.guest_manifest,
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 90, in run
+    raise RuntimeError(f"{name}: comparison failed; generation NOT published")
+RuntimeError: b: comparison failed; generation NOT published
+JOB00058 INSTRANS: C001=0000 C002=0000
+JOB00059 INSRUN: RUN=0000
+JOB00060 INSTRANS: C001=0000 C002=0000
+PASS: b; all result/state fields and receipt hashes match
+JOB00061 INSTRANS: C001=0000 C002=0000
+JOB00062 INSRUN: RUN=0000
+JOB00063 INSTRANS: C001=0000 C002=0000
+PASS: b-replay; all result/state fields and receipt hashes match
+PASS: persisted restart; partial generation rejected; rerun from unchanged checkpoint
+ACTUAL REJECTION STATUSES: ['DUPL', 'CNFL', 'ORDR', 'PACK', 'DATE']
+Duplicate / changed replay / older sequence / bad packed digits / bad date.
+Every rejection preserved all 128 persisted bytes.
+
+==========================================================================
+4. Separately imported as370 decks; real IEWL link and execution
+==========================================================================
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5.py host --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/host-build --prefix IBMUSER.INSJ4.H
+JOB00064 INSALLOC: ALLOC=0000
+JOB00065 INSTRANS: C001=0000 C002=0000 C003=0000 C004=0000 C005=0000 C006=0000 C007=0000
+JOB00066 INSHOST: LSMOK=0000 LBAT=0000 SMOKE=0000
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_provenance.py --root /home/ubuntu/mvs-demo --output /home/ubuntu/a3/run-01/as370-iewl-provenance --build-evidence /home/ubuntu/a3/run-01/host-build/link --backend as370-iewl --load-prefix IBMUSER.INSJ4.H --macro-export /home/ubuntu/mvs-demo/export/ascii
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/as370-iewl --prefix IBMUSER.INSJ4.HR --build-manifest /home/ubuntu/a3/run-01/as370-iewl-provenance/build.json --guest-manifest /home/ubuntu/a3/run-01/as370-iewl-provenance/guest.json --load-prefix IBMUSER.INSJ4.H
+JOB00067 INSTRANS: C001=0000 C002=0000
+JOB00068 INSRUN: RUN=0000
+JOB00069 INSTRANS: C001=0000 C002=0000
+PASS: anchors; all result/state fields and receipt hashes match
+A001 ACTUAL MVS OUTPUT: {"age": 1, "cash": 113259, "charge": 3964, "date": 20250101, "death": 1000000, "fee": 350, "id": "00000001", "interest": 3259, "loan": 0, "op": "P", "rate": 325, "reserved": "000000", "seq": 1, "status": "OKAY", "surrender": 109295, "tail": "00000000000000000000000000000000", "version": "V001"}
+JOB00070 INSTRANS: C001=0000 C002=0000
+JOB00071 INSRUN: RUN=0000
+JOB00072 INSTRANS: C001=0000 C002=0000
+PASS: a; all result/state fields and receipt hashes match
+JOB00073 INSTRANS: C001=0000 C002=0000
+JOB00074 INSRUN: RUN=0000
+JOB00075 INSTRANS: C001=0000 C002=0000
+PASS: a-replay; all result/state fields and receipt hashes match
+JOB00076 INSTRANS: C001=0000 C002=0000
+JOB00077 INSRUN: RUN=0000
+JOB00078 INSTRANS: C001=0000 C002=0000
+PASS: b; all result/state fields and receipt hashes match
+JOB00079 INSTRANS: C001=0000 C002=0000
+JOB00080 INSRUN: RUN=0000
+JOB00081 INSTRANS: C001=0000 C002=0000
+PASS: b-replay; all result/state fields and receipt hashes match
+
+ACTUAL A001 / policy 00000001 / status OKAY
+BR-007: half-up(100000 cents * 325 bps * 366 days / 3650000)
+  Interest $32.59; cash $1,132.59
+BR-008: cash = initial cash + interest + $100 premium
+BR-009/010: cash less 350-bps charge and loan; max(face,cash) less loan
+  Charge $39.64; surrender $1,092.95
+  Death quote $10,000.00; quote does not settle a claim
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_controls.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/as370-iewl-controls --prefix IBMUSER.INSJ4.HN --load-prefix IBMUSER.INSJ4.H
+JOB00082 INSTRANS: C001=0000 C002=0000
+JOB00083 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00084 INSTRANS: C001=0000 C002=0000
+JOB00085 INSTRANS: C001=0000
+JOB00086 INSTRANS: C001=0000 C002=0000
+JOB00087 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00088 INSTRANS: C001=0000 C002=0000
+JOB00089 INSTRANS: C001=0000
+JOB00090 INSTRANS: C001=0000 C002=0000
+JOB00091 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00092 INSTRANS: C001=0000 C002=0000
+JOB00093 INSTRANS: C001=0000
+JOB00094 INSABEND: 
+REJECTED: RUN: expected one RC=0, found []
+REJECTED: ABEND, skipped step, or JCL error in spool
+JOB00095 INSTRANS: C001=0000 C002=0000
+JOB00096 INSRUN: RUN=0000
+JOB00097 INSTRANS: C001=0000 C002=0000
+JOB00098 INSTRANS: C001=0000 C002=0000
+JOB00099 INSRUN: RUN=0000
+JOB00100 INSTRANS: C001=0000 C002=0000
+PASS: RC12, S806, duplicate/conflict/order/malformed immutability and writer lock
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_recovery.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/as370-iewl-recovery --prefix IBMUSER.INSJ4.HC --build-manifest /home/ubuntu/a3/run-01/as370-iewl-provenance/build.json --guest-manifest /home/ubuntu/a3/run-01/as370-iewl-provenance/guest.json --load-prefix IBMUSER.INSJ4.H
+JOB00101 INSTRANS: C001=0000 C002=0000
+JOB00102 INSRUN: RUN=0000
+JOB00103 INSTRANS: C001=0000 C002=0000
+PASS: a; all result/state fields and receipt hashes match
+JOB00104 INSTRANS: C001=0000 C002=0000
+JOB00105 INSRUN: RUN=0000
+JOB00106 INSTRANS: C001=0000 C002=0000
+PASS: a-replay; all result/state fields and receipt hashes match
+JOB00107 INSTRANS: C001=0000 C002=0000
+JOB00108 INSRUN: RUN=0000
+JOB00109 INSTRANS: C001=0000 C002=0000
+FAIL: 1 acceptance errors, 3039 differences; /home/ubuntu/a3/run-01/as370-iewl-recovery/partial/b/comparison.json
+Traceback (most recent call last):
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 126, in <module>
+    main()
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 121, in main
+    run(guest, args.load_prefix, args.prefix, args.build_manifest, args.guest_manifest,
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 90, in run
+    raise RuntimeError(f"{name}: comparison failed; generation NOT published")
+RuntimeError: b: comparison failed; generation NOT published
+JOB00110 INSTRANS: C001=0000 C002=0000
+JOB00111 INSRUN: RUN=0000
+JOB00112 INSTRANS: C001=0000 C002=0000
+PASS: b; all result/state fields and receipt hashes match
+JOB00113 INSTRANS: C001=0000 C002=0000
+JOB00114 INSRUN: RUN=0000
+JOB00115 INSTRANS: C001=0000 C002=0000
+PASS: b-replay; all result/state fields and receipt hashes match
+PASS: persisted restart; partial generation rejected; rerun from unchanged checkpoint
+ACTUAL REJECTION STATUSES: ['DUPL', 'CNFL', 'ORDR', 'PACK', 'DATE']
+Duplicate / changed replay / older sequence / bad packed digits / bad date.
+Every rejection preserved all 128 persisted bytes.
+
+==========================================================================
+5. Host ld370 load modules; binary IEBCOPY import and execution
+==========================================================================
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_linker.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/ld-build --prefix IBMUSER.INSJ4.L
+JOB00116 INSALLOC: ALLOC=0000
+JOB00117 INSLD: C001=0000 C002=0000 SMOKE=0000
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_provenance.py --root /home/ubuntu/mvs-demo --output /home/ubuntu/a3/run-01/as370-ld370-provenance --build-evidence /home/ubuntu/a3/run-01/ld-build/import --backend as370-ld370 --load-prefix IBMUSER.INSJ4.L --macro-export /home/ubuntu/mvs-demo/export/ascii
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/as370-ld370 --prefix IBMUSER.INSJ4.LR --build-manifest /home/ubuntu/a3/run-01/as370-ld370-provenance/build.json --guest-manifest /home/ubuntu/a3/run-01/as370-ld370-provenance/guest.json --load-prefix IBMUSER.INSJ4.L
+JOB00118 INSTRANS: C001=0000 C002=0000
+JOB00119 INSRUN: RUN=0000
+JOB00120 INSTRANS: C001=0000 C002=0000
+PASS: anchors; all result/state fields and receipt hashes match
+A001 ACTUAL MVS OUTPUT: {"age": 1, "cash": 113259, "charge": 3964, "date": 20250101, "death": 1000000, "fee": 350, "id": "00000001", "interest": 3259, "loan": 0, "op": "P", "rate": 325, "reserved": "000000", "seq": 1, "status": "OKAY", "surrender": 109295, "tail": "00000000000000000000000000000000", "version": "V001"}
+JOB00121 INSTRANS: C001=0000 C002=0000
+JOB00122 INSRUN: RUN=0000
+JOB00123 INSTRANS: C001=0000 C002=0000
+PASS: a; all result/state fields and receipt hashes match
+JOB00124 INSTRANS: C001=0000 C002=0000
+JOB00125 INSRUN: RUN=0000
+JOB00126 INSTRANS: C001=0000 C002=0000
+PASS: a-replay; all result/state fields and receipt hashes match
+JOB00127 INSTRANS: C001=0000 C002=0000
+JOB00128 INSRUN: RUN=0000
+JOB00129 INSTRANS: C001=0000 C002=0000
+PASS: b; all result/state fields and receipt hashes match
+JOB00130 INSTRANS: C001=0000 C002=0000
+JOB00131 INSRUN: RUN=0000
+JOB00132 INSTRANS: C001=0000 C002=0000
+PASS: b-replay; all result/state fields and receipt hashes match
+
+ACTUAL A001 / policy 00000001 / status OKAY
+BR-007: half-up(100000 cents * 325 bps * 366 days / 3650000)
+  Interest $32.59; cash $1,132.59
+BR-008: cash = initial cash + interest + $100 premium
+BR-009/010: cash less 350-bps charge and loan; max(face,cash) less loan
+  Charge $39.64; surrender $1,092.95
+  Death quote $10,000.00; quote does not settle a claim
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_controls.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/as370-ld370-controls --prefix IBMUSER.INSJ4.LN --load-prefix IBMUSER.INSJ4.L
+JOB00133 INSTRANS: C001=0000 C002=0000
+JOB00134 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00135 INSTRANS: C001=0000 C002=0000
+JOB00136 INSTRANS: C001=0000
+JOB00137 INSTRANS: C001=0000 C002=0000
+JOB00138 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00139 INSTRANS: C001=0000 C002=0000
+JOB00140 INSTRANS: C001=0000
+JOB00141 INSTRANS: C001=0000 C002=0000
+JOB00142 INSRUN: RUN=0012
+REJECTED: RUN: expected one RC=0, found [12]
+REJECTED: RUN: nonzero RC=0012
+JOB00143 INSTRANS: C001=0000 C002=0000
+JOB00144 INSTRANS: C001=0000
+JOB00145 INSABEND: 
+REJECTED: RUN: expected one RC=0, found []
+REJECTED: ABEND, skipped step, or JCL error in spool
+JOB00146 INSTRANS: C001=0000 C002=0000
+JOB00147 INSRUN: RUN=0000
+JOB00148 INSTRANS: C001=0000 C002=0000
+JOB00149 INSTRANS: C001=0000 C002=0000
+JOB00150 INSRUN: RUN=0000
+JOB00151 INSTRANS: C001=0000 C002=0000
+PASS: RC12, S806, duplicate/conflict/order/malformed immutability and writer lock
+$ /usr/bin/python3 /home/ubuntu/repos/cc370/samples/insurance/tools/tk5_recovery.py --root /home/ubuntu/mvs-demo --evidence /home/ubuntu/a3/run-01/as370-ld370-recovery --prefix IBMUSER.INSJ4.LC --build-manifest /home/ubuntu/a3/run-01/as370-ld370-provenance/build.json --guest-manifest /home/ubuntu/a3/run-01/as370-ld370-provenance/guest.json --load-prefix IBMUSER.INSJ4.L
+JOB00152 INSTRANS: C001=0000 C002=0000
+JOB00153 INSRUN: RUN=0000
+JOB00154 INSTRANS: C001=0000 C002=0000
+PASS: a; all result/state fields and receipt hashes match
+JOB00155 INSTRANS: C001=0000 C002=0000
+JOB00156 INSRUN: RUN=0000
+JOB00157 INSTRANS: C001=0000 C002=0000
+PASS: a-replay; all result/state fields and receipt hashes match
+JOB00158 INSTRANS: C001=0000 C002=0000
+JOB00159 INSRUN: RUN=0000
+JOB00160 INSTRANS: C001=0000 C002=0000
+FAIL: 1 acceptance errors, 3039 differences; /home/ubuntu/a3/run-01/as370-ld370-recovery/partial/b/comparison.json
+Traceback (most recent call last):
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 126, in <module>
+    main()
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 121, in main
+    run(guest, args.load_prefix, args.prefix, args.build_manifest, args.guest_manifest,
+  File "/home/ubuntu/repos/cc370/samples/insurance/tools/tk5_validate.py", line 90, in run
+    raise RuntimeError(f"{name}: comparison failed; generation NOT published")
+RuntimeError: b: comparison failed; generation NOT published
+JOB00161 INSTRANS: C001=0000 C002=0000
+JOB00162 INSRUN: RUN=0000
+JOB00163 INSTRANS: C001=0000 C002=0000
+PASS: b; all result/state fields and receipt hashes match
+JOB00164 INSTRANS: C001=0000 C002=0000
+JOB00165 INSRUN: RUN=0000
+JOB00166 INSTRANS: C001=0000 C002=0000
+PASS: b-replay; all result/state fields and receipt hashes match
+PASS: persisted restart; partial generation rejected; rerun from unchanged checkpoint
+ACTUAL REJECTION STATUSES: ['DUPL', 'CNFL', 'ORDR', 'PACK', 'DATE']
+Duplicate / changed replay / older sequence / bad packed digits / bad date.
+Every rejection preserved all 128 persisted bytes.
+
+==========================================================================
+6. Cross-backend outputs
+==========================================================================
+PASS: anchors, both outputs identical across all three executable paths
+PASS: a, both outputs identical across all three executable paths
+PASS: a-replay, both outputs identical across all three executable paths
+PASS: b, both outputs identical across all three executable paths
+PASS: b-replay, both outputs identical across all three executable paths
+PASS: real guest execution, all comparisons, rejections and recovery controls

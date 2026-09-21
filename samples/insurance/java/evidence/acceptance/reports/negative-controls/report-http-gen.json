@@ -1,0 +1,128 @@
+{
+  "authority": {
+    "dir": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1",
+    "golden_rates_json_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+    "kind": "a1",
+    "label": "",
+    "provenance": null,
+    "rate_table_canonical_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a"
+  },
+  "base_url": "http://127.0.0.1:18082",
+  "jar_sha256": "2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+  "java_version": "openjdk version \"21.0.12\" 2026-07-21\nOpenJDK Runtime Environment (build 21.0.12+8-1-22.04-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12+8-1-22.04-Ubuntu, mixed mode, sharing)",
+  "mode": "http-gen",
+  "passed": false,
+  "raw_requests": 0,
+  "results_compared": 0,
+  "roots": [
+    {
+      "error": null,
+      "generation": "negctl-http-gen-anchors-root",
+      "namespace": "negctl-http-gen-anchors",
+      "polin_sha256": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80"
+    }
+  ],
+  "schema": "insurance-java-parity-v1",
+  "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+  "stages": [
+    {
+      "authority_expected_sha256": {
+        "polout": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+        "resout": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a"
+      },
+      "authority_input_sha256": {
+        "polin": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80",
+        "txnin": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876"
+      },
+      "errors": [],
+      "expected_counts": {
+        "policies": 10,
+        "transactions": 10
+      },
+      "first_result_mismatch_record": 7,
+      "generation": "negctl-http-gen-anchors-anchors",
+      "mismatches": [],
+      "namespace": "negctl-http-gen-anchors",
+      "observed_sha256": {
+        "polout": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+        "requests": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876",
+        "resout": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a"
+      },
+      "parent": "negctl-http-gen-anchors-root",
+      "passed": false,
+      "raw_requests": 10,
+      "receipt": {
+        "build_identity": "jar:sha256:2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883",
+        "expected_manifest_sha256": "51980942935bb51532ec4ac8f9ae200a2970eaaa35c213fcb7e2c772c2da729b",
+        "generation": "negctl-http-gen-anchors-anchors",
+        "mode": "http-gen",
+        "namespace": "negctl-http-gen-anchors",
+        "outcome": "completed",
+        "parent_generation": "negctl-http-gen-anchors-root",
+        "policies_count": 10,
+        "polin_sha256": "dad884d0daa38b2501f5b189fc8eaee9b4daee2c483320dea1d31566890c8b80",
+        "polout_sha256": "bfaf9a7f64ef2b09f691d2c1f92945790c4ec038dc13a4fd8eb670e7a51a7d58",
+        "publication_status": "PUBLISHED",
+        "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a",
+        "raw_requests": 10,
+        "record_schema": "POLIN/POLOUT FB128, TXNIN FB40, RESOUT FB96, CP037",
+        "resout_sha256": "a9fffd270f7f9131af291b616dd8ff2eeec47710b5d6f888b1e71f355f9ce73a",
+        "results_count": 10,
+        "return_code": 0,
+        "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
+        "schema": "insurance-java-run-v1",
+        "source_commit": "cf9aa9b093adb53ae841432e713e5206ed00dba5",
+        "stage": "anchors",
+        "transactions_count": 10,
+        "txnin_sha256": "7f750545d926d2f6221ab3d024a99f55f92f728b42772c0287ec8e1a55503876",
+        "typed_requests": 0
+      },
+      "receipt_errors": [],
+      "request_errors": [
+        {
+          "errors": [
+            "immediate result differs from authority: {\"case_id\": \"position 7\", \"expected\": {\"bytes\": \"0000000000000c\", \"decode_error\": null, \"value\": 0}, \"field\": \"charge\", \"id\": \"00000008\", \"kind\": \"result\", \"observed\": {\"bytes\": \"0000000000100c\", \"decode_error\": null, \"value\": 100}, \"observed_id\": \"00000008\", \"offset\": 69, \"record\": 1, \"size\": 7, \"type\": \"field\"}"
+          ],
+          "expected_result_hex": "f0f0f0f0f0f0f0f8000000010121eba5c4c1e3c5d80000000000000000000c00000c0000000010000c0000000000000c0000000000000c0000000000000c0000000000000c0000000000000ce5f0f0f100000000000000000000000000000000",
+          "record": 7,
+          "request_hex": "f0f0f0f0f0f0f0f8000000010121eba5d80000000000000000000c00000000000000000000000000",
+          "response": {
+            "accepted": false,
+            "ordinal": 8,
+            "requestHex": "f0f0f0f0f0f0f0f8000000010121eba5d80000000000000000000c00000000000000000000000000",
+            "result": {
+              "age": 0,
+              "cash": 10000,
+              "charge": 100,
+              "date": "1900-02-29",
+              "dateYmd": 19000229,
+              "death": 0,
+              "fee": 0,
+              "id": "00000008",
+              "interest": 0,
+              "loan": 0,
+              "op": "Q",
+              "rate": 0,
+              "recordHex": "f0f0f0f0f0f0f0f8000000010121eba5c4c1e3c5d80000000000000000000c00000c0000000010000c0000000000000c0000000000000c0000000000000c0000000000000c0000000000100ce5f0f0f100000000000000000000000000000000",
+              "seq": 1,
+              "status": "DATE",
+              "surrender": 0,
+              "version": "V001"
+            },
+            "resultHex": "f0f0f0f0f0f0f0f8000000010121eba5c4c1e3c5d80000000000000000000c00000c0000000010000c0000000000000c0000000000000c0000000000000c0000000000000c0000000000100ce5f0f0f100000000000000000000000000000000",
+            "status": "DATE",
+            "typed": false
+          },
+          "typed": false
+        }
+      ],
+      "seconds": 0.102,
+      "stage": "anchors",
+      "typed_requests": 0
+    }
+  ],
+  "stages_expected": 5,
+  "stages_passed": 0,
+  "stopped_at": "negctl-http-gen-anchors:anchors",
+  "typed_requests": 0
+}

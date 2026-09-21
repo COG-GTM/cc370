@@ -1,0 +1,63 @@
+{
+  "before_publish_flip" : {
+    "child_exit" : 137,
+    "db_after_kill" : {
+      "checkpoint" : "25192889273e9f12741f1401e9587119318e46f6448e045386ccf10f4a6cbe1a",
+      "claims" : 0,
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 4,
+      "fence" : 1,
+      "has_output" : false,
+      "last_ordinal" : 4,
+      "last_status" : "OKAY",
+      "lease_expires_at" : "2026-09-21 16:37:59.388447+00",
+      "status" : "PENDING",
+      "writer_id" : "87327@devin-box/bf50ff6f-cdb5-438b-a522-606b7f73ea53"
+    },
+    "db_after_resume" : {
+      "checkpoint" : "25192889273e9f12741f1401e9587119318e46f6448e045386ccf10f4a6cbe1a",
+      "claims" : 1,
+      "current" : "g1",
+      "discard_reason" : null,
+      "entries" : 4,
+      "fence" : 2,
+      "has_output" : true,
+      "last_ordinal" : 4,
+      "last_status" : "OKAY",
+      "lease_expires_at" : "2026-09-21 16:38:04.360549+00",
+      "status" : "PUBLISHED",
+      "writer_id" : "87394@devin-box/9b3c0c8b-3331-4be0-8585-2fd55490c269"
+    },
+    "kill_line" : "kill switch BEFORE_PUBLISH_FLIP at ordinal 4",
+    "resume" : {
+      "applied_on_resume" : 0,
+      "claim" : {
+        "checkpoint" : "25192889273e9f12741f1401e9587119318e46f6448e045386ccf10f4a6cbe1a",
+        "claims" : 1,
+        "committedRequestsSha256" : "53a09b28cd77f63a1c9dfac3805b5b823049765980b5746ab4f39cd87bd5ff15",
+        "fence" : 2,
+        "generation" : "g1",
+        "lastOrdinal" : 4,
+        "namespace" : "svc",
+        "parent" : "root",
+        "rawRequests" : 4,
+        "typedRequests" : 0
+      },
+      "generation" : "g1",
+      "matches_oracle" : true,
+      "polout_sha256" : "410586a6e97a0d31e57fb176284d2fdfd18ef32cff916ebbf8f6d70dbdc28409",
+      "resout_sha256" : "b61cfb4fd4930046b559c8ae6566aed5f01b676982d3553dd3ae6affbe80e6ca",
+      "resumed_from_ordinal" : 5
+    }
+  },
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "recorded_at" : "2026-09-21T16:37:55.221982936Z",
+  "schema" : "insurance-java-service-kill-v2",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
+  "test" : "killInsidePublicationThenTheReplacementClaimsAndPublishesTheVerifiedPrefix"
+}
