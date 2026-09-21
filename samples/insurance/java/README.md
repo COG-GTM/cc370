@@ -108,7 +108,11 @@ rate/fee, `SREC`/`OREC`) for comparison with the reviewed guest observations.
 All paths are under `/v1/namespaces/{ns}`. Persistence is PostgreSQL
 (`LEDGER_DB_URL`, `LEDGER_DB_USER`, `LEDGER_DB_PASSWORD`; Flyway migrates
 `V1`..`V4` under `db/migration` on start-up — `V4` makes the checkpoint,
-contract identity and per-entry chain columns `NOT NULL`). `LEDGER_SOURCE_COMMIT`
+contract identity and per-entry chain columns `NOT NULL`; it does not backfill
+or invent metadata, so a database holding pre-V3 rows without it makes the
+`V4` migration fail and the service refuse to start, and a checkpoint written
+in an older chain format fails the claim closed — no upgrade of an existing
+database across these formats has been demonstrated). `LEDGER_SOURCE_COMMIT`
 is bound into every receipt; `ledger.writer-lease` (default `PT60S`) is the
 writer lease renewed by the heartbeat.
 
@@ -162,8 +166,9 @@ pending until an explicit `claim` or `discard-abandoned`.
   stored checkpoint must all agree. Missing V3 checkpoint metadata
   (`checkpoint`, `contract_identity`, entry `chain`) is a failed claim, not
   a downgraded one. On success the claim atomically replaces writer, lease
-  and fence (`fence + 1`, `claims + 1`, a `generation_claim` row) and the
-  old writer's next mutation is 409 fenced.
+  and fence (a strictly higher fence from the global `generation_fence_seq`
+  sequence, `claims + 1`, a `generation_claim` row) and the old writer's next
+  mutation is 409 fenced.
 - **Resume.** The claimant continues at `lastOrdinal + 1`, reconciling its
   own input against `committedRequestsSha256` so no committed request is
   re-sent and none is skipped; RESOUT/POLOUT of the resumed generation are
