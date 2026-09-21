@@ -1,4 +1,6 @@
 {
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
   "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
   "postgres_image" : "postgres:15-alpine",
   "publication" : {
@@ -6,7 +8,7 @@
     "resout_sha256" : "114a0ac7e75043eb560322dbeb448eb1e62757085bbcb95cea7032f9de725e20",
     "results_count" : 2
   },
-  "recorded_at" : "2026-09-21T15:53:39.461541440Z",
+  "recorded_at" : "2026-09-21T16:37:41.622797502Z",
   "schema" : "insurance-java-http-boundary-v1",
   "server_500_after_commit" : {
     "client_status" : 500,
@@ -21,5 +23,7 @@
       "status" : "DUPL"
     }
   },
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
   "test" : "server500AfterTheCommitKeepsTheCommitAndTheRetryIsDupl"
 }

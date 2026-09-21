@@ -14,7 +14,7 @@
       "txnin_sha256" : "0f87af931a83dbcbe2084d452af5aa32f81abb6110fe52993eb741984328b005"
     },
     "db_after_kill" : {
-      "checkpoint" : "7c9d8274e21420f61438ce631dafeba18eb496badba94c10aba47c1a2406799f",
+      "checkpoint" : "6fbb96c9ea48f77228ec40837bca995ca2626dd6dfe8460221328bab1ad51310",
       "claims" : 0,
       "current" : "root",
       "discard_reason" : null,
@@ -23,12 +23,12 @@
       "has_output" : false,
       "last_ordinal" : 2049,
       "last_status" : "ORDR",
-      "lease_expires_at" : "2026-09-21 15:54:47.061445+00",
+      "lease_expires_at" : "2026-09-21 16:38:46.965488+00",
       "status" : "PENDING",
-      "writer_id" : "49648@devin-box/37c351d5-a600-4403-b568-4560e9c9c4c6"
+      "writer_id" : "88215@devin-box/7d344950-ac63-426c-aa92-9f48f7f7cbe0"
     },
     "db_after_resume" : {
-      "checkpoint" : "d404529355be81667baa88f41f00eed0fc6f9d849ad0f04f646395b5d04baad0",
+      "checkpoint" : "24607a502a60268825989bcd1efdc12853e004fb73ab875e92d040e0f971c6d6",
       "claims" : 1,
       "current" : "g1",
       "discard_reason" : null,
@@ -37,15 +37,15 @@
       "has_output" : true,
       "last_ordinal" : 4097,
       "last_status" : "NPOL",
-      "lease_expires_at" : "2026-09-21 15:54:57.204895+00",
+      "lease_expires_at" : "2026-09-21 16:38:57.19788+00",
       "status" : "PUBLISHED",
-      "writer_id" : "49756@devin-box/f046ecf5-172d-49de-a639-424a4856e2d4"
+      "writer_id" : "88324@devin-box/ea85e664-eadf-407c-a03b-82ba90452542"
     },
     "kill_line" : "kill switch AFTER_COMMIT at ordinal 2049",
     "resume" : {
       "applied_on_resume" : 2048,
       "claim" : {
-        "checkpoint" : "7c9d8274e21420f61438ce631dafeba18eb496badba94c10aba47c1a2406799f",
+        "checkpoint" : "6fbb96c9ea48f77228ec40837bca995ca2626dd6dfe8460221328bab1ad51310",
         "claims" : 1,
         "committedRequestsSha256" : "6c3d966e7c60c1e679945e704d20aeb9e1b887d86e7ae83f4823f73e3896badb",
         "fence" : 2,
@@ -63,9 +63,13 @@
       "resumed_from_ordinal" : 2050
     }
   },
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
   "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
   "postgres_image" : "postgres:15-alpine",
-  "recorded_at" : "2026-09-21T15:54:37.345940724Z",
+  "recorded_at" : "2026-09-21T16:38:36.826639106Z",
   "schema" : "insurance-java-service-kill-v2",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
   "test" : "killMidCorpusThenTheResumedGenerationEqualsTheArchivedMvsStage"
 }

@@ -1,8 +1,10 @@
 {
   "container_owned_by_test" : true,
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
   "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
   "postgres_image" : "postgres:15-alpine",
-  "recorded_at" : "2026-09-21T15:55:12.810776539Z",
+  "recorded_at" : "2026-09-21T16:39:03.404190667Z",
   "restart_during_outage" : {
     "claim" : {
       "namespace" : "outage",
@@ -14,7 +16,7 @@
       "typedRequests" : 0,
       "rawRequests" : 2,
       "committedRequestsSha256" : "2518384f7bb1e839e61286957b038e6cd8612e0f677b5f4a4e5ec4b8ff61cb05",
-      "checkpoint" : "80bd493ac3e04f1737654ec12968098fc866574488532b7b20d79a70c46c9866"
+      "checkpoint" : "89bb0fc7a7b386f100263805db08cce62143b31db2b2f0ac546da0bd8097e7da"
     },
     "db_after_restart" : {
       "current" : "root",
@@ -24,7 +26,7 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 15:55:16.894265",
+      "lease_expires_at" : "2026-09-21 16:39:07.51281",
       "status" : "PENDING"
     },
     "db_before_outage" : {
@@ -35,14 +37,14 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 15:55:16.894265",
+      "lease_expires_at" : "2026-09-21 16:39:07.51281",
       "status" : "PENDING"
     },
     "outage" : {
       "container_state" : "exited",
-      "direct_jdbc_connect" : "PSQLException: Connection to localhost:40283 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
+      "direct_jdbc_connect" : "PSQLException: Connection to localhost:36165 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
       "restart_exit" : 1,
-      "restart_root_cause" : "PSQLException: Connection to localhost:40283 refused"
+      "restart_root_cause" : "PSQLException: Connection to localhost:36165 refused"
     },
     "restore" : {
       "container_state" : "running",
@@ -58,5 +60,7 @@
     "resumed_from_ordinal" : 3
   },
   "schema" : "insurance-java-db-outage-v1",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
   "test" : "restartDuringTheOutageFailsClosedAndStartsAgainAfterRestore"
 }

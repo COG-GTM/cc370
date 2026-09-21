@@ -218,8 +218,8 @@ Test names refer to `contract-v001` (`ContractV001Test`, `ContractBreadthTest`,
 | T-08 comparator detects structural output mutations | closed | `tools/compare.py` unchanged; `parity_java.py` fails a stage on count mismatch, missing/extra/reordered records and receipt-hash mismatch; negative controls in section 2 and `../../README.md` § Parity (FAST regression) (one-byte authority mutation → hash rejection + field diff; wrong JAR/commit → receipt rejection) |
 | T-09a genuine empty inputs | closed | GUEST `empty-txnin`, `empty-polin`; JAVA `batchEmptyTransactionsLeavesMasterUnchangedWithZeroResults`, `batchEmptyMasterYieldsNpolForEveryTransactionAndEmptyPolout`, `emptyTxninPublishesUnchangedMasterAndZeroResults` |
 | T-09b truncated / short input (controller) | closed | JAVA `manifestRejectsAlignedTruncation`, `manifestRejectsPartialRecordAndUnexpectedlyEmptyDelivery`, `manifestRejectsWrongBytesOfRightLength`, `batchRejectsPartialMasterRecord`, `manifestPinnedAtCreationIsEnforcedAtPublishWith422AndDiscards`, `wrongTxninHashIsRejectedEvenWhenCountsMatch` — the manifest is bound at generation creation, before any request |
-| T-10 timeout / errors / crash | closed (bounded, see D2′ and section 7) | JAVA (file store, real `Runtime.halt` of a child JVM) `ProcessKillTest`: halt before commit, after commit before the response, before publish, between the two publication renames, after publish; after each halt the store is reopened by a *new* process, the abandoned generation is **claimed** (`batch resume`), its durable prefix verified and the run continued at `lastOrdinal + 1` to the same bytes as the uninterrupted oracle (`killBeforeCommitLeavesNoTraceOfTheRequestAndResumeContinuesAtOrdinalThree`, `killAfterCommitLosesTheResponseAndResumeDoesNotReapplyTheCommittedRequest`, `killBeforePublishKeepsAllCommitsPendingAndResumeOnlyPublishes`, `resumeOfAnAbandonedGenerationCanBeKilledAndResumedAgain`); a corrupt journal fails the claim closed and leaves the generation abandoned, the explicit `discard-abandoned` + rerun is a separate path (`corruptJournalFailsTheClaimClosedAndLeavesTheGenerationAbandoned`, `abandonedGenerationCanBeExplicitlyDiscardedAndRerunFromTheParent`); the orphan between the two renames is never served. JAVA (PostgreSQL, the real Spring Boot service in a child JVM against a Testcontainers PostgreSQL, `ChildService` + `KillSwitch`) `ServiceKillTest`, 7 scenarios with retained runtime evidence `runtime/service-kill.*.json`: (1) halt inside the commit of request 3 → exit 137, DB holds exactly ordinals 1–2 and fence 1; a replacement service's `claim` while the dead writer's lease is still live → 409 `fenced` ("a live writer is never displaced") and the row is untouched; after expiry `claim` → 200 (`lastOrdinal` 2, fence 2, claims 1), the replacement continues at ordinal 3 and publishes — `RESOUT`/`POLOUT` equal the uninterrupted oracle; (2) halt after the commit of request 3 but before the response → DB holds ordinal 3; the claim reports `lastOrdinal` 3, `resumeIndex` skips the committed request (no `DUPL`/`ORDR` is appended), one request is applied on resume, output equals the oracle; (3) halt inside the publication transaction before the status flip → output rolled back, 4 entries pending, parent current; claim verifies the 4-entry prefix, applies nothing and publishes the verified prefix = oracle; (4) halt after publication before the receipt response → published, restart serves it, a claim of a `PUBLISHED` generation is refused; (5) `SIGSTOP` of the live writer, claim after its lease expires (fence 1 → 2), replacement commits ordinal 3, `SIGCONT` — the woken writer's `requests:raw`, `requests`, `batch`, `publish` and `discard` all → 409 `fenced` and the DB row is byte-identical before/after the wake (`frozenWriterWakesAfterTheTakeoverAndEveryMutationIsFenced`); (6) one result byte of committed entry 2 altered directly in the DB → `claim` 409 `checkpoint` "entry 2: stored result is not what the contract produces", the row stays `PENDING`/fence 1/claims 0, only the explicit `discard-abandoned` moves it to `DISCARDED` ("abandoned, discarded explicitly: corrupt durable prefix") and a fresh sibling from the parent equals the oracle; (7) the archived A2 stage `a` (2,048 requests, `ifox-iewl`, receipt/hash/pinned-input validated): halt after ordinal 2,049 (2,048 + the seed-independent first request of the driver) → claim at fence 2, `resumed_from_ordinal` 2,050, 2,048 requests applied on resume, final `POLOUT` `218da2fb…` / `RESOUT` `6215239a…` equal both the uninterrupted Java emulation and the archived MVS `polout.bin`/`resout.bin` (`equals_archived_mvs: true`). JAVA (PostgreSQL, real HTTP client through a TCP fault proxy, `HttpBoundaryTest`) client `HttpTimeoutException` with the request dropped before the service (no commit, retry → `OKAY`) and with the response dropped after the commit (commit present, retry → `DUPL`; with an intervening transaction → `ORDR`), gateway 503 unsent and 503 after the service committed, and an actual server 500 thrown inside the commit transaction (rolled back, retry → `OKAY`) and after it (kept, retry → `DUPL`); the DB is inspected directly after every fault, so a timeout is never read as proof of rollback — this is the *same-writer retry* path, distinct from the resume path above (a resume client reconciles the committed prefix and re-sends nothing). JAVA (PostgreSQL, real service in a child JVM against a PostgreSQL container owned by the test, `DbOutageTest`) **actual database outage mid-generation** — no kill switch, fault point or thrown exception: after a committed two-request prefix the container is `docker stop`ped (state `exited`, a direct JDBC connect is refused), the live service answers the next `requests:raw` with 500 (`FATAL: terminating connection due to administrator command`), the current read fails closed, the heartbeat logs its failure and the process stays up; after `docker start` the generation still holds exactly ordinals 1–2 (same entry SHA-256, no output, parent current), the same writer retries request 3 → `OKAY`, commits 4, renews and publishes = oracle. Also `docker pause` (request times out at the JDBC socket → 500, nothing committed on `unpause`); stop *during* publication (500, no receipt, `PENDING` with 4 entries, publish retry after restart = oracle); and a service restart *during* the outage that exits on `Connection … refused`, then after restore + lease expiry the restarted service **leaves the generation `PENDING` and claimable** (startup no longer discards), the old fence → 409, an explicit `claim` returns `lastOrdinal` 2 / fence + 1, `resumeIndex` = 2 and the resumed publication equals the oracle (`restartDuringTheOutageFailsClosedAndStartsAgainAfterRestore`). Retained evidence `runtime/db-outage.*.json`. In-process fault injection and fail-closed restart tests remain as unit-level coverage. |
-| T-11 race / retry / fencing / CAS | closed (bounded, see D3 and section 7) | (a) fencing and takeover — `JdbcTakeoverTest` (23 tests, two-connection where a race is asserted, all against PostgreSQL time `clock_timestamp()`): `claimAfterLeaseExpiryVerifiesThePrefixAndResumesToTheUninterruptedOutput`, `resumeAfterAnUnacknowledgedCommitDoesNotAppendTheLostRequestAgain`, `claimWithNothingCommittedResumesFromTheSeed`, `liveWriterIsNeverDisplacedOrDiscarded`, `expiredWriterCannotRenewCommitPublishOrDiscardEvenBeforeAnyClaim` (an expired lease cannot be resurrected by its own renew), `repeatedClaimsChainForwardAndEveryEarlierWriterStaysRejected`, `concurrentClaimsHaveExactlyOneWinner` (row lock `FOR UPDATE`; the loser sees the live lease of the winner), `claimVersusCommitRaceAcrossLeaseExpiryLetsOnlyTheClaimThrough`, `claimVersusCommitRaceBeforeLeaseExpiryLetsOnlyTheCommitThrough`, `claimVersusRenewRaceAcrossLeaseExpiryDoesNotResurrectTheOldLease`, `claimFailsWhenThePinnedParentIsNoLongerCurrent`, `resumedPublicationKeepsExpectedParentCas`, `discardAbandonedIsExplicitRequiresAnExpiredLeaseAndKeepsTheEvidence`; fail-closed corruption/incompatibility controls `corruptResultBytesFailTheClaim`, `corruptSuccessorBytesFailTheClaim`, `corruptPolicyStateFailsTheClaim`, `ordinalGapFailsTheClaim`, `tamperedCheckpointFailsTheClaim`, `changedPinnedInputOrManifestFailsTheClaim`, `changedRateTableFailsTheClaim`, `changedContractImplementationIdentityFailsTheClaim`, `identityIsContentDerivedAndPinnedImmutably`, `entryStateAndCheckpointAreOneTransaction`; HTTP routes `claimRouteTakesOverAnExpiredWriterVerifiesThePrefixAndResumesAtTheNextOrdinal`, `discardAbandonedRouteIsExplicitAndRequiresAnExpiredLease`, `abandonedPendingGenerationIsLeftClaimableAtOpenAndNeverServedAsPublished`; file store `claimRefusesALiveWriterAndAnUnknownOrPublishedGeneration`, `abandonedGenerationCanBeDiscardedInsteadOfClaimed`, `claimFailsClosedOnCorruptJournalChangedManifestOrChangedContract`, `pendingResultsAreNotServedAsPublishedAndRestartLeavesThemClaimable`; plus the real-process scenarios (5)–(6) of T-10; (b) `twoHundredConcurrentRequestsCommitInAdmissionOrder` (200 concurrent accepted single raw requests, 32 threads; each ordinal equals the servlet-level admission ticket of `AdmissionSequencer`, each exactly once, echoed bytes and persisted `RESOUT` re-read after publish) and `mixedRejectedAndBatchCallsPreserveAdmissionOrderWithoutTicketOrdinalEquality` (60 concurrent calls mixing accepted single requests, 3-record batches and malformed 39-byte envelopes: committed ordinals follow ticket order, rejected envelopes consume a ticket but no ordinal, a batch consumes one ticket for three contiguous ordinals, ticket ≠ ordinal asserted) — the admission order is defined at the servlet filter within one JVM (D3), and `claim` takes an admission ticket too, so within the claiming JVM it is serialized with that generation's apply/batch calls; across JVMs the `FOR UPDATE` row lock and the fence decide (`concurrentClaimsHaveExactlyOneWinner`, `claimVersusCommitRace…`); (c) `siblingPublishRaceHasExactlyOneWinnerAndTheLoserIsDiscarded`, `publishCasFailsWhenCurrentMovedUnderTheLease`, `resumedPublicationKeepsExpectedParentCas`; (d) real kills in `ProcessKillTest` and `ServiceKillTest`, real client timeout / 503 / 500 at both commit boundaries in `HttpBoundaryTest` (before commit → `OKAY` on retry; committed-but-response-lost → `DUPL` while still latest; intervening transaction → `ORDR`) for the same-writer retry path, and the resume path that re-sends nothing (T-10 (2)); `Prefer: return=original` not implemented (optional, off, D5); (e) `applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched`, `directChildWriteBegunWhilePendingBlocksPublicationUntilItEnds`, `directChildWriteWaitsForThePublisherLockAndIsRejectedAfterTheFlip` (two connections), `generation_guard` trigger (V3): fence only increases, writer changes only with a new fence, ordinals contiguous and never rewound, identity columns immutable, `generation_claim` append-only |
+| T-10 timeout / errors / crash | closed (bounded, see D2′ and section 7) | JAVA (file store, real `Runtime.halt` of a child JVM) `ProcessKillTest`: halt before commit, after commit before the response, before publish, between the two publication renames, after publish; after each halt the store is reopened by a *new* process, the abandoned generation is **claimed** (`batch resume`), its durable prefix verified and the run continued at `lastOrdinal + 1` to the same bytes as the uninterrupted oracle (`killBeforeCommitLeavesNoTraceOfTheRequestAndResumeContinuesAtOrdinalThree`, `killAfterCommitLosesTheResponseAndResumeDoesNotReapplyTheCommittedRequest`, `killBeforePublishKeepsAllCommitsPendingAndResumeOnlyPublishes`, `resumeOfAnAbandonedGenerationCanBeKilledAndResumedAgain`); a corrupt journal fails the claim closed and leaves the generation abandoned, the explicit `discard-abandoned` + rerun is a separate path (`corruptJournalFailsTheClaimClosedAndLeavesTheGenerationAbandoned`, `abandonedGenerationCanBeExplicitlyDiscardedAndRerunFromTheParent`); the orphan between the two renames is never served. JAVA (PostgreSQL, the real Spring Boot service in a child JVM against a Testcontainers PostgreSQL, `ChildService` + `KillSwitch`) `ServiceKillTest`, 7 scenarios with retained runtime evidence `runtime/service-kill.*.json`: (1) halt inside the commit of request 3 → exit 137, DB holds exactly ordinals 1–2 and fence 1; a replacement service's `claim` while the dead writer's lease is still live → 409 `fenced` ("a live writer is never displaced") and the row is untouched; after expiry `claim` → 200 (`lastOrdinal` 2, fence 2, claims 1), the replacement continues at ordinal 3 and publishes — `RESOUT`/`POLOUT` equal the uninterrupted oracle; (2) halt after the commit of request 3 but before the response → DB holds ordinal 3; the claim reports `lastOrdinal` 3, `resumeIndex` skips the committed request (no `DUPL`/`ORDR` is appended), one request is applied on resume, output equals the oracle; (3) halt inside the publication transaction before the status flip → output rolled back, 4 entries pending, parent current; claim verifies the 4-entry prefix, applies nothing and publishes the verified prefix = oracle; (4) halt after publication before the receipt response → published, restart serves it, a claim of a `PUBLISHED` generation is refused; (5) `SIGSTOP` of the live writer, claim after its lease expires (fence 1 → 2), replacement commits ordinal 3, `SIGCONT` — the woken writer's `requests:raw`, `requests`, `batch`, `publish` and `discard` all → 409 `fenced` and the DB row is byte-identical before/after the wake (`frozenWriterWakesAfterTheTakeoverAndEveryMutationIsFenced`); (6) one result byte of committed entry 2 altered directly in the DB → `claim` 409 `checkpoint` "entry 2: stored result is not what the contract produces", the row stays `PENDING`/fence 1/claims 0, only the explicit `discard-abandoned` moves it to `DISCARDED` ("abandoned, discarded explicitly: corrupt durable prefix") and a fresh sibling from the parent equals the oracle; (7) the archived A2 stage `a` (4,096 TXNIN records, `ifox-iewl`, receipt/hash/pinned-input validated; the driver's seed-independent first request makes 4,097 committed entries in the uninterrupted run): halt after 2,049 durable entries → claim at fence 2, `resumed_from_ordinal` 2,050, 2,048 requests applied on resume, 4,097 final entries, final `POLOUT` `218da2fb…` / `RESOUT` `6215239a…` equal both the uninterrupted Java emulation and the archived MVS `polout.bin`/`resout.bin` (`equals_archived_mvs: true`). JAVA (PostgreSQL, real HTTP client through a TCP fault proxy, `HttpBoundaryTest`) client `HttpTimeoutException` with the request dropped before the service (no commit, retry → `OKAY`) and with the response dropped after the commit (commit present, retry → `DUPL`; with an intervening transaction → `ORDR`), gateway 503 unsent and 503 after the service committed, and an actual server 500 thrown inside the commit transaction (rolled back, retry → `OKAY`) and after it (kept, retry → `DUPL`); the DB is inspected directly after every fault, so a timeout is never read as proof of rollback — this is the *same-writer retry* path, distinct from the resume path above (a resume client reconciles the committed prefix and re-sends nothing). JAVA (PostgreSQL, real service in a child JVM against a PostgreSQL container owned by the test, `DbOutageTest`) **actual database outage mid-generation** — no kill switch, fault point or thrown exception: after a committed two-request prefix the container is `docker stop`ped (state `exited`, a direct JDBC connect is refused), the live service answers the next `requests:raw` with 500 (`FATAL: terminating connection due to administrator command`), the current read fails closed, the heartbeat logs its failure and the process stays up; after `docker start` the generation still holds exactly ordinals 1–2 (same entry SHA-256, no output, parent current), the same writer retries request 3 → `OKAY`, commits 4, renews and publishes = oracle. Also `docker pause` (request times out at the JDBC socket → 500, nothing committed on `unpause`); stop *during* publication (500, no receipt, `PENDING` with 4 entries, publish retry after restart = oracle); and a service restart *during* the outage that exits on `Connection … refused`, then after restore + lease expiry the restarted service **leaves the generation `PENDING` and claimable** (startup no longer discards), the old fence → 409, an explicit `claim` returns `lastOrdinal` 2 / fence + 1, `resumeIndex` = 2 and the resumed publication equals the oracle (`restartDuringTheOutageFailsClosedAndStartsAgainAfterRestore`). Retained evidence `runtime/db-outage.*.json`. In-process fault injection and fail-closed restart tests remain as unit-level coverage. |
+| T-11 race / retry / fencing / CAS | closed (bounded, see D3 and section 7) | (a) fencing and takeover — `JdbcTakeoverTest` (34 tests, two-connection where a race is asserted, all against PostgreSQL time `clock_timestamp()`): `claimAfterLeaseExpiryVerifiesThePrefixAndResumesToTheUninterruptedOutput`, `resumeAfterAnUnacknowledgedCommitDoesNotAppendTheLostRequestAgain`, `claimWithNothingCommittedResumesFromTheSeed`, `liveWriterIsNeverDisplacedOrDiscarded`, `expiredWriterCannotRenewCommitPublishOrDiscardEvenBeforeAnyClaim` (an expired lease cannot be resurrected by its own renew), `repeatedClaimsChainForwardAndEveryEarlierWriterStaysRejected`, `concurrentClaimsHaveExactlyOneWinner` (row lock `FOR UPDATE`; the loser sees the live lease of the winner), `claimVersusCommitRaceAcrossLeaseExpiryLetsOnlyTheClaimThrough`, `claimVersusCommitRaceBeforeLeaseExpiryLetsOnlyTheCommitThrough`, `claimVersusRenewRaceAcrossLeaseExpiryDoesNotResurrectTheOldLease`, `claimFailsWhenThePinnedParentIsNoLongerCurrent`, `resumedPublicationKeepsExpectedParentCas`, `discardAbandonedIsExplicitRequiresAnExpiredLeaseAndKeepsTheEvidence`; fail-closed corruption/incompatibility controls `corruptResultBytesFailTheClaim`, `corruptSuccessorBytesFailTheClaim`, `corruptPolicyStateFailsTheClaim`, `ordinalGapFailsTheClaim`, `tamperedCheckpointFailsTheClaim`, `changedPinnedInputOrManifestFailsTheClaim`, `changedRateTableFailsTheClaim`, `changedContractImplementationIdentityFailsTheClaim`, `identityIsContentDerivedAndPinnedImmutably`, `entryStateAndCheckpointAreOneTransaction`; typed-metadata binding `flippedEntryTypedFlagBreaksTheChainAndFailsTheClaim`, `flippedTypedFlagWithAReforgedChainStillFailsOnTheCounters` (flags, chains and checkpoint re-forged consistently, request/result/successor bytes untouched — the persisted `typed_requests`/`raw_requests` still refuse the claim), `wrongTypedOrRawCounterFailsTheClaimWithIntactEntries`, `countersNotAccountingForEveryEntryFailTheClaim`, `claimReportsTheVerifiedTypedAndRawCounts`; mandatory V3 metadata `schemaRefusesMissingCheckpointMetadata` (V4 `NOT NULL`), `missingGenerationCheckpointFailsClosedEvenIfTheSchemaAllowedIt`, `missingContractIdentityFailsClosedEvenIfTheSchemaAllowedIt`, `missingEntryChainFailsClosedEvenIfTheSchemaAllowedIt` (constraint dropped in the test, null written, claim refused, row left `PENDING`/unclaimed — no downgrade to weaker verification); lost claim response `lostClaimResponseIsReconciledByTheSameReplacementWriterWithoutASecondTransition` (second `claim` by the same replacement writer while its own lease is live returns the identical `Claimed`; `claims` 1, fence, `writer_id`, `lease_expires_at` and the single `generation_claim` row unchanged; a third writer is still 409 while that lease is live; the reconciled writer continues to publication) and `reconciliationStillVerifiesThePrefixAndThePinnedManifest`; HTTP routes `claimRouteTakesOverAnExpiredWriterVerifiesThePrefixAndResumesAtTheNextOrdinal`, `discardAbandonedRouteIsExplicitAndRequiresAnExpiredLease`, `abandonedPendingGenerationIsLeftClaimableAtOpenAndNeverServedAsPublished`; file store `claimByTheHoldingProcessIsIdempotentAndRefusesUnknownOrPublishedGenerations`, `abandonedGenerationCanBeDiscardedInsteadOfClaimed`, `claimFailsClosedOnCorruptJournalChangedManifestOrChangedContract`, `claimFailsClosedOnTypedFlagOrCounterCorruption` (journal typed flag flipped, invalid flag byte, summary counters rewritten), `pendingResultsAreNotServedAsPublishedAndRestartLeavesThemClaimable`; HTTP `GenerationApiTest` same-holder `claim` → 200 with the same fence and `claims` 0, and a repeated `claim` after a takeover (lost response modelled by calling the route twice) → 200 with the identical body; plus the real-process scenarios (5)–(6) of T-10; (b) `twoHundredConcurrentRequestsCommitInAdmissionOrder` (200 concurrent accepted single raw requests, 32 threads; each ordinal equals the servlet-level admission ticket of `AdmissionSequencer`, each exactly once, echoed bytes and persisted `RESOUT` re-read after publish) and `mixedRejectedAndBatchCallsPreserveAdmissionOrderWithoutTicketOrdinalEquality` (60 concurrent calls mixing accepted single requests, 3-record batches and malformed 39-byte envelopes: committed ordinals follow ticket order, rejected envelopes consume a ticket but no ordinal, a batch consumes one ticket for three contiguous ordinals, ticket ≠ ordinal asserted) — the admission order is defined at the servlet filter within one JVM (D3), and `claim` takes an admission ticket too, so within the claiming JVM it is serialized with that generation's apply/batch calls; across JVMs the `FOR UPDATE` row lock and the fence decide (`concurrentClaimsHaveExactlyOneWinner`, `claimVersusCommitRace…`); (c) `siblingPublishRaceHasExactlyOneWinnerAndTheLoserIsDiscarded`, `publishCasFailsWhenCurrentMovedUnderTheLease`, `resumedPublicationKeepsExpectedParentCas`; (d) real kills in `ProcessKillTest` and `ServiceKillTest`, real client timeout / 503 / 500 at both commit boundaries in `HttpBoundaryTest` (before commit → `OKAY` on retry; committed-but-response-lost → `DUPL` while still latest; intervening transaction → `ORDR`) for the same-writer retry path, and the resume path that re-sends nothing (T-10 (2)); `Prefer: return=original` not implemented (optional, off, D5); (e) `applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched`, `directChildWriteBegunWhilePendingBlocksPublicationUntilItEnds`, `directChildWriteWaitsForThePublisherLockAndIsRejectedAfterTheFlip` (two connections), `generation_guard` trigger (V3): fence only increases, writer changes only with a new fence, ordinals contiguous and never rewound, identity columns immutable, `generation_claim` append-only |
 | T-12 blind docs-only oracle | **optional — not authorized, not done** | separate approval per the v3 plan; nothing here depends on it |
 | T-13 512 cap / order / NPOL | closed | GUEST `control-master-513`, `control-master-unordered`, `control-master-duplicate` (RC=12, no output) and `NPOL` cases; JAVA `bootstrapEnforcesTheLegacyMasterTableCapAndOrder`, `batchRejectsInvalidMasterWithRc12AndNoOutput` |
 | T-14 `TYPE` after interest | closed | GUEST `malformed` precedence pair OVER<TYPE and TYPE cases; JAVA `typeAmntFundAfterInterest` |
@@ -248,12 +248,28 @@ record stays legible); D3, D5 and D6 remain deviations.
   `insurance/legacy/codec/**` plus the canonical rate rows, computed from the
   running classpath, not a path or a caller-supplied label), then runs
   `PrefixVerifier` over the durable prefix (section T-11 (a)), and only then
-  replaces `writer_id`, increments `fence`, sets a fresh lease and `claims + 1`
-  and appends a `generation_claim` row — all in that one transaction. A
+  replaces `writer_id`, sets a strictly higher `fence` (drawn from the global
+  `generation_fence_seq`, so consecutive fences of one generation need not be
+  adjacent), a fresh lease and `claims + 1` and appends a `generation_claim` row — all in that one transaction. A
   successful claim returns `lastOrdinal`, the checkpoint, the new fence and the
   committed request count; the response carries the new lease. Repeated claims
   chain forward (fence 1 → 2 → 3, every earlier fence rejected); concurrent
-  claims have exactly one winner. Old writers whose lease has expired can no
+  claims have exactly one winner. **Lost claim response (same writer).** A
+  claim transaction may commit while its HTTP response is lost. If the *same*
+  replacement writer asks again while its own lease is live, the store
+  recognises it as the current owner, re-verifies manifest, identity and
+  durable prefix, and returns the existing fence and prefix — no ownership
+  transition, no fence/`claims` increment, no `generation_claim` row, no wait
+  for a heartbeat. This is reconciliation of the caller's own committed claim,
+  not a takeover: a *different* writer against a live lease is still 409, and
+  ordinary takeover still requires expiry. Missing V3 metadata
+  (`contract_identity`, `checkpoint`, entry `chain`) refuses the claim rather
+  than downgrading the verification; V4 makes those columns `NOT NULL`. V4
+  does not backfill or invent metadata: a database holding pre-V3 rows without
+  it fails the migration (the service refuses to start), and a checkpoint
+  written in the pre-typed-flag chain format fails the claim closed. No upgrade
+  equivalence for an existing database across these formats has been
+  demonstrated; the tests start from empty schemas. Old writers whose lease has expired can no
   longer renew, commit, publish or discard **even before any claim** (the
   predicates compare against `clock_timestamp()` inside the same statement), so
   an old process cannot resurrect its lease ahead of a takeover. The file
@@ -268,11 +284,14 @@ record stays legible); D3, D5 and D6 remain deviations.
   duplicate, entry count ≠ `last_ordinal`, malformed request/result/successor
   length, a stored result that the pinned contract does **not** reproduce from
   the stored request and the replayed state, a stored successor that is not the
-  contract's successor, replayed policy state ≠ persisted state, or a chain
-  value ≠ the stored `generation_entry.chain` / `generation.checkpoint`
-  (`c0 = sha256(seed)`, `ck = sha256(c(k−1) ‖ ordinal ‖ request ‖ result ‖
-  successor-flag ‖ successor)`; entry, state, ordinal and checkpoint are
-  written in one transaction). The resume client
+  contract's successor, replayed policy state ≠ persisted state, a per-entry
+  typed flag outside {0,1}, typed/raw entry counts ≠ the persisted
+  `typed_requests`/`raw_requests` (which must also sum to `last_ordinal`), a
+  null chain or checkpoint, or a chain value ≠ the stored
+  `generation_entry.chain` / `generation.checkpoint` (`c0 = sha256(seed)`,
+  `ck = sha256(c(k−1) ‖ ordinal ‖ request ‖ result ‖ typed-flag ‖
+  successor-flag ‖ successor)`; entry, state, ordinal, counters and checkpoint
+  are written in one transaction). The resume client
   (`PolicyLedgerService.resumeIndex`, used by `batch resume`, `ServiceKillTest`
   and `DbOutageTest`) reads the committed request stream, requires it to be a
   byte-exact prefix of the pinned input, and continues at `lastOrdinal + 1`,
@@ -280,7 +299,7 @@ record stays legible); D3, D5 and D6 remain deviations.
   re-sent (no `DUPL`/`ORDR` record is appended) and the recovered
   `RESOUT`/`POLOUT` are exactly the uninterrupted stream — proven against the
   batch oracle in every kill scenario and against the archived MVS stage `a`
-  (2,048 requests) in T-10 (7). A rejected claim leaves the row exactly as
+  (4,097 entries, killed after 2,049, resumed at 2,050) in T-10 (7). A rejected claim leaves the row exactly as
   found (`PENDING`, old fence, `claims` unchanged); nothing is published and
   nothing is rerun from the parent under the name "resume" — that is the
   explicit `discard-abandoned` + new sibling path.
@@ -298,15 +317,19 @@ record stays legible); D3, D5 and D6 remain deviations.
   client from the header. It is **not** TCP/network arrival order, and it is
   not defined across instances; the plan's "server arrival order" is
   therefore met only in this bounded sense.
-- **D4′ — abandoned pending generations are parked, not auto-discarded
-  (implemented).** Startup/open no longer discards anything: an expired
+- **D4′ — partially resolved: abandoned pending generations are parked, not
+  auto-discarded (implemented); publication-failure discard remains a
+  deviation.** Startup/open no longer discards anything: an expired
   pending generation stays `PENDING` and claimable until an operator either
   claims it or calls `POST …/discard-abandoned` (which also requires the lease
   to be expired and records `abandoned, discarded explicitly: <reason>`;
-  entries are kept as evidence). A *failed publication* under a live lease
-  (pinned-manifest mismatch 422, parent CAS lost 409) still moves the
-  generation to `DISCARDED` — that part of D4 is unchanged and intentional:
-  the writer is alive and the outcome is final.
+  entries are kept as evidence). Resolved: takeover, checkpoint resume,
+  abandoned-pending retention. **Not resolved (still a deviation from the
+  plan's unpublishable-pending state):** a *failed publication* under a live
+  lease (pinned-manifest mismatch 422, parent CAS lost 409) still moves the
+  generation to `DISCARDED` rather than parking it. This is intentional for
+  this round (the writer is alive and the outcome is final) and is left as a
+  stated deviation, not claimed as resolved.
 - **D5 — `Prefer: return=original`** is not implemented (optional, off).
 - **D6 — T-12** is not done (optional, unapproved).
 
@@ -322,8 +345,10 @@ separate decision.
 Maven suite: `./mvnw verify` runs the whole reactor. At the previously
 reviewed head `8278f7a` the total was 110 = `legacy-codec` 7 + `contract-v001`
 21 + `ledger-application` 33 + `ledger-app` 49; with the takeover/resume work
-it is **144 = 7 + 21 + 39 + 77** (the `ledger-app` figure alone is not the
-suite). The last run is in section 8.
+(`cf9aa9b`) it was 144 = 7 + 21 + 39 + 77; with the typed-metadata /
+mandatory-metadata / claim-reconciliation review round it is **156 = 7 + 21 +
+40 + 88** (the `ledger-app` figure alone is not the suite). The last run is in
+section 8.
 
 ## 6. What is Java-only (not guest-observed)
 
@@ -357,6 +382,13 @@ are also Java-only beyond the guest cases listed above.
   evidence at routine-harness commit `5a71041`; if that harness changes its
   fixtures or observed schema, `routine_parity.py` must be re-pinned and
   re-run — nothing is inferred from `expected.json`.
+- The child JVMs of `ServiceKillTest`, `HttpBoundaryTest` and `DbOutageTest`
+  (`RuntimeEvidence`) run the service from the **Maven test classpath**
+  (`target/classes` of the reactor), not from the packaged JAR; the retained
+  `runtime/*.json` bind those runs to the source commit (`source_commit`,
+  `source_tree_dirty`) and the content-derived `contract_identity`, and are
+  not evidence of packaged-JAR execution. The packaged JAR is what
+  the batch/HTTP parity reports in `reports/` were produced with.
 - The kill, HTTP-boundary and DB-outage tests fault one service process and
   one PostgreSQL container on one host. The outage is `docker stop` (fast
   shutdown) or `docker pause` (SIGSTOP) of the disposable Testcontainers
@@ -372,7 +404,11 @@ are also Java-only beyond the guest cases listed above.
   interval (default configured lease; 1–6 s in the tests). The file store has
   no database clock: its "abandoned" is "OS lock free + journal pending",
   which is correct on one host/filesystem with working `flock`, and is not
-  claimed for network filesystems or across hosts.
+  claimed for network filesystems or across hosts. Its claim history
+  (`claims.json`) and generation summary (`generation.json`) are separate
+  writes: no atomic cross-file claim-history durability and no power-loss
+  behaviour is claimed for the file store. PostgreSQL is the service
+  acceptance target.
 - The durable-prefix verification recomputes every stored result and
   successor with the running contract and replays the policy state; it
   detects any stored byte that the pinned rules would not have produced, and
@@ -397,23 +433,52 @@ are also Java-only beyond the guest cases listed above.
 ## 8. Reproduce
 
 Last full verification (working directory `samples/insurance/java`, Java
-21.0.12, offline Maven) at head `cf9aa9b0` (takeover/resume implementation;
-this documentation/evidence commit changes no main or test source):
-`./mvnw spotless:check`, `./mvnw checkstyle:check`, `./mvnw package` and
-`./mvnw verify` (144 tests, 0 failures, 0 errors, 0 skipped: `legacy-codec` 7 +
-`contract-v001` 21 + `ledger-application` 39 + `ledger-app` 77) →
+21.0.12, offline Maven) at head `9e86b78f` (= implementation commit `194aedf7`
+— typed-metadata binding, mandatory V3 metadata, same-writer claim
+reconciliation — plus a test-only `RuntimeEvidence` provenance change and
+README wording; no main-source change after `194aedf7`): `./mvnw -o -q
+spotless:check`, `./mvnw -o -q checkstyle:check`, `./mvnw -o package` and
+`./mvnw -o verify` (156 tests, 0 failures, 0 errors, 0 skipped: `legacy-codec`
+7 + `contract-v001` 21 + `ledger-application` 40 + `ledger-app` 88) →
 `ledger-app-0.1.0-SNAPSHOT.jar` SHA-256
-`2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883`. Every
-report in `reports/`, `routines/`, `reports/negative-controls/` and `../fast/`
-was re-produced with that JAR (`source_commit` `cf9aa9b0`, `jar_sha256`
-`2a4615b2…` in each report): 7 batch stages × 5 + 7 `http-gen` + 7 `http-json`
+`91978b63852f44440806d9e442b6f8a298480e5e12cdcf83be7af4fc5b5900e6` on this
+machine (identical for `194aedf7` and `9e86b78f`, which differ only in test
+source and documentation); an independent build of the same source has a
+different JAR hash, which is expected. The parent's independent packaged-JAR
+recovery check at `194aedf7` is bound to the parent's own JAR hash in the PR.
+
+The `runtime/` evidence (`ServiceKillTest` 7, `HttpBoundaryTest` 3,
+`DbOutageTest` 4) was re-produced at `9e86b78f` with
+`./mvnw -o test -pl ledger-app -am -Dtest='ServiceKillTest,HttpBoundaryTest,DbOutageTest'
+-Dsurefire.failIfNoSpecifiedTests=false -Dledger.evidence.dir=$PWD/evidence/acceptance/runtime`.
+Every `runtime/*.json` now carries `execution` (Maven test-classpath child
+JVM, not the packaged JAR), `source_commit` `9e86b78f…`, `source_tree_dirty:
+false` (evidence directory excluded from the dirty check) and the
+content-derived `contract_identity`
+`contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc`;
+the checkpoints inside differ from the `cf9aa9b0` files because the chain now
+binds the per-entry typed flag. Receipts captured *inside* those files still
+show `source_commit: unknown` / `build_identity: classes:…/target/classes`
+because the child service is started without `LEDGER_SOURCE_COMMIT` and from
+`target/classes` — that is the honest description of how they ran.
+
+The parity reports were **not** regenerated for `194aedf7`/`9e86b78f`: the round changed
+no contract, codec, batch or HTTP evaluation path (checkpoint metadata,
+claim reconciliation and tests only), so every report in `reports/`,
+`routines/`, `reports/negative-controls/` and `../fast/` remains the one
+produced at head `cf9aa9b0` with JAR
+`2a4615b29aaace17ec0cb756a82d920819de09c52396872961a8dcf01500e883`
+(`source_commit` `cf9aa9b0`, `jar_sha256` `2a4615b2…` in each report) and is
+labelled as such, not as new output of this head. At `cf9aa9b0` `./mvnw
+verify` was 144 tests (7 + 21 + 39 + 77). Those reports cover: 7 batch stages × 5 + 7 `http-gen` + 7 `http-json`
 full-corpus stages (8,704 results each), targeted 16/16 × 3 modes (86
 results), routines 184/184 × 3 paths, response-only mutation detected in both
 HTTP modes, 33 authority negative controls. The archived guest authorities
 (A2 archive, A3 `run-01`, targeted authority, routine archive `3c881564…`)
-were replayed unchanged — no new guest execution took place for this head.
+were replayed unchanged — no new guest execution took place for either head.
 `runtime/` is written by the Maven test run itself (`ServiceKillTest`,
-`HttpBoundaryTest`, `DbOutageTest` from the test classpath), not by the JAR.
+`HttpBoundaryTest`, `DbOutageTest`: child JVMs on the Maven test classpath,
+bound by source/build manifest), not by the packaged JAR.
 
 Working directory `samples/insurance/java`, with the guest already reachable
 via the pinned `tools/tk5_setup.sh` / `tk5_start.sh` (no credentials):

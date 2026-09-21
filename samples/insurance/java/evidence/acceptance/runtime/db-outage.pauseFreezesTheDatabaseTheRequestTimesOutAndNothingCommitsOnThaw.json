@@ -1,5 +1,7 @@
 {
   "container_owned_by_test" : true,
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
   "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
   "pause_in_flight" : {
     "db_after_restore" : {
@@ -10,7 +12,7 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 15:55:42.088829",
+      "lease_expires_at" : "2026-09-21 16:39:33.200926",
       "status" : "PENDING"
     },
     "db_before_outage" : {
@@ -21,7 +23,7 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 15:55:42.088829",
+      "lease_expires_at" : "2026-09-21 16:39:33.200926",
       "status" : "PENDING"
     },
     "paused" : true,
@@ -33,7 +35,7 @@
       "transactions_count" : 4
     },
     "request_3" : {
-      "elapsed_ms" : 4030,
+      "elapsed_ms" : 4032,
       "status" : 500
     },
     "retry" : {
@@ -43,7 +45,9 @@
     "unpaused" : true
   },
   "postgres_image" : "postgres:15-alpine",
-  "recorded_at" : "2026-09-21T15:55:24.993812957Z",
+  "recorded_at" : "2026-09-21T16:39:15.874267233Z",
   "schema" : "insurance-java-db-outage-v1",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
   "test" : "pauseFreezesTheDatabaseTheRequestTimesOutAndNothingCommitsOnThaw"
 }

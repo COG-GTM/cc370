@@ -1,9 +1,13 @@
 {
   "container_owned_by_test" : true,
+  "contract_identity" : "contract:sha256:742cdcfa1e698308ccc111fbfc6325586c4d9beea1dc6a2530217e18cdf51dcc",
+  "execution" : "maven-test-classpath child JVM (not the packaged JAR)",
   "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
   "postgres_image" : "postgres:15-alpine",
-  "recorded_at" : "2026-09-21T15:55:31.241140304Z",
+  "recorded_at" : "2026-09-21T16:39:22.346817645Z",
   "schema" : "insurance-java-db-outage-v1",
+  "source_commit" : "9e86b78f1649a196a8add6860d14bc5b062cc6d1",
+  "source_tree_dirty" : false,
   "stop_between_requests" : {
     "db_after_restore" : {
       "current" : "root",
@@ -13,7 +17,7 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 15:55:48.333293",
+      "lease_expires_at" : "2026-09-21 16:39:39.662085",
       "status" : "PENDING"
     },
     "db_before_outage" : {
@@ -24,19 +28,19 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 15:55:48.333293",
+      "lease_expires_at" : "2026-09-21 16:39:39.662085",
       "status" : "PENDING"
     },
     "heartbeat_after_restore" : {
-      "lease_expires_at" : "2026-09-21 15:55:58.636003",
-      "next" : "2026-09-21 15:56:02.858805"
+      "lease_expires_at" : "2026-09-21 16:39:49.967976",
+      "next" : "2026-09-21 16:39:54.178312"
     },
     "outage" : {
       "container_state" : "exited",
       "current_read_status" : 500,
-      "direct_jdbc_connect" : "PSQLException: Connection to localhost:40283 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
+      "direct_jdbc_connect" : "PSQLException: Connection to localhost:36165 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
       "heartbeat_failure_logged" : true,
-      "request_3_body" : "{\"timestamp\":\"2026-09-21T15:55:33.500+00:00\",\"status\":500,\"error\":\"Internal Server Error\",\"message\":\"PreparedStatementCallback; SQL [SELECT \\\"generation\\\".\\\"id\\\" AS \\\"id\\\", \\\"generation\\\".\\\"name\\\" AS \\\"name\\\", \\\"generation\\\".\\\"fence\\\" AS \\\"fence\\\", \\\"generation\\\".\\\"claims\\\" AS \\\"claims\\\", \\\"generation\\\".\\\"status\\\" AS \\\"status\\\", \\\"generation\\\".\\\"writer_id\\\" AS \\\"writer_id\\\", \\\"generation\\\".\\\"parent_id\\\" AS \\\"parent_id\\\", \\\"generation\\\".\\\"namespace\\\" AS \\\"namespace\\\", \\\"generation\\\".\\\"checkpoint\\\" AS \\\"checkpoint\\\", \\\"generation\\\".\\\"last_ordinal\\\" AS \\\"last_ordinal\\\", \\\"generation\\\".\\\"raw_requests\\\" AS \\\"raw_requests\\\", \\\"generation\\\".\\\"policies_count\\\" AS \\\"policies_count\\\", \\\"generation\\\".\\\"typed_requests\\\" AS \\\"typed_requests\\\", \\\"generation\\\".\\\"manifest_sha256\\\" AS \\\"manifest_sha256\\\", \\\"generation\\\".\\\"seed_polin_sha256\\\" AS \\\"seed_polin_sha256\\\", \\\"generation\\\".\\\"contract_identity\\\" AS \\\"contract_identity\\\" FROM \\\"generation\\\" WHERE \\\"generation\\\".\\\"namespace\\\" = ? AND (\\\"generation\\\".\\\"name\\\" = ?)]; FATAL: terminating connection due to administrator command\",\"path\":\"/v1/namespaces/outage/generations/g1/requests:raw\"}",
+      "request_3_body" : "{\"timestamp\":\"2026-09-21T16:39:24.832+00:00\",\"status\":500,\"error\":\"Internal Server Error\",\"message\":\"PreparedStatementCallback; SQL [SELECT \\\"generation\\\".\\\"id\\\" AS \\\"id\\\", \\\"generation\\\".\\\"name\\\" AS \\\"name\\\", \\\"generation\\\".\\\"fence\\\" AS \\\"fence\\\", \\\"generation\\\".\\\"claims\\\" AS \\\"claims\\\", \\\"generation\\\".\\\"status\\\" AS \\\"status\\\", \\\"generation\\\".\\\"writer_id\\\" AS \\\"writer_id\\\", \\\"generation\\\".\\\"parent_id\\\" AS \\\"parent_id\\\", \\\"generation\\\".\\\"namespace\\\" AS \\\"namespace\\\", \\\"generation\\\".\\\"checkpoint\\\" AS \\\"checkpoint\\\", \\\"generation\\\".\\\"last_ordinal\\\" AS \\\"last_ordinal\\\", \\\"generation\\\".\\\"raw_requests\\\" AS \\\"raw_requests\\\", \\\"generation\\\".\\\"policies_count\\\" AS \\\"policies_count\\\", \\\"generation\\\".\\\"typed_requests\\\" AS \\\"typed_requests\\\", \\\"generation\\\".\\\"manifest_sha256\\\" AS \\\"manifest_sha256\\\", \\\"generation\\\".\\\"seed_polin_sha256\\\" AS \\\"seed_polin_sha256\\\", \\\"generation\\\".\\\"contract_identity\\\" AS \\\"contract_identity\\\" FROM \\\"generation\\\" WHERE \\\"generation\\\".\\\"namespace\\\" = ? AND (\\\"generation\\\".\\\"name\\\" = ?)]; FATAL: terminating connection due to administrator command\",\"path\":\"/v1/namespaces/outage/generations/g1/requests:raw\"}",
       "request_3_status" : 500
     },
     "publication" : {
