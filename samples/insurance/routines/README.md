@@ -157,8 +157,12 @@ make -C samples/insurance/routines controls      # negative comparator controls
 make -C samples/insurance/routines contract OBSERVED="<dir> ..."
 ```
 
-Real guest (private TK5 at `~/mvs-demo/mvs-tk5`, one writer per DASD set, unique prefixes;
-credentials only through `TK5_JOB_USER` / `TK5_JOB_PASSWORD` if the guest needs them):
+Real guest (private TK5 at `~/mvs-demo/mvs-tk5`, one writer per DASD set, unique prefixes).
+`TK5_JOB_USER` / `TK5_JOB_PASSWORD` must be in the environment: without them the
+job card carries no `USER=`, the job runs as the RAKF default user `PROD`, and every
+`DISP=(NEW,CATLG|KEEP|PASS)` allocation fails with `IEF197I SYSTEM ERROR DURING
+ALLOCATION` (often preceded by `RAKF0005`/`RAKF000A ... DATASET`) before anything runs.
+Never print, commit or copy the values into evidence:
 
 ```sh
 cd samples/insurance/routines/harness
