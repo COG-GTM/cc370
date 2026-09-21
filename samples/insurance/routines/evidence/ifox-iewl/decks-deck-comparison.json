@@ -1,0 +1,68 @@
+[
+ {
+  "module": "INSPACK",
+  "identical": true,
+  "ifox_non_end_cards": 5,
+  "as370_non_end_cards": 5,
+  "compared_columns": "1-72",
+  "ifox_sha256": "8c8073f8a4cdfd1d8b71f0230e8fd5160d3ef142fcd42420bfc27bcf5b0fe5fa",
+  "as370_sha256": "4017d65b71a7b0f11164fc855287d0cc03914e5ee97970c80a0f71e3923bc656",
+  "differences": [],
+  "scope": "object build comparison, separate from execution evidence"
+ },
+ {
+  "module": "INSDATE",
+  "identical": true,
+  "ifox_non_end_cards": 8,
+  "as370_non_end_cards": 8,
+  "compared_columns": "1-72",
+  "ifox_sha256": "cdba3b91629a9437bb8026ccd3b6b3d7dd70bde4c33c146c662ada26af11165d",
+  "as370_sha256": "10348f6a6d34b8d3ea1cb2967c1c7551d1e1eedd740ddc033777a30b7d49e416",
+  "differences": [],
+  "scope": "object build comparison, separate from execution evidence"
+ },
+ {
+  "module": "INSRATE",
+  "identical": true,
+  "ifox_non_end_cards": 5,
+  "as370_non_end_cards": 5,
+  "compared_columns": "1-72",
+  "ifox_sha256": "97910e22202e744024d315eedf176ba9352924c58975c0f9dff4970474fc3bd9",
+  "as370_sha256": "1bd3b3ae10ec083116292e48b04969821ef7284289e6dfa8268b512c7378eb51",
+  "differences": [],
+  "scope": "object build comparison, separate from execution evidence"
+ },
+ {
+  "module": "INSVAL",
+  "identical": true,
+  "ifox_non_end_cards": 10,
+  "as370_non_end_cards": 10,
+  "compared_columns": "1-72",
+  "ifox_sha256": "619b0d4c39f5948d00bb995ab78b57a40a34e2500d2846f9bf7a4a0d33c23384",
+  "as370_sha256": "8cecfef0a2d575dc7f6a0a7f4385f3fef03cfd796562e0f8e7147150416182d4",
+  "differences": [],
+  "scope": "object build comparison, separate from execution evidence"
+ },
+ {
+  "module": "INSCALC",
+  "identical": true,
+  "ifox_non_end_cards": 24,
+  "as370_non_end_cards": 24,
+  "compared_columns": "1-72",
+  "ifox_sha256": "182e52aeeb5acddf17df7544f22b8153f7530e09b8f46b3f2ca95b1af7ddbb5d",
+  "as370_sha256": "927c311d0cf52b20dad334a44cdc92281de38f1f1f3de6821a44b32dc5ae5f43",
+  "differences": [],
+  "scope": "object build comparison, separate from execution evidence"
+ },
+ {
+  "module": "INSDRV",
+  "identical": true,
+  "ifox_non_end_cards": 22,
+  "as370_non_end_cards": 22,
+  "compared_columns": "1-72",
+  "ifox_sha256": "3c11b2a24db1e6070d48d3b9ad9380b79f4e33a914505d3d2d8cb57503761d9f",
+  "as370_sha256": "a60919cf75180928701d0bc31695991ba074e7c115692988ad904eb7e6dd19fa",
+  "differences": [],
+  "scope": "object build comparison, separate from execution evidence"
+ }
+]

@@ -1,0 +1,427 @@
+{
+ "all_ok": true,
+ "controls": [
+  {
+   "control": "synthetic clean capture (comparator self-test)",
+   "expected_class": null,
+   "ok": true,
+   "passed": true
+  },
+  {
+   "control": "known output: OSTAT last byte of CA001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "stable",
+    "expected": "'OKAY'",
+    "expected_raw": "d6d2c1e8",
+    "field": "work_after.OSTAT",
+    "observed": "'OKAC'",
+    "observed_raw": "d6d2c1c3",
+    "offset": 184,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: OINT low digit of CA001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "stable",
+    "expected": "11281",
+    "expected_raw": "0000000011281c",
+    "field": "work_after.OINT",
+    "observed": "11282",
+    "observed_raw": "0000000011282c",
+    "offset": 230,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: transaction byte of CA001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "stable",
+    "expected": "'00000001'",
+    "expected_raw": "f0f0f0f0f0f0f0f1",
+    "field": "work_after.TID",
+    "observed": "'90000001'",
+    "observed_raw": "f9f0f0f0f0f0f0f1",
+    "offset": 128,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: R15 of INSPACK reject PK008",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "PK008",
+    "class": "stable",
+    "expected": "8",
+    "expected_raw": null,
+    "field": "R15",
+    "observed": "0",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSPACK"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "scratch: WAGE of CA001",
+   "expected_class": "scratch",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "scratch",
+    "expected": "1",
+    "expected_raw": "00000001",
+    "field": "work_after.WAGE",
+    "observed": "7",
+    "observed_raw": "00000007",
+    "offset": 296,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "guard: low WORK guard byte",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "expected_raw": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "field": "guard_work_low",
+    "observed": "00a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "observed_raw": "00a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "guard: high save guard byte",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "6969696969696969",
+    "expected_raw": "6969696969696969",
+    "field": "guard_save_high",
+    "observed": "6969696969696900",
+    "observed_raw": "6969696969696900",
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "register: R7 not preserved",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0xbad0007",
+    "expected_raw": null,
+    "field": "R7(after)",
+    "observed": "0xbad0000",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "register: R13 not restored",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0x21800",
+    "expected_raw": null,
+    "field": "R13(after)",
+    "observed": "0x21100",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "register: R14 low byte",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0x2016c",
+    "expected_raw": null,
+    "field": "R14(after).low24",
+    "observed": "0x20100",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "save chain: callee back pointer",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0x21800",
+    "expected_raw": null,
+    "field": "callee_save[4] (back)",
+    "observed": "0x1800",
+    "observed_raw": "00001800",
+    "offset": 4,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "save chain: stored R2 in caller save",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0xbad0002",
+    "expected_raw": null,
+    "field": "caller_save[28] (R2)",
+    "observed": "0xbad0000",
+    "observed_raw": null,
+    "offset": 28,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: case id byte",
+   "expected_class": "structure",
+   "findings": 2,
+   "first_finding": {
+    "case": "CA009",
+    "class": "structure",
+    "expected": "CA001/INSCALC",
+    "expected_raw": null,
+    "field": "identity/order",
+    "observed": "CA009/INSCALC",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: routine name",
+   "expected_class": "structure",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "structure",
+    "expected": "one of INSPACK,INSDATE,INSRATE,INSVAL,INSCALC",
+    "expected_raw": null,
+    "field": "routine",
+    "observed": "INSPALC",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSPALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: ordinal",
+   "expected_class": "structure",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "structure",
+    "expected": "101",
+    "expected_raw": null,
+    "field": "ordinal",
+    "observed": "255",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: flags",
+   "expected_class": "structure",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "structure",
+    "expected": "0",
+    "expected_raw": null,
+    "field": "flags",
+    "observed": "128",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "harness: WORK before-image",
+   "expected_class": "harness",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "harness",
+    "expected": "500000",
+    "expected_raw": "0000000500000c",
+    "field": "work_before.SCASH",
+    "observed": "malformed:ff00000500000c",
+    "observed_raw": "ff00000500000c",
+    "offset": 27,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "harness: R1 sentinel",
+   "expected_class": "harness",
+   "findings": 3,
+   "first_finding": {
+    "case": "CA001",
+    "class": "harness",
+    "expected": "0x21000",
+    "expected_raw": null,
+    "field": "R1(before)",
+    "observed": "0x21001",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "missing record (CA001 removed)",
+   "expected_class": "structure",
+   "findings": 168,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "184",
+    "expected_raw": null,
+    "field": "record count",
+    "observed": "183",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "extra record (PK008 appended)",
+   "expected_class": "structure",
+   "findings": 4,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "184",
+    "expected_raw": null,
+    "field": "record count",
+    "observed": "185",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "duplicate/reordered (CA001 swapped with next)",
+   "expected_class": "structure",
+   "findings": 4,
+   "first_finding": {
+    "case": "CA002",
+    "class": "structure",
+    "expected": "101",
+    "expected_raw": null,
+    "field": "ordinal",
+    "observed": "102",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "truncated capture (last 100 bytes cut)",
+   "expected_class": "structure",
+   "findings": 3,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "multiple of 1536",
+    "expected_raw": null,
+    "field": "capture length",
+    "observed": "282524",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "empty capture",
+   "expected_class": "structure",
+   "findings": 185,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "184",
+    "expected_raw": null,
+    "field": "record count",
+    "observed": "0",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  }
+ ],
+ "note": "synthetic captures corrupted on the host; not guest observations",
+ "schema": "insurance-routines-controls-v1"
+}
