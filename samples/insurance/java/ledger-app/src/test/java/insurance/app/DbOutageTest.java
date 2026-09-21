@@ -20,12 +20,15 @@ import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
 import insurance.app.http.Api.ApplyResponse;
 import insurance.app.http.Api.BeginRequest;
+import insurance.app.http.Api.ClaimRequest;
+import insurance.app.http.Api.ClaimResponse;
 import insurance.app.http.Api.ImportRequest;
 import insurance.app.http.Api.LeaseResponse;
 import insurance.app.http.Api.PublishRequest;
 import insurance.app.http.Api.RawRequest;
 import insurance.contract.v001.ContractV001;
 import insurance.ledger.Json;
+import insurance.ledger.PolicyLedgerService;
 import insurance.ledger.Receipt;
 import insurance.ledger.Sha256;
 import insurance.ledger.batch.BatchRunner;
@@ -75,12 +78,13 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * publication); that after {@code docker start} / {@code unpause} the generation holds exactly the
  * pre-outage prefix, the same writer's retry and the remaining requests commit in order, the lease
  * heartbeat resumes and the published bytes equal the pure INSBAT emulation; and that a service
- * restart during the outage fails closed (the child exits, serves nothing).
+ * restart during the outage fails closed (the child exits, serves nothing), and that once the
+ * database is back the restarted service finds the abandoned generation still pending, claims it
+ * after the dead writer's lease has expired and resumes it at the next ordinal (writer takeover
+ * proper is exercised in {@link ServiceKillTest}).
  *
- * <p>Bounded: one service process, one database container on one host, outages shorter than the
- * writer lease (a longer outage plus a restart discards the pending generation, see {@link
- * ServiceKillTest}); durability across the stop is PostgreSQL's fast shutdown, not a power cut.
- * Takeover / resume semantics (D1/D2/D4) are unchanged and remain pending decision.
+ * <p>Bounded: one service process, one database container on one host; durability across the stop
+ * is PostgreSQL's fast shutdown, not a power cut, partition or failover.
  */
 class DbOutageTest {
   private static final String NS = "/v1/namespaces/outage";
@@ -333,21 +337,35 @@ class DbOutageTest {
         ChildService.start(
             db.getJdbcUrl(), db.getUsername(), db.getPassword(), shortLease, null, FAST_FAIL);
     Map<String, Object> after = dbState("g1");
-    assertEquals("DISCARDED", after.get("status"), "dead writer's lease expired: fail closed");
-    assertEquals("orphaned: writer lease expired at open", after.get("discard_reason"));
-    assertEquals(2L, after.get("entries"), "discard keeps the evidence, publishes nothing");
+    assertEquals("PENDING", after.get("status"), "startup leaves the abandoned generation alone");
+    assertEquals(2L, after.get("entries"), "the committed prefix is intact");
     assertEquals("root", after.get("current"));
     assertEquals(409, raw(lease, requests().get(2)).statusCode(), "old fence rejected");
     ev.put("db_after_restart", after);
 
-    LeaseResponse rerun = begin("g2");
+    HttpResponse<String> claimed =
+        post(
+            NS + "/generations/g1/claim",
+            new ClaimRequest(b64(Json.bytes(manifest("a", 2, 4, seed(), txnin())))));
+    assertEquals(200, claimed.statusCode(), claimed.body());
+    ClaimResponse c =
+        Json.read(claimed.body().getBytes(StandardCharsets.UTF_8), ClaimResponse.class);
+    assertEquals(2, c.lastOrdinal());
+    assertEquals(lease.fence() + 1, c.fence());
+    LeaseResponse mine = new LeaseResponse(c.namespace(), c.generation(), c.parent(), c.fence());
+    byte[] committed = bytes(NS + "/generations/g1/peek/requests");
+    int next = PolicyLedgerService.resumeIndex(committed, requests());
+    assertEquals(2, next);
     BatchRunner.Output oracle = oracle();
-    for (int i = 0; i < requests().size(); i++) {
-      ApplyResponse a = apply(rerun, requests().get(i));
+    for (int i = next; i < requests().size(); i++) {
+      ApplyResponse a = apply(mine, requests().get(i));
       assertEquals(i + 1, a.ordinal());
       assertEquals(oracle.evaluations().get(i).result().status(), a.status());
     }
-    ev.put("rerun", publishAndCompare(rerun, "g2"));
+    assertEquals(409, raw(lease, requests().get(3)).statusCode(), "old fence still rejected");
+    ev.put("claim", node(claimed.body()));
+    ev.put("resumed_from_ordinal", next + 1);
+    ev.put("resume", publishAndCompare(mine, "g1"));
   }
 
   // ---------------------------------------------------------------- outage control

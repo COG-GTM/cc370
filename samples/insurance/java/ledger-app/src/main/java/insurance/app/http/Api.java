@@ -66,6 +66,28 @@ public final class Api {
 
   public record FenceRequest(@JsonProperty("fence") long fence) {}
 
+  /** The manifest pinned at creation must be supplied again; nothing else is accepted. */
+  public record ClaimRequest(@JsonProperty("manifestBase64") String manifestBase64) {}
+
+  /**
+   * Result of a successful claim: the new lease plus the independently verified durable prefix the
+   * claimant must continue from ({@code lastOrdinal + 1}). {@code committedRequestsSha256} is the
+   * hash of the committed TXNIN prefix, so a resuming client can check its input before applying.
+   */
+  public record ClaimResponse(
+      @JsonProperty("namespace") String namespace,
+      @JsonProperty("generation") String generation,
+      @JsonProperty("parent") String parent,
+      @JsonProperty("fence") long fence,
+      @JsonProperty("claims") long claims,
+      @JsonProperty("lastOrdinal") long lastOrdinal,
+      @JsonProperty("typedRequests") int typedRequests,
+      @JsonProperty("rawRequests") int rawRequests,
+      @JsonProperty("committedRequestsSha256") String committedRequestsSha256,
+      @JsonProperty("checkpoint") String checkpoint) {}
+
+  public record DiscardAbandonedRequest(@JsonProperty("reason") String reason) {}
+
   public record CurrentResponse(
       @JsonProperty("namespace") String namespace, @JsonProperty("current") String current) {}
 

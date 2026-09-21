@@ -1,13 +1,15 @@
 package insurance.ledger.generation;
 
+import insurance.contract.v001.ContractV001;
 import insurance.contract.v001.Evaluation;
 import insurance.contract.v001.PolicyTable;
-import insurance.contract.v001.Status;
 import insurance.ledger.BuildIdentity;
+import insurance.ledger.ContractBinding;
 import insurance.ledger.ExpectedManifest;
 import insurance.ledger.Json;
 import insurance.ledger.Receipt;
 import insurance.ledger.Sha256;
+import insurance.legacy.codec.Hex;
 import insurance.legacy.codec.PolicyRecord;
 import insurance.legacy.codec.Records;
 import insurance.legacy.codec.ResultRecord;
@@ -41,30 +43,38 @@ import java.util.function.Function;
  * root/&lt;ns&gt;/pending/&lt;gen&gt;/generation.json     status PENDING, fence, counters
  * root/&lt;ns&gt;/pending/&lt;gen&gt;/seed.bin            parent POLOUT bytes (128 x n)
  * root/&lt;ns&gt;/pending/&lt;gen&gt;/manifest.json       the expected manifest pinned at begin
- * root/&lt;ns&gt;/pending/&lt;gen&gt;/journal.bin         one 265-byte entry per applied request
+ * root/&lt;ns&gt;/pending/&lt;gen&gt;/contract.json       contract + rate identity pinned at begin
+ * root/&lt;ns&gt;/pending/&lt;gen&gt;/journal.bin         one 297-byte entry per applied request
+ * root/&lt;ns&gt;/pending/&lt;gen&gt;/claims.json         ownership transitions (after a claim)
  * root/&lt;ns&gt;/published/&lt;gen&gt;/... + state.bin, results.bin, requests.bin, receipt.json
  * root/&lt;ns&gt;/discarded/&lt;gen&gt;/...
  * </pre>
  *
  * <p>Each applied request is one appended journal entry (request 40, result 96, typed flag 1,
- * successor master 128 or zeros), so the ordinal is the entry index and a torn tail is detectable.
- * Publication is two distinct operations: {@code rename(pending/gen, published/gen)} and then
- * replacement of {@code current.json} via a temporary file and {@code rename(2)}. They are not
- * jointly atomic: a crash between them leaves an orphan published directory that is not reachable
- * from {@code current.json} and is therefore never served.
+ * successor master 128 or zeros, hash chain 32) written with {@code fsync}. The journal is the
+ * checkpoint: the ordinal is the entry index and the chain binds every entry to all previous ones
+ * and to the seed. {@code generation.json} is a summary rewritten after the append; a crash between
+ * the two leaves it one entry behind, which a claim detects and re-derives from the journal (the
+ * journal is never edited). A journal whose length is not a whole number of entries is a torn tail
+ * and fails closed. Publication is two distinct operations: {@code rename(pending/gen,
+ * published/gen)} and then replacement of {@code current.json} via a temporary file and {@code
+ * rename(2)}. They are not jointly atomic: a crash between them leaves an orphan published
+ * directory that is not reachable from {@code current.json} and is therefore never served.
  *
  * <p>Ownership: {@link #open} takes an exclusive OS lock on {@code root/.store.lock} for the
- * lifetime of the store and refuses to open while another process holds it, so recovery can never
- * touch a live writer's pending directory. Because the lock is exclusive, any pending directory
- * found on open belongs to a writer that no longer exists and is moved to {@code discarded/} (fail
- * closed: a pending generation is never resumed or published by a later process; the caller reruns
- * from the pinned published parent). Fencing within the process is one writer per pending
- * generation. Files are fsynced, but no power-loss durability is claimed: no cut-power test has
- * been run.
+ * lifetime of the store and refuses to open while another process holds it, so a live writer of a
+ * pending directory is always in this process. A pending directory found on open belongs to a
+ * writer that no longer exists ({@link #abandonedOnOpen}); it is left in place, unserved, until it
+ * is {@link #claim claimed} -- pinned manifest, rate table and contract identity checked and the
+ * whole journal re-evaluated by the running contract ({@link PrefixVerifier}) before a new fence is
+ * issued -- or explicitly {@link #discardAbandoned discarded}. Within the process one fence is live
+ * per pending generation; an in-process holder is never displaced by a claim. Files are fsynced,
+ * but no power-loss durability is claimed: no cut-power test has been run.
  */
 public final class FileGenerationStore implements GenerationStore {
-  private static final int ENTRY =
-      TransactionRecord.LENGTH + ResultRecord.LENGTH + 1 + PolicyRecord.LENGTH;
+  static final int CHAIN = 32;
+  static final int ENTRY =
+      TransactionRecord.LENGTH + ResultRecord.LENGTH + 1 + PolicyRecord.LENGTH + CHAIN;
 
   public static final class IntegrityException extends GenerationException {
     private static final long serialVersionUID = 1L;
@@ -100,24 +110,31 @@ public final class FileGenerationStore implements GenerationStore {
 
   private final Path root;
   private final Object lock = new Object();
+  private final ContractBinding binding;
   private FileChannel lockChannel;
   private FileLock osLock;
   private final Map<String, PolicyTable> tables = new HashMap<>();
   private final Map<String, GenerationInfo> pendingInfo = new HashMap<>();
+  private final Map<String, String> checkpoints = new HashMap<>();
   private long nextFence = System.nanoTime();
-  private final List<String> discardedOnOpen = new ArrayList<>();
+  private final List<String> abandonedOnOpen = new ArrayList<>();
 
-  private FileGenerationStore(Path root) {
+  private FileGenerationStore(Path root, ContractBinding binding) {
     this.root = root;
+    this.binding = binding;
   }
 
   /**
    * Opens (creating if needed) and verifies the store. The OS lock is taken before anything is
-   * read; a second process gets {@link StoreLockedException}. Orphaned pending generations are
-   * discarded only once the lock is held.
+   * read; a second process gets {@link StoreLockedException}. Pending directories are inventoried
+   * (never moved) only once the lock is held.
    */
   public static FileGenerationStore open(Path root) {
-    FileGenerationStore store = new FileGenerationStore(root);
+    return open(root, ContractBinding.of(ContractV001.frozen()));
+  }
+
+  public static FileGenerationStore open(Path root, ContractBinding binding) {
+    FileGenerationStore store = new FileGenerationStore(root, binding);
     try {
       Files.createDirectories(root);
       store.acquireOsLock();
@@ -184,6 +201,7 @@ public final class FileGenerationStore implements GenerationStore {
         lockChannel = null;
         tables.clear();
         pendingInfo.clear();
+        checkpoints.clear();
       }
     }
   }
@@ -194,23 +212,20 @@ public final class FileGenerationStore implements GenerationStore {
     }
   }
 
-  public List<String> discardedOnOpen() {
-    return List.copyOf(discardedOnOpen);
+  /** Pending generations found on open whose writer no longer exists: claimable or discardable. */
+  public List<String> abandonedOnOpen() {
+    return List.copyOf(abandonedOnOpen);
+  }
+
+  public ContractBinding binding() {
+    return binding;
   }
 
   private void recover(String ns) throws IOException {
     Path pending = root.resolve(ns).resolve("pending");
     if (Files.isDirectory(pending)) {
       for (Path gen : list(pending)) {
-        Path target = root.resolve(ns).resolve("discarded").resolve(gen.getFileName());
-        Path infoFile = gen.resolve("generation.json");
-        if (Files.isRegularFile(infoFile)) {
-          GenerationInfo info = Json.read(infoFile, GenerationInfo.class);
-          write(infoFile, Json.bytes(info.with(GenerationStatus.DISCARDED)));
-        }
-        Files.createDirectories(target.getParent());
-        Files.move(gen, target, StandardCopyOption.ATOMIC_MOVE);
-        discardedOnOpen.add(ns + "/" + gen.getFileName());
+        abandonedOnOpen.add(ns + "/" + gen.getFileName());
       }
     }
     verifyAncestry(ns);
@@ -337,6 +352,9 @@ public final class FileGenerationStore implements GenerationStore {
         Files.createDirectories(pdir);
         write(pdir.resolve("seed.bin"), seed);
         write(pdir.resolve("manifest.json"), Json.bytes(manifest));
+        write(
+            pdir.resolve("contract.json"),
+            Json.bytes(new ContractPin(binding.identity(), binding.rateTableSha256())));
         write(pdir.resolve("journal.bin"), new byte[0]);
         write(pdir.resolve("generation.json"), Json.bytes(info));
       } catch (IOException e) {
@@ -344,6 +362,7 @@ public final class FileGenerationStore implements GenerationStore {
       }
       tables.put(key(namespace, generation), table);
       pendingInfo.put(key(namespace, generation), info);
+      checkpoints.put(key(namespace, generation), PrefixVerifier.seedChain(seed));
       return new Lease(namespace, generation, parent, fence);
     }
   }
@@ -372,27 +391,31 @@ public final class FileGenerationStore implements GenerationStore {
       boolean typed) {
     synchronized (lock) {
       GenerationInfo info = checkedPending(lease);
-      PolicyTable table = tables.get(key(lease.namespace(), lease.generation()));
+      String k = key(lease.namespace(), lease.generation());
+      PolicyTable table = tables.get(k);
       Evaluation evaluation = evaluator.apply(table.find(request.id()));
+      byte[] successor = evaluation.accepted() ? evaluation.master().bytes() : null;
+      long ordinal = info.lastOrdinal() + 1;
+      String chain =
+          PrefixVerifier.chain(
+              checkpoints.get(k), ordinal, request.bytes(), evaluation.result().bytes(), successor);
       byte[] entry = new byte[ENTRY];
       System.arraycopy(request.bytes(), 0, entry, 0, TransactionRecord.LENGTH);
       System.arraycopy(
           evaluation.result().bytes(), 0, entry, TransactionRecord.LENGTH, ResultRecord.LENGTH);
       entry[TransactionRecord.LENGTH + ResultRecord.LENGTH] = (byte) (typed ? 1 : 0);
-      if (evaluation.accepted()) {
+      if (successor != null) {
         System.arraycopy(
-            evaluation.master().bytes(),
-            0,
-            entry,
-            ENTRY - PolicyRecord.LENGTH,
-            PolicyRecord.LENGTH);
+            successor, 0, entry, ENTRY - CHAIN - PolicyRecord.LENGTH, PolicyRecord.LENGTH);
       }
+      System.arraycopy(Hex.parse(chain), 0, entry, ENTRY - CHAIN, CHAIN);
       Path pdir = pendingDir(lease.namespace(), lease.generation());
       try {
         append(pdir.resolve("journal.bin"), entry);
+        checkpoints.put(k, chain);
         GenerationInfo next = info.advanced(typed);
         write(pdir.resolve("generation.json"), Json.bytes(next));
-        pendingInfo.put(key(lease.namespace(), lease.generation()), next);
+        pendingInfo.put(k, next);
         if (evaluation.accepted()) {
           table.replace(evaluation.master());
         }
@@ -417,23 +440,30 @@ public final class FileGenerationStore implements GenerationStore {
         }
         byte[] seed = read(pdir.resolve("seed.bin"));
         byte[] journal = read(pdir.resolve("journal.bin"));
-        if (journal.length % ENTRY != 0) {
-          throw new IntegrityException("torn journal entry in " + lease.generation());
-        }
-        long entries = journal.length / ENTRY;
-        if (entries != info.lastOrdinal()) {
-          throw new IntegrityException(
-              "journal has " + entries + " entries but last ordinal is " + info.lastOrdinal());
-        }
-        Rebuilt r = rebuild(seed, journal);
-        context.validatePublication(manifest, seed, r.requests, r.state, r.results);
+        PolicyTable table = tables.get(key(lease.namespace(), lease.generation()));
+        byte[] state = table.size() == 0 ? new byte[0] : Records.join(table.rows());
+        PrefixVerifier.Verified r =
+            PrefixVerifier.verify(
+                seed,
+                entries(journal, lease.generation()),
+                info.lastOrdinal(),
+                state,
+                checkpoints.get(key(lease.namespace(), lease.generation())),
+                binding);
+        context.validatePublication(manifest, seed, r.requests(), r.state(), r.results());
         GenerationInfo published = info.with(GenerationStatus.PUBLISHED);
         Receipt receipt =
             context.complete(
-                published, manifest, seed, r.requests, r.state, r.results, BuildIdentity.runtime());
-        write(pdir.resolve("state.bin"), r.state);
-        write(pdir.resolve("results.bin"), r.results);
-        write(pdir.resolve("requests.bin"), r.requests);
+                published,
+                manifest,
+                seed,
+                r.requests(),
+                r.state(),
+                r.results(),
+                BuildIdentity.runtime());
+        write(pdir.resolve("state.bin"), r.state());
+        write(pdir.resolve("results.bin"), r.results());
+        write(pdir.resolve("requests.bin"), r.requests());
         write(pdir.resolve("receipt.json"), Json.bytes(receipt));
         write(pdir.resolve("generation.json"), Json.bytes(published));
         Path target = publishedDir(lease.namespace(), lease.generation());
@@ -443,8 +473,7 @@ public final class FileGenerationStore implements GenerationStore {
           Runtime.getRuntime().halt(137);
         }
         setCurrent(lease.namespace(), lease.generation());
-        tables.remove(key(lease.namespace(), lease.generation()));
-        pendingInfo.remove(key(lease.namespace(), lease.generation()));
+        forget(key(lease.namespace(), lease.generation()));
         return receipt;
       } catch (IOException e) {
         throw new UncheckedIOException(e);
@@ -485,7 +514,25 @@ public final class FileGenerationStore implements GenerationStore {
   }
 
   private void discardQuietly(Lease lease) {
-    Path pdir = pendingDir(lease.namespace(), lease.generation());
+    moveToDiscarded(lease.namespace(), lease.generation());
+  }
+
+  @Override
+  public void discardAbandoned(String namespace, String generation, String reason) {
+    synchronized (lock) {
+      requireOpen();
+      if (pendingInfo.containsKey(key(namespace, generation))) {
+        throw new FencedException(generation + " is held by a live writer in this process");
+      }
+      if (!Files.isDirectory(pendingDir(namespace, generation))) {
+        throw new GenerationException(generation + " is not a pending generation of " + namespace);
+      }
+      moveToDiscarded(namespace, generation);
+    }
+  }
+
+  private void moveToDiscarded(String namespace, String generation) {
+    Path pdir = pendingDir(namespace, generation);
     if (!Files.isDirectory(pdir)) {
       return;
     }
@@ -493,19 +540,169 @@ public final class FileGenerationStore implements GenerationStore {
       GenerationInfo info =
           pendingInfo
               .getOrDefault(
-                  key(lease.namespace(), lease.generation()),
+                  key(namespace, generation),
                   Json.read(pdir.resolve("generation.json"), GenerationInfo.class))
               .with(GenerationStatus.DISCARDED);
       write(pdir.resolve("generation.json"), Json.bytes(info));
-      Path target =
-          root.resolve(lease.namespace()).resolve("discarded").resolve(lease.generation());
+      Path target = root.resolve(namespace).resolve("discarded").resolve(generation);
       Files.createDirectories(target.getParent());
       Files.move(pdir, target, StandardCopyOption.ATOMIC_MOVE);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     } finally {
-      tables.remove(key(lease.namespace(), lease.generation()));
-      pendingInfo.remove(key(lease.namespace(), lease.generation()));
+      forget(key(namespace, generation));
+    }
+  }
+
+  private void forget(String k) {
+    tables.remove(k);
+    pendingInfo.remove(k);
+    checkpoints.remove(k);
+  }
+
+  record ContractPin(String identity, String ratesSha256) {}
+
+  record ClaimRecord(
+      long claimNo,
+      long oldFence,
+      long newFence,
+      long verifiedLastOrdinal,
+      String checkpoint,
+      String claimant) {}
+
+  /** Claim history of a pending or published generation (evidence). */
+  public List<ClaimRecord> claims(String namespace, String generation) {
+    synchronized (lock) {
+      for (String kind : List.of("pending", "published", "discarded")) {
+        Path file =
+            root.resolve(namespace).resolve(kind).resolve(generation).resolve("claims.json");
+        if (Files.isRegularFile(file)) {
+          return List.of(Json.read(file, ClaimRecord[].class));
+        }
+      }
+      return List.of();
+    }
+  }
+
+  @Override
+  public Claimed claim(String namespace, String generation, ExpectedManifest manifest) {
+    synchronized (lock) {
+      requireOpen();
+      String k = key(namespace, generation);
+      if (pendingInfo.containsKey(k)) {
+        throw new FencedException(
+            generation
+                + " is held by live fence "
+                + pendingInfo.get(k).fence()
+                + " in this process; a live writer is never displaced");
+      }
+      Path pdir = pendingDir(namespace, generation);
+      if (!Files.isDirectory(pdir)) {
+        Optional<GenerationInfo> other = info(namespace, generation);
+        throw new GenerationException(
+            generation
+                + " is "
+                + other.map(i -> i.status().name()).orElse("unknown")
+                + ", not an abandoned pending generation of "
+                + namespace);
+      }
+      GenerationInfo stored = Json.read(pdir.resolve("generation.json"), GenerationInfo.class);
+      if (stored.status() != GenerationStatus.PENDING) {
+        throw new GenerationException(generation + " is " + stored.status());
+      }
+      String pinnedManifest = stored.expectedManifestSha256();
+      if (!ReceiptContext.manifestSha256(manifest).equals(pinnedManifest)) {
+        throw new CheckpointException(
+            "supplied manifest "
+                + ReceiptContext.manifestSha256(manifest)
+                + " is not the manifest pinned at creation "
+                + pinnedManifest);
+      }
+      readManifest(pdir, pinnedManifest);
+      manifest.verifyRates(binding.rateTableSha256());
+      Path pin = pdir.resolve("contract.json");
+      if (!Files.isRegularFile(pin)) {
+        throw new CheckpointException(generation + " has no pinned contract identity");
+      }
+      ContractPin pinned = Json.read(pin, ContractPin.class);
+      if (!binding.identity().equals(pinned.identity())) {
+        throw new CheckpointException(
+            "pinned contract identity "
+                + pinned.identity()
+                + " differs from the running "
+                + binding.identity());
+      }
+      Optional<String> cur = current(namespace);
+      if (!cur.map(c -> c.equals(stored.parent())).orElse(false)) {
+        throw new CasException(
+            "parent " + stored.parent() + " is no longer the current generation of " + namespace);
+      }
+      byte[] seed = read(pdir.resolve("seed.bin"));
+      if (!Sha256.of(seed).equals(stored.seedPolinSha256())) {
+        throw new CheckpointException("pinned seed bytes do not match seed_polin_sha256");
+      }
+      manifest.verifySeed(seed);
+      byte[] journal = read(pdir.resolve("journal.bin"));
+      List<PrefixVerifier.Entry> entries = entries(journal, generation);
+      long durable = entries.size();
+      if (durable != stored.lastOrdinal() && durable != stored.lastOrdinal() + 1) {
+        throw new CheckpointException(
+            "journal has "
+                + durable
+                + " entries but the summary says "
+                + stored.lastOrdinal()
+                + " (more than the single append the summary can lag)");
+      }
+      int typed = 0;
+      for (int i = 0; i < entries.size(); i++) {
+        if (journal[i * ENTRY + TransactionRecord.LENGTH + ResultRecord.LENGTH] == 1) {
+          typed++;
+        }
+      }
+      int raw = entries.size() - typed;
+      PrefixVerifier.Verified verified =
+          PrefixVerifier.verify(seed, entries, durable, null, null, binding);
+      long fence = Math.max(stored.fence(), ++nextFence) + 1;
+      nextFence = fence;
+      GenerationInfo claimed =
+          new GenerationInfo(
+              namespace,
+              generation,
+              stored.parent(),
+              GenerationStatus.PENDING,
+              fence,
+              stored.policiesCount(),
+              durable,
+              typed,
+              raw,
+              stored.seedPolinSha256(),
+              stored.expectedManifestSha256());
+      List<ClaimRecord> history = new ArrayList<>(claims(namespace, generation));
+      history.add(
+          new ClaimRecord(
+              history.size() + 1,
+              stored.fence(),
+              fence,
+              durable,
+              verified.checkpoint(),
+              ProcessHandle.current().pid() + "@" + Thread.currentThread().getName()));
+      try {
+        write(pdir.resolve("claims.json"), Json.bytes(history));
+        write(pdir.resolve("generation.json"), Json.bytes(claimed));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+      tables.put(k, PolicyTable.ofValidated(Records.policies(verified.state())));
+      pendingInfo.put(k, claimed);
+      checkpoints.put(k, verified.checkpoint());
+      return new Claimed(
+          new Lease(namespace, generation, stored.parent(), fence),
+          history.size(),
+          durable,
+          typed,
+          raw,
+          Sha256.of(verified.requests()),
+          verified.checkpoint());
     }
   }
 
@@ -524,6 +721,11 @@ public final class FileGenerationStore implements GenerationStore {
       GenerationInfo pending = pendingInfo.get(key(namespace, generation));
       if (pending != null) {
         return Optional.of(pending);
+      }
+      Path abandoned = pendingDir(namespace, generation).resolve("generation.json");
+      if (Files.isRegularFile(abandoned)) {
+        // a pending generation with no live writer in this process: claimable or discardable
+        return Optional.of(Json.read(abandoned, GenerationInfo.class));
       }
       for (String kind : List.of("published", "discarded")) {
         Path file =
@@ -580,13 +782,27 @@ public final class FileGenerationStore implements GenerationStore {
 
   @Override
   public byte[] peekResout(String namespace, String generation) {
+    return peekColumn(namespace, generation, TransactionRecord.LENGTH, ResultRecord.LENGTH);
+  }
+
+  @Override
+  public byte[] peekRequests(String namespace, String generation) {
+    return peekColumn(namespace, generation, 0, TransactionRecord.LENGTH);
+  }
+
+  private byte[] peekColumn(String namespace, String generation, int offset, int length) {
     synchronized (lock) {
       Path pdir = pendingDir(namespace, generation);
       if (!tables.containsKey(key(namespace, generation))) {
         throw new GenerationException(generation + " is not an open pending generation");
       }
       byte[] journal = read(pdir.resolve("journal.bin"));
-      return rebuild(read(pdir.resolve("seed.bin")), journal).results;
+      int n = journal.length / ENTRY;
+      byte[] out = new byte[n * length];
+      for (int i = 0; i < n; i++) {
+        System.arraycopy(journal, i * ENTRY + offset, out, i * length, length);
+      }
+      return out;
     }
   }
 
@@ -626,38 +842,34 @@ public final class FileGenerationStore implements GenerationStore {
     return info;
   }
 
-  private record Rebuilt(byte[] state, byte[] results, byte[] requests) {}
-
-  private static Rebuilt rebuild(byte[] seed, byte[] journal) {
-    PolicyTable table = PolicyTable.ofValidated(Records.policies(seed));
+  /** Decodes the journal into verifier entries; a length that is not whole entries fails closed. */
+  private static List<PrefixVerifier.Entry> entries(byte[] journal, String generation) {
+    if (journal.length % ENTRY != 0) {
+      throw new CheckpointException(
+          "torn journal tail in " + generation + ": " + (journal.length % ENTRY) + " stray bytes");
+    }
     int n = journal.length / ENTRY;
-    byte[] results = new byte[n * ResultRecord.LENGTH];
-    byte[] requests = new byte[n * TransactionRecord.LENGTH];
+    List<PrefixVerifier.Entry> out = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
       int base = i * ENTRY;
-      System.arraycopy(
-          journal, base, requests, i * TransactionRecord.LENGTH, TransactionRecord.LENGTH);
-      System.arraycopy(
-          journal,
-          base + TransactionRecord.LENGTH,
-          results,
-          i * ResultRecord.LENGTH,
-          ResultRecord.LENGTH);
-      byte[] successor = new byte[PolicyRecord.LENGTH];
-      System.arraycopy(
-          journal, base + ENTRY - PolicyRecord.LENGTH, successor, 0, PolicyRecord.LENGTH);
-      ResultRecord result =
-          new ResultRecord(
-              java.util.Arrays.copyOfRange(
-                  journal,
-                  base + TransactionRecord.LENGTH,
-                  base + TransactionRecord.LENGTH + ResultRecord.LENGTH));
-      if (Status.OKAY.name().equals(result.status())) {
-        table.replace(new PolicyRecord(successor));
+      byte[] request = java.util.Arrays.copyOfRange(journal, base, base + TransactionRecord.LENGTH);
+      byte[] result =
+          java.util.Arrays.copyOfRange(
+              journal,
+              base + TransactionRecord.LENGTH,
+              base + TransactionRecord.LENGTH + ResultRecord.LENGTH);
+      byte[] successor =
+          java.util.Arrays.copyOfRange(
+              journal, base + ENTRY - CHAIN - PolicyRecord.LENGTH, base + ENTRY - CHAIN);
+      boolean zeros = true;
+      for (byte b : successor) {
+        zeros &= b == 0;
       }
+      String chain =
+          Hex.of(java.util.Arrays.copyOfRange(journal, base + ENTRY - CHAIN, base + ENTRY));
+      out.add(new PrefixVerifier.Entry(i + 1, request, result, zeros ? null : successor, chain));
     }
-    byte[] state = table.size() == 0 ? new byte[0] : Records.join(table.rows());
-    return new Rebuilt(state, results, requests);
+    return out;
   }
 
   private record CurrentPointer(

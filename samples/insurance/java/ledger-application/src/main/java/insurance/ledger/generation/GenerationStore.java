@@ -18,6 +18,13 @@ import java.util.function.Function;
  * against the pinned manifest, flips the status and moves the namespace pointer with an
  * expected-parent CAS under one lock; published rows are never modified afterwards.
  *
+ * <p>Recovery: a pending generation whose writer is gone (lease expired) is neither served nor
+ * silently discarded. It may be {@link #claim claimed} by a new writer, which atomically takes the
+ * ownership (new fence) only after establishing the durable prefix with {@link PrefixVerifier}
+ * against the pinned seed, manifest, rate table and contract identity, and then continues at {@code
+ * lastOrdinal + 1}; or it may be explicitly {@link #discardAbandoned discarded}. A claim never
+ * repairs, truncates or reruns anything: a prefix that does not verify fails closed.
+ *
  * <p>Closing a store releases whatever exclusive resource it holds (an OS file lock, a writer lease
  * heartbeat); it does not discard or publish anything.
  */
@@ -50,9 +57,33 @@ public interface GenerationStore extends AutoCloseable {
     }
   }
 
+  /** The durable prefix did not verify or is incompatible with the running contract. */
+  final class CheckpointException extends GenerationException {
+    private static final long serialVersionUID = 1L;
+
+    public CheckpointException(String message) {
+      super(message);
+    }
+  }
+
   record Lease(String namespace, String generation, String parent, long fence) {}
 
   record Applied(long ordinal, Evaluation evaluation) {}
+
+  /**
+   * Result of a successful claim: the new lease, how many times the generation has been claimed,
+   * the verified prefix length ({@code lastOrdinal}; the writer continues at {@code lastOrdinal +
+   * 1}), the hash of the committed request bytes (so a resuming client can check that the prefix is
+   * its own input before skipping it) and the verified checkpoint.
+   */
+  record Claimed(
+      Lease lease,
+      long claims,
+      long lastOrdinal,
+      int typedRequests,
+      int rawRequests,
+      String committedRequestsSha256,
+      String checkpoint) {}
 
   /**
    * Publishes a root generation from validated masters. The manifest must already have been checked
@@ -94,7 +125,24 @@ public interface GenerationStore extends AutoCloseable {
   /** The manifest pinned to a generation of any status. */
   Optional<ExpectedManifest> manifest(String namespace, String generation);
 
+  /**
+   * Takes over an abandoned pending generation. Under the generation lock: the generation must be
+   * PENDING with an expired writer lease (a live writer is never displaced), {@code manifest} must
+   * be the pinned manifest byte for byte and bind the running rate table, the pinned contract
+   * identity must be the running one, and the durable prefix must verify ({@link PrefixVerifier}).
+   * Only then are fence and writer replaced atomically. Any failure leaves the generation exactly
+   * as it was (still claimable or discardable) and throws.
+   */
+  Claimed claim(String namespace, String generation, ExpectedManifest manifest);
+
+  /** Discards under the caller's live lease. */
   void discard(Lease lease);
+
+  /**
+   * Explicit operator discard of a pending generation whose writer lease has expired. Refused while
+   * the lease is live (the writer, or a successful claimant, owns it).
+   */
+  void discardAbandoned(String namespace, String generation, String reason);
 
   Optional<String> current(String namespace);
 
@@ -113,6 +161,8 @@ public interface GenerationStore extends AutoCloseable {
   byte[] peekPolout(String namespace, String generation);
 
   byte[] peekResout(String namespace, String generation);
+
+  byte[] peekRequests(String namespace, String generation);
 
   List<String> namespaces();
 

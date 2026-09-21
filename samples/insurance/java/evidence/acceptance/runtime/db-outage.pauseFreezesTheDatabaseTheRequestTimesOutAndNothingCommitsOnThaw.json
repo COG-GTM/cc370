@@ -10,7 +10,7 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 07:49:15.94545",
+      "lease_expires_at" : "2026-09-21 15:55:42.088829",
       "status" : "PENDING"
     },
     "db_before_outage" : {
@@ -21,7 +21,7 @@
       "has_output" : false,
       "last_ordinal" : 2,
       "last_status" : "DUPL",
-      "lease_expires_at" : "2026-09-21 07:49:15.94545",
+      "lease_expires_at" : "2026-09-21 15:55:42.088829",
       "status" : "PENDING"
     },
     "paused" : true,
@@ -33,7 +33,7 @@
       "transactions_count" : 4
     },
     "request_3" : {
-      "elapsed_ms" : 4043,
+      "elapsed_ms" : 4030,
       "status" : 500
     },
     "retry" : {
@@ -43,7 +43,7 @@
     "unpaused" : true
   },
   "postgres_image" : "postgres:15-alpine",
-  "recorded_at" : "2026-09-21T07:48:58.798383031Z",
+  "recorded_at" : "2026-09-21T15:55:24.993812957Z",
   "schema" : "insurance-java-db-outage-v1",
   "test" : "pauseFreezesTheDatabaseTheRequestTimesOutAndNothingCommitsOnThaw"
 }

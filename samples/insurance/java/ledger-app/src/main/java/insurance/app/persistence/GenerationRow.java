@@ -19,7 +19,11 @@ public record GenerationRow(
     int typedRequests,
     int rawRequests,
     String seedPolinSha256,
-    String manifestSha256) {
+    String manifestSha256,
+    String contractIdentity,
+    String checkpoint,
+    long claims,
+    String writerId) {
 
   public GenerationStatus generationStatus() {
     return GenerationStatus.valueOf(status);

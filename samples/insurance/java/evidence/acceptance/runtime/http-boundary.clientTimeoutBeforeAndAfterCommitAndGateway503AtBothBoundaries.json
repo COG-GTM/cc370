@@ -32,7 +32,7 @@
     "resout_sha256" : "5e50a9d4c5e69084a32a1ddfd94cf4338fae41fbc6011f3207f93857bdf026e8",
     "results_count" : 9
   },
-  "recorded_at" : "2026-09-21T07:12:51.206853144Z",
+  "recorded_at" : "2026-09-21T15:53:45.660900656Z",
   "schema" : "insurance-java-http-boundary-v1",
   "test" : "clientTimeoutBeforeAndAfterCommitAndGateway503AtBothBoundaries",
   "timeout_after_commit" : {

@@ -6,6 +6,7 @@ import insurance.contract.v001.PolicyTable;
 import insurance.ledger.generation.GenerationInfo;
 import insurance.ledger.generation.GenerationStore;
 import insurance.ledger.generation.GenerationStore.Applied;
+import insurance.ledger.generation.GenerationStore.Claimed;
 import insurance.ledger.generation.GenerationStore.Lease;
 import insurance.ledger.generation.ReceiptContext;
 import insurance.legacy.codec.PolicyRecord;
@@ -99,6 +100,51 @@ public final class PolicyLedgerService {
 
   public void discard(Lease lease) {
     store.discard(lease);
+  }
+
+  /**
+   * Claims an abandoned pending generation (lease expired, or a dead process's directory in the
+   * file store) under the manifest pinned at its creation: the store verifies the pinned identity,
+   * re-evaluates the whole committed prefix with the running contract and only then hands out a new
+   * fence. The caller continues at {@code claimed.lastOrdinal() + 1}; the committed requests are
+   * available through {@link GenerationStore#peekRequests} so a resuming client can reconcile its
+   * input against them instead of re-sending what is already committed.
+   */
+  public Claimed claim(String namespace, String generation, ExpectedManifest manifest) {
+    manifest.verifyRates(receiptContext.rateTableSha256());
+    return store.claim(namespace, generation, manifest);
+  }
+
+  /** Explicitly discards an abandoned pending generation instead of claiming it. */
+  public void discardAbandoned(String namespace, String generation, String reason) {
+    store.discardAbandoned(namespace, generation, reason);
+  }
+
+  /**
+   * Resume reconciliation: the committed request prefix must be exactly the first {@code n} records
+   * of the pinned input; returns the index of the next record to apply. A committed record that is
+   * not in the input, or an input shorter than the commitment, is a changed input and fails closed
+   * (nothing is truncated or rerun).
+   */
+  public static int resumeIndex(byte[] committedRequests, List<TransactionRecord> input) {
+    int n = committedRequests.length / TransactionRecord.LENGTH;
+    if (committedRequests.length % TransactionRecord.LENGTH != 0) {
+      throw new GenerationStore.CheckpointException("committed request stream is torn");
+    }
+    if (n > input.size()) {
+      throw new GenerationStore.CheckpointException(
+          n + " requests are committed but the supplied input has only " + input.size());
+    }
+    for (int i = 0; i < n; i++) {
+      byte[] committed =
+          java.util.Arrays.copyOfRange(
+              committedRequests, i * TransactionRecord.LENGTH, (i + 1) * TransactionRecord.LENGTH);
+      if (!java.util.Arrays.equals(committed, input.get(i).bytes())) {
+        throw new GenerationStore.CheckpointException(
+            "committed request " + (i + 1) + " differs from the supplied input at that position");
+      }
+    }
+    return n;
   }
 
   /** Stateless evaluation for unit-style raw probes; never touches the store. */

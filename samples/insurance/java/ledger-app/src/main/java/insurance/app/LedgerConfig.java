@@ -5,6 +5,7 @@ import insurance.app.persistence.JdbcGenerationStore;
 import insurance.app.persistence.KillSwitch;
 import insurance.contract.v001.ContractV001;
 import insurance.ledger.BuildIdentity;
+import insurance.ledger.ContractBinding;
 import insurance.ledger.PolicyLedgerService;
 import insurance.ledger.generation.ReceiptContext;
 import java.time.Duration;
@@ -23,14 +24,20 @@ public class LedgerConfig {
     return ContractV001.frozen();
   }
 
+  /** Content identity of the calculation core and codecs; pinned by every generation. */
+  @Bean
+  public ContractBinding contractBinding(ContractV001 contract) {
+    return ContractBinding.of(contract);
+  }
+
   @Bean
   public ReceiptContext receiptContext(
-      @Value("${ledger.source-commit:unknown}") String sourceCommit, ContractV001 contract) {
+      @Value("${ledger.source-commit:unknown}") String sourceCommit, ContractBinding binding) {
     return new ReceiptContext(
         "http",
         sourceCommit,
         BuildIdentity.ofClass(LedgerApplication.class),
-        BuildIdentity.rateTableSha256(contract.rates()));
+        binding.rateTableSha256());
   }
 
   /**
@@ -44,9 +51,15 @@ public class LedgerConfig {
       PlatformTransactionManager txManager,
       GenerationRepository repo,
       @Value("${ledger.writer-lease:PT60S}") Duration writerLease,
-      @Value("${ledger.kill-switch:}") String killSwitch) {
+      @Value("${ledger.kill-switch:}") String killSwitch,
+      ContractBinding binding) {
     return JdbcGenerationStore.open(
-        db, new TransactionTemplate(txManager), repo, writerLease, KillSwitch.parse(killSwitch));
+        db,
+        new TransactionTemplate(txManager),
+        repo,
+        writerLease,
+        KillSwitch.parse(killSwitch),
+        binding);
   }
 
   @Bean

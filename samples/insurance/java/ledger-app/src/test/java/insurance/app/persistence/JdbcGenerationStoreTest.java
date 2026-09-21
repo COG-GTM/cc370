@@ -770,7 +770,7 @@ class JdbcGenerationStoreTest {
 
     // a second instance starting while this writer is alive must not invalidate its generation
     try (JdbcGenerationStore other = open()) {
-      assertEquals(List.of(), other.discardedOnOpen());
+      assertEquals(List.of(), other.abandonedOnOpen());
       assertEquals(List.of(NS + "/g1"), other.liveOnOpen());
       assertEquals(Optional.of("root"), other.current(NS));
       assertEquals(GenerationStatus.PENDING, other.info(NS, "g1").orElseThrow().status());
@@ -783,7 +783,7 @@ class JdbcGenerationStoreTest {
   }
 
   @Test
-  void orphanedPendingGenerationIsDiscardedOnceItsLeaseExpiredAndNeverResumed() {
+  void abandonedPendingGenerationIsLeftClaimableAtOpenAndNeverServedAsPublished() {
     bootstrap();
     Lease lease = begin("root", "g1", stageManifest());
     svc.apply(lease, requests().get(0), false);
@@ -792,20 +792,16 @@ class JdbcGenerationStoreTest {
     db.sql("UPDATE generation SET lease_expires_at = now() - interval '1 second' WHERE name = 'g1'")
         .update();
     store = open();
-    assertEquals(List.of(NS + "/g1"), store.discardedOnOpen());
-    assertEquals(GenerationStatus.DISCARDED, store.info(NS, "g1").orElseThrow().status());
-    assertEquals(
-        "orphaned: writer lease expired at open",
-        db.sql("SELECT discard_reason FROM generation WHERE name = 'g1'")
-            .query(String.class)
-            .single());
+    assertEquals(List.of(NS + "/g1"), store.abandonedOnOpen());
+    assertEquals(List.of(), store.liveOnOpen());
+    assertEquals(GenerationStatus.PENDING, store.info(NS, "g1").orElseThrow().status());
     assertEquals(Optional.of("root"), store.current(NS));
-    assertThrows(GenerationException.class, () -> store.peekResout(NS, "g1"));
+    assertThrows(GenerationException.class, () -> store.resout(NS, "g1"));
+    assertEquals(96, store.peekResout(NS, "g1").length, "the durable prefix is kept");
+    // the dead writer's lease is expired: it cannot write, and nothing was discarded for it
     assertThrows(
-        FencedException.class, () -> service(store).apply(lease, requests().get(0), false));
-    // the committed prefix is not resumed: a rerun starts again from the pinned parent
-    Lease rerun = begin("root", "g1-rerun", stageManifest());
-    assertEquals(1, svc.apply(rerun, requests().get(0), false).ordinal());
+        FencedException.class, () -> service(store).apply(lease, requests().get(1), false));
+    assertEquals(GenerationStatus.PENDING, store.info(NS, "g1").orElseThrow().status());
   }
 
   @Test

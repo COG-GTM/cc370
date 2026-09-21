@@ -43,6 +43,7 @@ class FileGenerationStoreTest {
       new ReceiptContext("batch", "0000000", "jar:sha256:test", RATES_SHA256);
 
   @TempDir Path dir;
+  @TempDir Path other;
   private final List<FileGenerationStore> opened = new ArrayList<>();
 
   @AfterEach
@@ -189,7 +190,7 @@ class FileGenerationStoreTest {
   }
 
   @Test
-  void pendingResultsAreNotServedAsPublishedAndRestartDiscardsThem() {
+  void pendingResultsAreNotServedAsPublishedAndRestartLeavesThemClaimable() {
     FileGenerationStore store = bootstrapped();
     PolicyLedgerService svc = service(store);
     Lease lease = begin(svc, "root", "g1", stageManifest());
@@ -200,13 +201,128 @@ class FileGenerationStoreTest {
     // the writer dies (its OS lock is released with it) and a fresh process opens the store
     store.close();
     FileGenerationStore reopened = open();
-    assertEquals(List.of(NS + "/g1"), reopened.discardedOnOpen());
+    assertEquals(List.of(NS + "/g1"), reopened.abandonedOnOpen());
     assertEquals(Optional.of("root"), reopened.current(NS));
     assertThrows(GenerationException.class, () -> reopened.peekResout(NS, "g1"));
+    assertTrue(Files.isDirectory(dir.resolve(NS).resolve("pending").resolve("g1")));
+    assertFalse(Files.isDirectory(dir.resolve(NS).resolve("discarded").resolve("g1")));
+    // the dead writer's lease is not usable through the new instance
+    PolicyLedgerService again = service(reopened);
+    assertThrows(FencedException.class, () -> again.apply(lease, requests().get(0), false));
+
+    // an explicit claim verifies the durable prefix and continues at ordinal 2
+    GenerationStore.Claimed claimed = again.claim(NS, "g1", stageManifest());
+    assertEquals(1, claimed.lastOrdinal());
+    assertEquals(1, claimed.claims());
+    assertTrue(claimed.lease().fence() > lease.fence());
+    assertEquals(96, reopened.peekResout(NS, "g1").length);
+    int next = PolicyLedgerService.resumeIndex(reopened.peekRequests(NS, "g1"), requests());
+    assertEquals(1, next);
+    assertThrows(FencedException.class, () -> again.apply(lease, requests().get(1), false));
+    for (int i = next; i < requests().size(); i++) {
+      assertEquals(i + 1, again.apply(claimed.lease(), requests().get(i), false).ordinal());
+    }
+    Receipt receipt = again.publish(claimed.lease(), "batch");
+    assertEquals(Optional.of("g1"), reopened.current(NS));
+
+    // the same input applied without interruption produces identical bytes
+    FileGenerationStore straight = FileGenerationStore.open(other);
+    opened.add(straight);
+    PolicyLedgerService ref = service(straight);
+    ref.bootstrap(NS, "root", seed(), manifest("bootstrap", 2, 0, seed(), new byte[0]));
+    Receipt uninterrupted = runGeneration(ref, "root", "g1");
+    assertArrayEquals(straight.resout(NS, "g1"), reopened.resout(NS, "g1"));
+    assertArrayEquals(straight.polout(NS, "g1"), reopened.polout(NS, "g1"));
+    assertEquals(uninterrupted.resoutSha256(), receipt.resoutSha256());
+    assertEquals(uninterrupted.poloutSha256(), receipt.poloutSha256());
+    assertEquals(1, reopened.claims(NS, "g1").size());
+  }
+
+  @Test
+  void claimRefusesALiveWriterAndAnUnknownOrPublishedGeneration() {
+    FileGenerationStore store = bootstrapped();
+    PolicyLedgerService svc = service(store);
+    Lease live = begin(svc, "root", "g1", stageManifest());
+    assertThrows(FencedException.class, () -> svc.claim(NS, "g1", stageManifest()));
+    assertThrows(GenerationException.class, () -> svc.claim(NS, "nope", stageManifest()));
+    assertThrows(GenerationException.class, () -> svc.claim(NS, "root", stageManifest()));
+    svc.apply(live, requests().get(0), false);
+    assertEquals(0, store.claims(NS, "g1").size());
+  }
+
+  @Test
+  void abandonedGenerationCanBeDiscardedInsteadOfClaimed() {
+    FileGenerationStore store = bootstrapped();
+    Lease lease = begin(service(store), "root", "g1", stageManifest());
+    service(store).apply(lease, requests().get(0), false);
+    store.close();
+    FileGenerationStore reopened = open();
+    assertThrows(GenerationException.class, () -> reopened.discardAbandoned(NS, "nope", "test"));
+    reopened.discardAbandoned(NS, "g1", "operator chose discard");
     assertTrue(Files.isDirectory(dir.resolve(NS).resolve("discarded").resolve("g1")));
-    // the dead writer's lease is not resumable through the new instance either
+    assertThrows(GenerationException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+    assertEquals(Optional.of("root"), reopened.current(NS));
+  }
+
+  @Test
+  void claimFailsClosedOnCorruptJournalChangedManifestOrChangedContract() throws IOException {
+    FileGenerationStore store = bootstrapped();
+    Lease lease = begin(service(store), "root", "g1", stageManifest());
+    service(store).apply(lease, requests().get(0), false);
+    service(store).apply(lease, requests().get(1), false);
+    store.close();
+    Path journal = dir.resolve(NS).resolve("pending").resolve("g1").resolve("journal.bin");
+    byte[] good = Files.readAllBytes(journal);
+
+    // a different (but internally valid) manifest is not the pinned one
+    FileGenerationStore reopened = open();
+    ExpectedManifest unpinned = manifest("b", 2, 3, seed(), txnin());
     assertThrows(
-        GenerationException.class, () -> service(reopened).apply(lease, requests().get(0), false));
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", unpinned));
+
+    // a flipped result byte: the contract does not reproduce the stored result
+    byte[] badResult = good.clone();
+    badResult[TransactionRecord.LENGTH + 5] ^= 0x01;
+    Files.write(journal, badResult);
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+
+    // a flipped successor byte
+    byte[] badSuccessor = good.clone();
+    badSuccessor[TransactionRecord.LENGTH + ResultRecord.LENGTH + 1 + 100] ^= 0x01;
+    Files.write(journal, badSuccessor);
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+
+    // a torn tail
+    Files.write(journal, java.util.Arrays.copyOf(good, good.length - 7));
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+
+    // a dropped first entry (ordinal gap relative to the summary and the chain)
+    Files.write(journal, java.util.Arrays.copyOfRange(good, good.length / 2, good.length));
+    assertThrows(
+        GenerationStore.CheckpointException.class, () -> reopened.claim(NS, "g1", stageManifest()));
+
+    // intact journal but a different running contract identity
+    Files.write(journal, good);
+    reopened.close();
+    FileGenerationStore relabelled =
+        FileGenerationStore.open(
+            dir,
+            insurance.ledger.ContractBinding.relabelled(
+                ContractV001.frozen(), RATES_SHA256, "contract:sha256:other"));
+    opened.add(relabelled);
+    assertThrows(
+        GenerationStore.CheckpointException.class,
+        () -> relabelled.claim(NS, "g1", stageManifest()));
+    relabelled.close();
+
+    // nothing was published or discarded by any of the failed claims
+    FileGenerationStore last = open();
+    assertEquals(Optional.of("root"), last.current(NS));
+    assertEquals(List.of(NS + "/g1"), last.abandonedOnOpen());
+    assertEquals(2, last.claim(NS, "g1", stageManifest()).lastOrdinal());
   }
 
   @Test
@@ -223,11 +339,12 @@ class FileGenerationStoreTest {
     assertEquals(5, other.waitFor());
     assertTrue(Files.isDirectory(dir.resolve(NS).resolve("pending").resolve("g1")));
     assertEquals(2, svc.apply(lease, requests().get(1), false).ordinal());
-    // once this writer closes, the other process may open and recover
+    // once this writer closes, the other process may open; the pending work is left claimable
     store.close();
     Process after = TwoProcess.tryOpen(dir);
     assertEquals(0, after.waitFor());
-    assertTrue(Files.isDirectory(dir.resolve(NS).resolve("discarded").resolve("g1")));
+    assertTrue(Files.isDirectory(dir.resolve(NS).resolve("pending").resolve("g1")));
+    assertFalse(Files.isDirectory(dir.resolve(NS).resolve("discarded").resolve("g1")));
     assertThrows(GenerationException.class, () -> svc.apply(lease, requests().get(2), false));
   }
 

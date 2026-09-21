@@ -46,6 +46,11 @@ public class ApiExceptionHandler {
     return error(HttpStatus.CONFLICT, "fenced", e);
   }
 
+  @ExceptionHandler(GenerationStore.CheckpointException.class)
+  public ResponseEntity<ErrorResponse> checkpoint(GenerationStore.CheckpointException e) {
+    return error(HttpStatus.CONFLICT, "checkpoint", e);
+  }
+
   @ExceptionHandler(GenerationStore.CasException.class)
   public ResponseEntity<ErrorResponse> cas(GenerationStore.CasException e) {
     return error(HttpStatus.CONFLICT, "cas", e);

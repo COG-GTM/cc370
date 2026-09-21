@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: insurance.app.persistence.JdbcTakeoverTest
+-------------------------------------------------------------------------------
+Tests run: 23, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.486 s -- in insurance.app.persistence.JdbcTakeoverTest

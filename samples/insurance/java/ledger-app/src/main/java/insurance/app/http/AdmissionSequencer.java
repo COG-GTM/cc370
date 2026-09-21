@@ -18,13 +18,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Defines the HTTP admission order of request-applying calls per generation.
  *
- * <p>The first thing this instance does with a {@code POST .../requests}, {@code .../requests:raw}
- * or {@code .../batch} call is take an admission ticket for its generation; tickets are dense,
- * start at 1 and are handed out in the order the servlet container delivers requests to this
- * filter. The call then runs only when every lower ticket of the same generation has finished, so
- * the ordinal a request is committed under follows admission order exactly, and every request
- * (applied or rejected) consumes its ticket. The ticket is echoed in the {@link #HEADER} response
- * header.
+ * <p>The first thing this instance does with a {@code POST .../requests}, {@code .../requests:raw},
+ * {@code .../batch} or {@code .../claim} call is take an admission ticket for its generation;
+ * tickets are dense, start at 1 and are handed out in the order the servlet container delivers
+ * requests to this filter. The call then runs only when every lower ticket of the same generation
+ * has finished, so the ordinal a request is committed under follows admission order exactly, and
+ * every request (applied or rejected) consumes its ticket. The ticket is echoed in the {@link
+ * #HEADER} response header.
  *
  * <p>This defines "ingress order" at the servlet chain of one instance. It says nothing about the
  * order in which TCP connections were accepted or bytes arrived on the wire, which the application
@@ -36,7 +36,8 @@ public class AdmissionSequencer extends OncePerRequestFilter {
   public static final String HEADER = "X-Admission-Sequence";
 
   private static final Pattern APPLY =
-      Pattern.compile("^/v1/namespaces/([^/]+)/generations/([^/]+)/(requests(?::raw)?|batch)$");
+      Pattern.compile(
+          "^/v1/namespaces/([^/]+)/generations/([^/]+)/(requests(?::raw)?|batch|claim)$");
 
   private final Map<String, Turnstile> turnstiles = new ConcurrentHashMap<>();
 

@@ -18,6 +18,9 @@ import insurance.app.http.Api.ApplyResponse;
 import insurance.app.http.Api.BatchRequest;
 import insurance.app.http.Api.BatchResponse;
 import insurance.app.http.Api.BeginRequest;
+import insurance.app.http.Api.ClaimRequest;
+import insurance.app.http.Api.ClaimResponse;
+import insurance.app.http.Api.DiscardAbandonedRequest;
 import insurance.app.http.Api.EvaluateRequest;
 import insurance.app.http.Api.EvaluateResponse;
 import insurance.app.http.Api.FenceRequest;
@@ -27,10 +30,13 @@ import insurance.app.http.Api.PolicyResponse;
 import insurance.app.http.Api.PublishRequest;
 import insurance.app.http.Api.RawRequest;
 import insurance.app.http.Api.TypedRequest;
+import insurance.contract.v001.ContractV001;
 import insurance.ledger.ExpectedManifest;
 import insurance.ledger.Json;
+import insurance.ledger.PolicyLedgerService;
 import insurance.ledger.Receipt;
 import insurance.ledger.Sha256;
+import insurance.ledger.batch.BatchRunner;
 import insurance.ledger.typed.TypedCodec;
 import insurance.ledger.typed.TypedTransaction;
 import insurance.legacy.codec.Cp037;
@@ -54,6 +60,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -362,6 +369,109 @@ class GenerationApiTest {
         http.getForObject(NS + "/generations/slow", JsonNode.class).get("status").asText());
     assertEquals(
         "fast", http.getForObject(NS + "/current", JsonNode.class).get("current").asText());
+  }
+
+  // ---------------------------------------------------------------- claim / resume
+
+  private void expireLease(String gen) {
+    new JdbcTemplate(dataSource)
+        .update(
+            "UPDATE generation SET lease_expires_at = now() - interval '1 second'"
+                + " WHERE namespace = 'api' AND name = ? AND status = 'PENDING'",
+            gen);
+  }
+
+  private ResponseEntity<String> claim(String gen, ExpectedManifest manifest) {
+    return http.postForEntity(
+        NS + "/generations/" + gen + "/claim",
+        new ClaimRequest(manifestB64(manifest)),
+        String.class);
+  }
+
+  @Test
+  void claimRouteTakesOverAnExpiredWriterVerifiesThePrefixAndResumesAtTheNextOrdinal() {
+    List<TransactionRecord> reqs =
+        List.of(
+            txn("00000001", 1, VALUATION, 'P', 10_000),
+            txn("00000001", 1, VALUATION, 'P', 10_000),
+            txn("00000002", 1, VALUATION, 'W', 5_000));
+    ExpectedManifest pinned = manifest("a", 2, 3, seed(), Records.join(reqs));
+    LeaseResponse old = importAndBegin("g1", pinned);
+    apply(raw(old, reqs.get(0).bytes()));
+    apply(raw(old, reqs.get(1).bytes()));
+    byte[] prefix = Records.join(reqs.subList(0, 2));
+
+    // a live writer is never displaced
+    ResponseEntity<String> live = claim("g1", pinned);
+    assertEquals(HttpStatus.CONFLICT, live.getStatusCode(), live.getBody());
+    assertTrue(live.getBody().contains("\"kind\":\"fenced\""), live.getBody());
+
+    expireLease("g1");
+    // the expired writer cannot commit or publish any more
+    assertEquals(HttpStatus.CONFLICT, raw(old, reqs.get(2).bytes()).getStatusCode());
+    assertEquals(HttpStatus.CONFLICT, publish(old, "http-gen").getStatusCode());
+    // a claim under another manifest is a checkpoint conflict and changes nothing
+    ResponseEntity<String> wrong = claim("g1", manifest("a", 2, 2, seed(), prefix));
+    assertEquals(HttpStatus.CONFLICT, wrong.getStatusCode(), wrong.getBody());
+    assertTrue(wrong.getBody().contains("\"kind\":\"checkpoint\""), wrong.getBody());
+    JsonNode still = http.getForObject(NS + "/generations/g1", JsonNode.class);
+    assertEquals("PENDING", still.get("status").asText());
+    assertEquals(2, still.get("last_ordinal").asInt());
+
+    ResponseEntity<String> claimed = claim("g1", pinned);
+    assertEquals(HttpStatus.OK, claimed.getStatusCode(), claimed.getBody());
+    ClaimResponse c =
+        Json.read(claimed.getBody().getBytes(StandardCharsets.UTF_8), ClaimResponse.class);
+    assertEquals(2, c.lastOrdinal());
+    assertEquals(1, c.claims());
+    assertTrue(c.fence() > old.fence());
+    assertEquals(Sha256.of(prefix), c.committedRequestsSha256());
+    byte[] committed =
+        http.getForEntity(NS + "/generations/g1/peek/requests", byte[].class).getBody();
+    assertArrayEquals(prefix, committed);
+    assertEquals(2, PolicyLedgerService.resumeIndex(committed, reqs));
+
+    LeaseResponse mine = new LeaseResponse("api", "g1", "root", c.fence());
+    ApplyResponse third = apply(raw(mine, reqs.get(2).bytes()));
+    assertEquals(3, third.ordinal());
+    assertEquals(HttpStatus.CONFLICT, raw(old, reqs.get(2).bytes()).getStatusCode());
+    ResponseEntity<String> published = publish(mine, "http-gen");
+    assertEquals(HttpStatus.OK, published.getStatusCode(), published.getBody());
+    BatchRunner.Output oracle =
+        new BatchRunner(ContractV001.frozen()).run(seed(), Records.join(reqs));
+    assertArrayEquals(
+        oracle.resout(), http.getForEntity(NS + "/generations/g1/resout", byte[].class).getBody());
+    assertArrayEquals(
+        oracle.polout(), http.getForEntity(NS + "/generations/g1/polout", byte[].class).getBody());
+    // published: neither claim nor abandoned discard applies any more
+    ResponseEntity<String> late = claim("g1", pinned);
+    assertEquals(HttpStatus.CONFLICT, late.getStatusCode());
+    assertTrue(late.getBody().contains("\"kind\":\"lifecycle\""), late.getBody());
+  }
+
+  @Test
+  void discardAbandonedRouteIsExplicitAndRequiresAnExpiredLease() {
+    TransactionRecord t1 = txn("00000001", 1, VALUATION, 'P', 10_000);
+    LeaseResponse lease = importAndBegin("g1", manifest("a", 2, 1, seed(), t1.bytes()));
+    apply(raw(lease, t1.bytes()));
+    ResponseEntity<String> live =
+        http.postForEntity(
+            NS + "/generations/g1/discard-abandoned",
+            new DiscardAbandonedRequest("too early"),
+            String.class);
+    assertEquals(HttpStatus.CONFLICT, live.getStatusCode(), live.getBody());
+    expireLease("g1");
+    ResponseEntity<String> discarded =
+        http.postForEntity(
+            NS + "/generations/g1/discard-abandoned",
+            new DiscardAbandonedRequest("operator"),
+            String.class);
+    assertEquals(HttpStatus.OK, discarded.getStatusCode(), discarded.getBody());
+    assertTrue(discarded.getBody().contains("DISCARDED"), discarded.getBody());
+    assertEquals(
+        HttpStatus.CONFLICT, claim("g1", manifest("a", 2, 1, seed(), t1.bytes())).getStatusCode());
+    assertEquals(
+        "root", http.getForObject(NS + "/current", JsonNode.class).get("current").asText());
   }
 
   @Test

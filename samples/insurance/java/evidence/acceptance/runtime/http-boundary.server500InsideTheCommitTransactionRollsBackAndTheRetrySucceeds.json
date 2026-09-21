@@ -6,7 +6,7 @@
     "resout_sha256" : "5b272ebdf666d4d5562155504120cf0aad03bae8ecb577ac29c5b60fdfd6345b",
     "results_count" : 2
   },
-  "recorded_at" : "2026-09-21T07:12:48.754429452Z",
+  "recorded_at" : "2026-09-21T15:53:43.421683533Z",
   "schema" : "insurance-java-http-boundary-v1",
   "server_500_before_commit" : {
     "client_status" : 500,

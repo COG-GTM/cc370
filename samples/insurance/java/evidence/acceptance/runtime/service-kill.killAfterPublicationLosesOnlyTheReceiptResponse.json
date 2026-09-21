@@ -1,14 +1,20 @@
 {
   "after_publish" : {
     "child_exit" : 137,
+    "claim_after_publication" : "{\"kind\":\"lifecycle\",\"message\":\"g1 is PUBLISHED, not pending\"}",
     "db_after_kill" : {
+      "checkpoint" : "4fb1766dffaefa3a71dbcb04248f7d295e81fcf01887d7552db7edc1f8d377cb",
+      "claims" : 0,
       "current" : "g1",
       "discard_reason" : null,
       "entries" : 4,
+      "fence" : 1,
       "has_output" : true,
       "last_ordinal" : 4,
       "last_status" : "OKAY",
-      "status" : "PUBLISHED"
+      "lease_expires_at" : "2026-09-21 15:54:59.447094+00",
+      "status" : "PUBLISHED",
+      "writer_id" : "49866@devin-box/0abdde9a-dc34-489e-ab37-fb245ecd413e"
     },
     "kill_line" : "kill switch AFTER_PUBLISH at ordinal 4",
     "receipt_after_restart" : {
@@ -41,7 +47,7 @@
   },
   "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
   "postgres_image" : "postgres:15-alpine",
-  "recorded_at" : "2026-09-21T07:13:21.461578648Z",
-  "schema" : "insurance-java-service-kill-v1",
+  "recorded_at" : "2026-09-21T15:54:55.310467410Z",
+  "schema" : "insurance-java-service-kill-v2",
   "test" : "killAfterPublicationLosesOnlyTheReceiptResponse"
 }

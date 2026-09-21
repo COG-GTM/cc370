@@ -10,6 +10,7 @@ import insurance.ledger.Receipt;
 import insurance.ledger.Sha256;
 import insurance.ledger.generation.FileGenerationStore;
 import insurance.ledger.generation.GenerationInfo;
+import insurance.ledger.generation.GenerationStatus;
 import insurance.ledger.generation.GenerationStore;
 import insurance.ledger.generation.GenerationStore.Lease;
 import insurance.ledger.generation.ReceiptContext;
@@ -21,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,12 +33,21 @@ import java.util.Optional;
  * batch bootstrap --store DIR --namespace NS --generation GEN --polin F --manifest F
  * batch run       --store DIR --namespace NS --parent GEN --generation GEN
  *                 --polin F --txnin F --manifest F --out DIR [--source-commit SHA]
+ * batch resume    --store DIR --namespace NS --generation GEN
+ *                 --polin F --txnin F --manifest F --out DIR [--source-commit SHA]
+ * batch discard-abandoned --store DIR --namespace NS --generation GEN --reason TEXT
  * batch inbat     --polin F --txnin F --manifest F --out DIR      (pure INSBAT emulation)
  * batch verify    --store DIR                                     (fail-closed open)
  * </pre>
  *
- * <p>Exit codes: 0 success, 2 manifest/input rejection, 3 lifecycle/publication failure, 4 usage, 5
- * store locked by another process.
+ * <p>{@code resume} claims an abandoned pending generation (its writer process is gone, so its OS
+ * store lock is free), lets the store verify the durable prefix against the pinned manifest and the
+ * running contract, reconciles the committed request prefix with the supplied TXNIN, applies only
+ * the requests after {@code lastOrdinal}, and publishes. It never re-sends a committed request and
+ * never falls back to a rerun from the parent; {@code discard-abandoned} is that separate choice.
+ *
+ * <p>Exit codes: 0 success, 2 manifest/input rejection, 3 lifecycle/publication/checkpoint failure,
+ * 4 usage, 5 store locked by another process.
  */
 public final class BatchCli {
   private BatchCli() {}
@@ -47,7 +58,8 @@ public final class BatchCli {
 
   public static int run(String[] args, PrintStream out, PrintStream err) {
     if (args.length == 0) {
-      err.println("usage: batch <bootstrap|run|inbat|verify> [--key value]...");
+      err.println(
+          "usage: batch <bootstrap|run|resume|discard-abandoned|inbat|verify> [--key value]...");
       return 4;
     }
     Map<String, String> opts = parse(args, 1);
@@ -57,6 +69,10 @@ public final class BatchCli {
           return bootstrap(opts, out);
         case "run":
           return runGeneration(opts, out);
+        case "resume":
+          return resume(opts, out);
+        case "discard-abandoned":
+          return discardAbandoned(opts, out);
         case "inbat":
           return inbat(opts, out);
         case "verify":
@@ -136,27 +152,123 @@ public final class BatchCli {
         receipt = svc.publish(lease, "batch");
         killSwitch(o, "kill-after-publish", store, lease);
       } catch (RuntimeException e) {
-        if (store
-            .info(ns, lease.generation())
-            .map(i -> i.status().name().equals("PENDING"))
-            .orElse(false)) {
-          svc.discard(lease);
-        }
-        throw e;
+        throw discardOwnPending(svc, store, ns, lease, e);
       }
-      Path outDir = Path.of(req(o, "out"));
-      Files.createDirectories(outDir);
-      byte[] polout = store.polout(ns, lease.generation());
-      byte[] resout = store.resout(ns, lease.generation());
-      Files.write(outDir.resolve("polout.bin"), polout);
-      Files.write(outDir.resolve("resout.bin"), resout);
-      Files.write(outDir.resolve("receipt.json"), Json.bytes(receipt));
-      Files.write(
-          outDir.resolve("generation.json"),
-          Json.bytes(store.info(ns, lease.generation()).orElseThrow()));
+      writeOutputs(store, ns, lease.generation(), receipt, Path.of(req(o, "out")));
       out.write(Json.bytes(receipt));
       return 0;
     }
+  }
+
+  private static int resume(Map<String, String> o, PrintStream out) throws IOException {
+    byte[] polin = Files.readAllBytes(Path.of(req(o, "polin")));
+    byte[] txnin = Files.readAllBytes(Path.of(req(o, "txnin")));
+    ExpectedManifest manifest =
+        ExpectedManifest.parse(Files.readAllBytes(Path.of(req(o, "manifest"))));
+    manifest.verifyInputs(polin, txnin);
+    String ns = req(o, "namespace");
+    String gen = req(o, "generation");
+    PolicyLedgerService svc =
+        service(Path.of(req(o, "store")), o.getOrDefault("source-commit", "unknown"));
+    try (GenerationStore store = svc.store()) {
+      List<TransactionRecord> input = Records.transactions(txnin);
+      // a failed claim leaves the generation exactly as found: abandoned, unpublished, undiscarded
+      GenerationStore.Claimed claimed = svc.claim(ns, gen, manifest);
+      Lease lease = claimed.lease();
+      int next = PolicyLedgerService.resumeIndex(store.peekRequests(ns, gen), input);
+      if (next != claimed.lastOrdinal()) {
+        throw new GenerationStore.CheckpointException(
+            "committed prefix has " + next + " requests but the claim reports " + claimed);
+      }
+      System.err.println(
+          "resume "
+              + ns
+              + "/"
+              + gen
+              + ": claim "
+              + claimed.claims()
+              + ", fence "
+              + lease.fence()
+              + ", verified prefix "
+              + claimed.lastOrdinal()
+              + " of "
+              + input.size()
+              + ", checkpoint "
+              + claimed.checkpoint());
+      Receipt receipt;
+      try {
+        for (int i = next; i < input.size(); i++) {
+          killSwitch(o, "kill-before-commit", store, lease);
+          svc.apply(lease, input.get(i), false);
+          killSwitch(o, "kill-after-commit", store, lease);
+        }
+        killSwitch(o, "kill-before-publish", store, lease);
+        receipt = svc.publish(lease, "batch");
+        killSwitch(o, "kill-after-publish", store, lease);
+      } catch (RuntimeException e) {
+        throw discardOwnPending(svc, store, ns, lease, e);
+      }
+      Path outDir = Path.of(req(o, "out"));
+      writeOutputs(store, ns, gen, receipt, outDir);
+      Map<String, Object> resumed = new LinkedHashMap<>();
+      resumed.put("claims", claimed.claims());
+      resumed.put("fence", lease.fence());
+      resumed.put("verified_last_ordinal", claimed.lastOrdinal());
+      resumed.put("resumed_at_ordinal", claimed.lastOrdinal() + 1);
+      resumed.put("applied_after_claim", input.size() - next);
+      resumed.put("committed_requests_sha256", claimed.committedRequestsSha256());
+      resumed.put("checkpoint", claimed.checkpoint());
+      Files.write(outDir.resolve("resume.json"), Json.bytes(resumed));
+      out.write(Json.bytes(receipt));
+      return 0;
+    }
+  }
+
+  /**
+   * A batch job that cannot finish leaves no half-built generation of its own behind. Only the live
+   * holder of the lease discards; once fenced (taken over or expired) the generation belongs to the
+   * claimant, or stays abandoned for an explicit claim or discard, and nothing is touched here.
+   */
+  private static RuntimeException discardOwnPending(
+      PolicyLedgerService svc, GenerationStore store, String ns, Lease lease, RuntimeException e) {
+    if (e instanceof GenerationStore.FencedException) {
+      return e;
+    }
+    boolean pending =
+        store
+            .info(ns, lease.generation())
+            .map(i -> i.status() == GenerationStatus.PENDING)
+            .orElse(false);
+    if (pending) {
+      try {
+        svc.discard(lease);
+      } catch (RuntimeException discardFailed) {
+        e.addSuppressed(discardFailed);
+      }
+    }
+    return e;
+  }
+
+  private static int discardAbandoned(Map<String, String> o, PrintStream out) throws IOException {
+    String ns = req(o, "namespace");
+    String gen = req(o, "generation");
+    PolicyLedgerService svc =
+        service(Path.of(req(o, "store")), o.getOrDefault("source-commit", "unknown"));
+    try (GenerationStore store = svc.store()) {
+      svc.discardAbandoned(ns, gen, req(o, "reason"));
+      out.write(Json.bytes(store.info(ns, gen).orElseThrow()));
+      return 0;
+    }
+  }
+
+  private static void writeOutputs(
+      GenerationStore store, String ns, String gen, Receipt receipt, Path outDir)
+      throws IOException {
+    Files.createDirectories(outDir);
+    Files.write(outDir.resolve("polout.bin"), store.polout(ns, gen));
+    Files.write(outDir.resolve("resout.bin"), store.resout(ns, gen));
+    Files.write(outDir.resolve("receipt.json"), Json.bytes(receipt));
+    Files.write(outDir.resolve("generation.json"), Json.bytes(store.info(ns, gen).orElseThrow()));
   }
 
   /**
@@ -219,7 +331,7 @@ public final class BatchCli {
   private static int verify(Map<String, String> o, PrintStream out) throws IOException {
     try (FileGenerationStore store = FileGenerationStore.open(Path.of(req(o, "store")))) {
       Map<String, Object> report = new LinkedHashMap<>();
-      report.put("discarded_on_open", store.discardedOnOpen());
+      report.put("abandoned_on_open", store.abandonedOnOpen());
       Map<String, String> current = new HashMap<>();
       for (String ns : store.namespaces()) {
         current.put(ns, store.current(ns).orElse(null));

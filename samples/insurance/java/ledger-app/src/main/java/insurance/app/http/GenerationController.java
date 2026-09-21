@@ -4,7 +4,10 @@ import insurance.app.http.Api.ApplyResponse;
 import insurance.app.http.Api.BatchRequest;
 import insurance.app.http.Api.BatchResponse;
 import insurance.app.http.Api.BeginRequest;
+import insurance.app.http.Api.ClaimRequest;
+import insurance.app.http.Api.ClaimResponse;
 import insurance.app.http.Api.CurrentResponse;
+import insurance.app.http.Api.DiscardAbandonedRequest;
 import insurance.app.http.Api.FenceRequest;
 import insurance.app.http.Api.ImportRequest;
 import insurance.app.http.Api.LeaseResponse;
@@ -155,6 +158,39 @@ public class GenerationController {
     return store().info(ns, gen).orElseThrow();
   }
 
+  /**
+   * Takes over an abandoned pending generation (writer lease expired). The store refuses a live
+   * writer (409 fenced), a manifest other than the pinned one, a changed rate table or contract
+   * identity, or a durable prefix the running contract does not reproduce (409 checkpoint); on
+   * success the response carries the new fence and the verified {@code lastOrdinal}.
+   */
+  @PostMapping("/generations/{gen}/claim")
+  public ClaimResponse claim(
+      @PathVariable String ns, @PathVariable String gen, @RequestBody ClaimRequest body) {
+    GenerationStore.Claimed c = service.claim(ns, gen, manifest(body.manifestBase64()));
+    return new ClaimResponse(
+        c.lease().namespace(),
+        c.lease().generation(),
+        c.lease().parent(),
+        c.lease().fence(),
+        c.claims(),
+        c.lastOrdinal(),
+        c.typedRequests(),
+        c.rawRequests(),
+        c.committedRequestsSha256(),
+        c.checkpoint());
+  }
+
+  /** Explicit alternative to a claim: discards an abandoned pending generation. */
+  @PostMapping("/generations/{gen}/discard-abandoned")
+  public GenerationInfo discardAbandoned(
+      @PathVariable String ns,
+      @PathVariable String gen,
+      @RequestBody DiscardAbandonedRequest body) {
+    service.discardAbandoned(ns, gen, required(body.reason(), "reason"));
+    return store().info(ns, gen).orElseThrow();
+  }
+
   // ------------------------------------------------------------ reads
 
   @GetMapping("/current")
@@ -212,6 +248,14 @@ public class GenerationController {
       produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
   public ResponseEntity<byte[]> peekResout(@PathVariable String ns, @PathVariable String gen) {
     return octets(store().peekResout(ns, gen));
+  }
+
+  /** Committed TXNIN prefix of a pending generation, for resume reconciliation. */
+  @GetMapping(
+      value = "/generations/{gen}/peek/requests",
+      produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+  public ResponseEntity<byte[]> peekRequests(@PathVariable String ns, @PathVariable String gen) {
+    return octets(store().peekRequests(ns, gen));
   }
 
   /** Current bytes of one policy in the namespace's current published generation. */
