@@ -58,6 +58,24 @@ public final class ChildService implements AutoCloseable {
 
   public static ChildService start(Duration lease, String killSwitch, String... extraArgs)
       throws IOException, InterruptedException {
+    return start(
+        PostgresSupport.PG.getJdbcUrl(),
+        PostgresSupport.PG.getUsername(),
+        PostgresSupport.PG.getPassword(),
+        lease,
+        killSwitch,
+        extraArgs);
+  }
+
+  /** Starts the service against an explicit database (the outage tests own their own container). */
+  public static ChildService start(
+      String jdbcUrl,
+      String user,
+      String password,
+      Duration lease,
+      String killSwitch,
+      String... extraArgs)
+      throws IOException, InterruptedException {
     int port = freePort();
     List<String> cmd = new ArrayList<>();
     cmd.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
@@ -67,9 +85,9 @@ public final class ChildService implements AutoCloseable {
     cmd.add(surefire != null ? surefire : System.getProperty("java.class.path"));
     cmd.add(LedgerApplication.class.getName());
     cmd.add("--server.port=" + port);
-    cmd.add("--spring.datasource.url=" + PostgresSupport.PG.getJdbcUrl());
-    cmd.add("--spring.datasource.username=" + PostgresSupport.PG.getUsername());
-    cmd.add("--spring.datasource.password=" + PostgresSupport.PG.getPassword());
+    cmd.add("--spring.datasource.url=" + jdbcUrl);
+    cmd.add("--spring.datasource.username=" + user);
+    cmd.add("--spring.datasource.password=" + password);
     cmd.add("--ledger.writer-lease=" + lease);
     cmd.add("--ledger.kill-switch=" + (killSwitch == null ? "" : killSwitch));
     cmd.add("--logging.level.root=WARN");
@@ -80,12 +98,34 @@ public final class ChildService implements AutoCloseable {
     return child;
   }
 
+  /** Thrown when the child process ends before it serves HTTP (e.g. fail-closed startup). */
+  public static final class ExitedException extends IllegalStateException {
+    private static final long serialVersionUID = 1L;
+    private final int exitValue;
+    private final String output;
+
+    ExitedException(int exitValue, String output) {
+      super("child exited " + exitValue + ":\n" + output);
+      this.exitValue = exitValue;
+      this.output = output;
+    }
+
+    public int exitValue() {
+      return exitValue;
+    }
+
+    public String output() {
+      return output;
+    }
+  }
+
   private void awaitReady() throws InterruptedException {
     HttpClient probe = HttpClient.newHttpClient();
     long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(90);
     while (System.nanoTime() < deadline) {
       if (!process.isAlive()) {
-        throw new IllegalStateException("child exited " + process.exitValue() + ":\n" + output());
+        pump.join(5_000);
+        throw new ExitedException(process.exitValue(), output());
       }
       try {
         HttpResponse<String> r =

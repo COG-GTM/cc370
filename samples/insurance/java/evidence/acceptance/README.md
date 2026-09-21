@@ -217,7 +217,7 @@ Test names refer to `contract-v001` (`ContractV001Test`, `ContractBreadthTest`,
 | T-08 comparator detects structural output mutations | closed | `tools/compare.py` unchanged; `parity_java.py` fails a stage on count mismatch, missing/extra/reordered records and receipt-hash mismatch; negative controls in section 2 and `../../README.md` § Parity (FAST regression) (one-byte authority mutation → hash rejection + field diff; wrong JAR/commit → receipt rejection) |
 | T-09a genuine empty inputs | closed | GUEST `empty-txnin`, `empty-polin`; JAVA `batchEmptyTransactionsLeavesMasterUnchangedWithZeroResults`, `batchEmptyMasterYieldsNpolForEveryTransactionAndEmptyPolout`, `emptyTxninPublishesUnchangedMasterAndZeroResults` |
 | T-09b truncated / short input (controller) | closed | JAVA `manifestRejectsAlignedTruncation`, `manifestRejectsPartialRecordAndUnexpectedlyEmptyDelivery`, `manifestRejectsWrongBytesOfRightLength`, `batchRejectsPartialMasterRecord`, `manifestPinnedAtCreationIsEnforcedAtPublishWith422AndDiscards`, `wrongTxninHashIsRejectedEvenWhenCountsMatch` — the manifest is bound at generation creation, before any request |
-| T-10 timeout / errors / crash | **partial** | JAVA (file store, real `SIGKILL`-equivalent `Runtime.halt` of a child JVM) `ProcessKillTest`: before commit, after commit before response, before publish, between the two publication renames, after publish; each followed by a restart and a re-drive from the parent that matches the oracle. JAVA (PostgreSQL, the real Spring Boot service in a child JVM against a Testcontainers PostgreSQL, `ChildService` + `KillSwitch`) `ServiceKillTest`: halt inside the commit transaction (no ordinal, restart, re-drive matches the oracle), halt after the commit before the response (commit kept, restart, retry → `DUPL`, publication matches), halt inside the publication transaction before the status flip (output rolled back, parent stays current, restart discards the pending generation), halt after publication before the receipt response (published, restart serves it, `RESOUT` matches the oracle). JAVA (PostgreSQL, real HTTP client through a TCP fault proxy, `HttpBoundaryTest`) client `HttpTimeoutException` with the request dropped before the service (no commit, retry → `OKAY`) and with the response dropped after the commit (commit present, retry → `DUPL`; with an intervening transaction → `ORDR`), gateway 503 unsent and 503 after the service committed, and an actual server 500 thrown inside the commit transaction (rolled back, retry → `OKAY`) and after it (kept, retry → `DUPL`); the DB is inspected directly after every fault, so a timeout is never read as proof of rollback. Retained runtime evidence: `runtime/` (section 9). In-process fault injection (`failureBeforeCommitLeavesNoOrdinalSoRetryIsOkay`, `retryAfterCommittedRequestIsDupl…`) and fail-closed restart tests remain as unit-level coverage. **Not done:** a DB outage mid-generation, and no verified-prefix *resume* — see deviation D2 |
+| T-10 timeout / errors / crash | **partial** | JAVA (file store, real `SIGKILL`-equivalent `Runtime.halt` of a child JVM) `ProcessKillTest`: before commit, after commit before response, before publish, between the two publication renames, after publish; each followed by a restart and a re-drive from the parent that matches the oracle. JAVA (PostgreSQL, the real Spring Boot service in a child JVM against a Testcontainers PostgreSQL, `ChildService` + `KillSwitch`) `ServiceKillTest`: halt inside the commit transaction (no ordinal, restart, re-drive matches the oracle), halt after the commit before the response (commit kept, restart, retry → `DUPL`, publication matches), halt inside the publication transaction before the status flip (output rolled back, parent stays current, restart discards the pending generation), halt after publication before the receipt response (published, restart serves it, `RESOUT` matches the oracle). JAVA (PostgreSQL, real HTTP client through a TCP fault proxy, `HttpBoundaryTest`) client `HttpTimeoutException` with the request dropped before the service (no commit, retry → `OKAY`) and with the response dropped after the commit (commit present, retry → `DUPL`; with an intervening transaction → `ORDR`), gateway 503 unsent and 503 after the service committed, and an actual server 500 thrown inside the commit transaction (rolled back, retry → `OKAY`) and after it (kept, retry → `DUPL`); the DB is inspected directly after every fault, so a timeout is never read as proof of rollback. Retained runtime evidence: `runtime/` (section 9). In-process fault injection (`failureBeforeCommitLeavesNoOrdinalSoRetryIsOkay`, `retryAfterCommittedRequestIsDupl…`) and fail-closed restart tests remain as unit-level coverage. JAVA (PostgreSQL, real service in a child JVM against a PostgreSQL container owned by the test, `DbOutageTest`) **actual database outage mid-generation** — no kill switch, fault point or thrown exception: after a committed two-request prefix (read directly from the DB) the container is `docker stop`ped (state `exited`, a direct JDBC connect from the test is refused) and the live service answers the next `requests:raw` with 500 (`FATAL: terminating connection due to administrator command`), the current read fails closed with 500, the lease heartbeat logs its failure and the process stays up; after `docker start` the generation still holds exactly ordinals 1–2 (same entry SHA-256, no output, parent still current), the *same writer* retries request 3 → `OKAY` at ordinal 3, commits request 4, the heartbeat renews again and the publication matches the oracle. Also: `docker pause` (SIGSTOP; the request times out at the JDBC socket after ≈4 s → 500) with nothing committed on `unpause`; stop *during* publication (publish → 500, no receipt, `GET …/receipt` 404, generation stays `PENDING` with 4 entries, parent current; publish retry after restart matches the oracle); and a service restart *during* the outage, which exits non-zero on `PSQLException: Connection to … refused` and serves nothing, then after restore + lease expiry the orphaned generation is `DISCARDED` (old fence → 409) and a rerun from the parent matches the oracle. Retained evidence `runtime/db-outage.*.json`. **Still not done:** verified-prefix *resume* / takeover — see deviation D2 (the same-writer retry above is the existing lease holder continuing, not a new writer resuming) |
 | T-11 race / retry / fencing / CAS | **partial** | (a) `oneWriterPerGenerationAndStaleFencesAreRejected`, `onlyOneOpenWriterPerGenerationAndStaleFencesAreRejected` — no `claim` endpoint, see D1; (b) `twoHundredConcurrentRequestsCommitInAdmissionOrder` (200 concurrent accepted single raw requests, 32 threads; in that special case each ordinal equals the servlet-level admission ticket of `AdmissionSequencer`, each exactly once, echoed bytes and persisted `RESOUT` re-read after publish) and `mixedRejectedAndBatchCallsPreserveAdmissionOrderWithoutTicketOrdinalEquality` (60 concurrent calls mixing accepted single requests, 3-record batches and malformed 39-byte envelopes: committed ordinals follow ticket order, tickets are dense, rejected envelopes consume a ticket but no ordinal, a batch consumes one ticket for three contiguous ordinals, and ticket ≠ ordinal is asserted explicitly) — the admission order is defined and observed at the servlet filter within one JVM, see D3; (c) `siblingPublishRaceHasExactlyOneWinnerAndTheLoserIsDiscarded`, `publishCasFailsWhenCurrentMovedUnderTheLease`; (d1–d3) as in T-10: real kills in `ProcessKillTest` and `ServiceKillTest`, real client timeout / 503 / 500 at both commit boundaries in `HttpBoundaryTest` (before commit → `OKAY` on retry; committed-but-response-lost → `DUPL` while still latest; intervening transaction → `ORDR`); `Prefer: return=original` not implemented (optional, off); **still partial** because D1/D2 (no claim/takeover, no resume) are open; (e) `applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched`, `directChildWriteBegunWhilePendingBlocksPublicationUntilItEnds`, `directChildWriteWaitsForThePublisherLockAndIsRejectedAfterTheFlip` (two connections) |
 | T-12 blind docs-only oracle | **optional — not authorized, not done** | separate approval per the v3 plan; nothing here depends on it |
 | T-13 512 cap / order / NPOL | closed | GUEST `control-master-513`, `control-master-unordered`, `control-master-duplicate` (RC=12, no output) and `NPOL` cases; JAVA `bootstrapEnforcesTheLegacyMasterTableCapAndOrder`, `batchRejectsInvalidMasterWithRc12AndNoOutput` |
@@ -275,9 +275,10 @@ decision, not silently re-scoped; T-12 is optional and not authorized.
 Maven suite: `./mvnw test` runs the whole reactor. At the previously reviewed
 head the total was 70 across all four modules (29 of them in `ledger-app`);
 after the F1–F8 remediation it was 98; with the F9/F10 subprocess and HTTP
-boundary suites and the mixed admission-order test it is 106 = `legacy-codec`
-7 + `contract-v001` 21 + `ledger-application` 33 + `ledger-app` 45 (the
-`ledger-app` figure alone is not the suite). The last run is in section 8.
+boundary suites and the mixed admission-order test it was 106; with the
+PostgreSQL outage suite it is 110 = `legacy-codec` 7 + `contract-v001` 21 +
+`ledger-application` 33 + `ledger-app` 49 (the `ledger-app` figure alone is not
+the suite). The last run is in section 8.
 
 ## 6. What is Java-only (not guest-observed)
 
@@ -310,10 +311,14 @@ are also Java-only beyond the guest cases listed above.
   evidence at routine-harness commit `5a71041`; if that harness changes its
   fixtures or observed schema, `routine_parity.py` must be re-pinned and
   re-run — nothing is inferred from `expected.json`.
-- The kill and HTTP-boundary tests terminate or fault one service process on
-  one host; the PostgreSQL container itself is never killed and no DB outage
-  mid-generation is tested (T-10). Recovery is fail-closed discard, not
-  resume (D2). No power-loss/fsync claim is made for either store.
+- The kill, HTTP-boundary and DB-outage tests fault one service process and
+  one PostgreSQL container on one host. The outage is `docker stop` (fast
+  shutdown) or `docker pause` (SIGSTOP) of the disposable Testcontainers
+  database, shorter than the writer lease except in the restart scenario; it
+  is not a power cut, a network partition, a replica failover or a disk
+  failure. Recovery is fail-closed discard, not resume (D2); the same-writer
+  continuation after restore is the live lease holder retrying, which decides
+  nothing about D1/D2/D4. No power-loss/fsync claim is made for either store.
 - Source-derived oracle agreement (`oracle_agrees`) is a cross-check, not
   independent business-intent validation; no production, estate or
   performance claim is made.
@@ -322,14 +327,17 @@ are also Java-only beyond the guest cases listed above.
 
 Last full verification (working directory `samples/insurance/java`, Java
 21.0.12, offline Maven): `./mvnw spotless:check`, `./mvnw checkstyle:check`,
-`./mvnw test` (106 tests, 0 failures, 0 errors, 0 skipped: 7 + 21 + 33 + 45),
-`./mvnw package` → `ledger-app-0.1.0-SNAPSHOT.jar` SHA-256
-`c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af` — the
-JAR every report in `reports/`, `routines/` and `../fast/` was produced with
-(`source_commit` `b755414b`, whose Java sources are identical to the head that
-carries the reports; the later commit adds only evidence and docs).
+`./mvnw package` (110 tests, 0 failures, 0 errors, 0 skipped: 7 + 21 + 33 +
+49) → `ledger-app-0.1.0-SNAPSHOT.jar` SHA-256
+`57667e277ee67063bc0e10164f552f0dcdf1137bf9feb5f0f187bc47a1068dc3`. Every
+report in `reports/`, `routines/` and `../fast/` was produced with the previous
+JAR `c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af`
+(`source_commit` `b755414b`); the only main-source change since then is the
+lease-heartbeat tick in `JdbcGenerationStore` catching and counting a failed
+renewal instead of letting the scheduler cancel it (no codec, contract,
+lifecycle or HTTP change), so the corpus matrices were not re-run for it.
 `runtime/` is written by the Maven test run itself (`ServiceKillTest`,
-`HttpBoundaryTest` from the test classpath), not by the JAR.
+`HttpBoundaryTest`, `DbOutageTest` from the test classpath), not by the JAR.
 
 Working directory `samples/insurance/java`, with the guest already reachable
 via the pinned `tools/tk5_setup.sh` / `tk5_start.sh` (no credentials):
@@ -379,18 +387,28 @@ python3 -m unittest tools/test_parity_authority.py
 ./mvnw -o test -pl ledger-app -Dtest='ServiceKillTest,HttpBoundaryTest' \
     -Dsurefire.failIfNoSpecifiedTests=false \
     -DargLine="-Dledger.evidence.dir=$PWD/evidence/acceptance/runtime"
+
+# actual PostgreSQL outage mid-generation (docker stop / pause of the test-owned container)
+./mvnw -o test -pl ledger-app -Dtest=DbOutageTest -Dsurefire.failIfNoSpecifiedTests=false \
+    -Dledger.evidence.dir=$PWD/evidence/acceptance/runtime
 ```
 
 ## 9. Retained runtime evidence (`runtime/`)
 
 One JSON per test method, written by the test itself only when
 `-Dledger.evidence.dir` is set (schemas `insurance-java-service-kill-v1`,
-`insurance-java-http-boundary-v1`), plus the surefire summaries. Each file
-records the Java runtime, the PostgreSQL image, and per scenario: the fault
-spec, the child's exit code (137 for a halt) and its last stderr line, the
-generation status / `last_ordinal` / entry count read directly from
-PostgreSQL after the fault, the restart outcome, the retry status, and for
-published generations the `RESOUT` SHA-256 against the batch oracle. No
-credentials or hostnames appear in them (Testcontainers credentials are not
-recorded). These are Java-only controller evidence (section 6), not guest
-parity.
+`insurance-java-http-boundary-v1`, `insurance-java-db-outage-v1`), plus the
+surefire summaries. Each file records the Java runtime, the PostgreSQL image,
+and per scenario: the fault spec, the child's exit code (137 for a halt) and
+its last stderr line, the generation status / `last_ordinal` / entry count
+read directly from PostgreSQL after the fault, the restart outcome, the retry
+status, and for published generations the `RESOUT` SHA-256 against the batch
+oracle. The `db-outage.*` files additionally record `db_before_outage` (status,
+`last_ordinal`, entry count and entry SHA-256, output presence, current
+pointer, lease expiry), the `outage` block (container state `exited`/paused,
+the refused direct JDBC connect, the failed request's status and body, the
+heartbeat failure), `restore` (container `running`, direct connect ok),
+`db_after_restore`, then `retry` / `rerun` / `publication` with
+`matches_oracle`. Only `localhost:<ephemeral port>` appears as an address; no
+credentials (Testcontainers credentials are not recorded). These are Java-only
+controller evidence (section 6), not guest parity.

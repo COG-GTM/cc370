@@ -31,9 +31,14 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -71,6 +76,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Durability is PostgreSQL's; no power-loss test was run.
  */
 public final class JdbcGenerationStore implements GenerationStore {
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcGenerationStore.class);
 
   public static final class IntegrityException extends GenerationException {
     private static final long serialVersionUID = 1L;
@@ -111,6 +117,7 @@ public final class JdbcGenerationStore implements GenerationStore {
   private final List<String> discardedOnOpen = new ArrayList<>();
   private final List<String> liveOnOpen = new ArrayList<>();
   private final ScheduledExecutorService heartbeat;
+  private final AtomicLong heartbeatFailures = new AtomicLong();
   private final FaultPoint faults;
 
   private JdbcGenerationStore(
@@ -178,7 +185,8 @@ public final class JdbcGenerationStore implements GenerationStore {
       store.verifyAncestry(ns);
     }
     long period = Math.max(1, lease.toMillis() / 3);
-    store.heartbeat.scheduleAtFixedRate(store::renewLeases, period, period, TimeUnit.MILLISECONDS);
+    store.heartbeat.scheduleAtFixedRate(
+        store::heartbeatTick, period, period, TimeUnit.MILLISECONDS);
     return store;
   }
 
@@ -195,6 +203,25 @@ public final class JdbcGenerationStore implements GenerationStore {
 
   public String writerId() {
     return writerId;
+  }
+
+  /**
+   * One heartbeat run. A database outage must not end the heartbeat: a scheduled task that throws
+   * is silently cancelled by the executor, so failures are counted and logged and the next tick
+   * renews again once the database is back.
+   */
+  private void heartbeatTick() {
+    try {
+      renewLeases();
+    } catch (DataAccessException | TransactionException e) {
+      long n = heartbeatFailures.incrementAndGet();
+      LOG.warn("lease heartbeat failed ({} so far): {}", n, e.getMessage());
+    }
+  }
+
+  /** Heartbeat runs that could not reach the database since open. */
+  public long heartbeatFailures() {
+    return heartbeatFailures.get();
   }
 
   /** Renews the lease of every pending generation this instance owns; safe to call directly. */

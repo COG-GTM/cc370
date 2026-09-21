@@ -1,0 +1,49 @@
+{
+  "container_owned_by_test" : true,
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "recorded_at" : "2026-09-21T07:48:56.013957214Z",
+  "schema" : "insurance-java-db-outage-v1",
+  "stop_at_publication" : {
+    "db_after_restore" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 4,
+      "entry_sha256" : "cfa511d5c9de28a5606daf4a9d141ff1a762873da023902325ae94b412243499",
+      "has_output" : false,
+      "last_ordinal" : 4,
+      "last_status" : "OKAY",
+      "lease_expires_at" : "2026-09-21 07:49:13.164706",
+      "status" : "PENDING"
+    },
+    "db_before_outage" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 4,
+      "entry_sha256" : "cfa511d5c9de28a5606daf4a9d141ff1a762873da023902325ae94b412243499",
+      "has_output" : false,
+      "last_ordinal" : 4,
+      "last_status" : "OKAY",
+      "lease_expires_at" : "2026-09-21 07:49:13.164706",
+      "status" : "PENDING"
+    },
+    "outage" : {
+      "container_state" : "exited",
+      "direct_jdbc_connect" : "PSQLException: Connection to localhost:45939 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
+      "publish_body" : "{\"timestamp\":\"2026-09-21T07:48:58.355+00:00\",\"status\":500,\"error\":\"Internal Server Error\",\"message\":\"PreparedStatementCallback; SQL [SELECT \\\"generation\\\".\\\"id\\\" AS \\\"id\\\", \\\"generation\\\".\\\"name\\\" AS \\\"name\\\", \\\"generation\\\".\\\"fence\\\" AS \\\"fence\\\", \\\"generation\\\".\\\"status\\\" AS \\\"status\\\", \\\"generation\\\".\\\"parent_id\\\" AS \\\"parent_id\\\", \\\"generation\\\".\\\"namespace\\\" AS \\\"namespace\\\", \\\"generation\\\".\\\"last_ordinal\\\" AS \\\"last_ordinal\\\", \\\"generation\\\".\\\"raw_requests\\\" AS \\\"raw_requests\\\", \\\"generation\\\".\\\"policies_count\\\" AS \\\"policies_count\\\", \\\"generation\\\".\\\"typed_requests\\\" AS \\\"typed_requests\\\", \\\"generation\\\".\\\"manifest_sha256\\\" AS \\\"manifest_sha256\\\", \\\"generation\\\".\\\"seed_polin_sha256\\\" AS \\\"seed_polin_sha256\\\" FROM \\\"generation\\\" WHERE \\\"generation\\\".\\\"namespace\\\" = ? AND (\\\"generation\\\".\\\"name\\\" = ?)]; FATAL: terminating connection due to administrator command\",\"path\":\"/v1/namespaces/outage/generations/g1/publish\"}",
+      "publish_status" : 500
+    },
+    "publication" : {
+      "generation" : "g1",
+      "matches_oracle" : true,
+      "polout_sha256" : "410586a6e97a0d31e57fb176284d2fdfd18ef32cff916ebbf8f6d70dbdc28409",
+      "resout_sha256" : "b61cfb4fd4930046b559c8ae6566aed5f01b676982d3553dd3ae6affbe80e6ca",
+      "transactions_count" : 4
+    },
+    "restore" : {
+      "container_state" : "running",
+      "direct_jdbc_connect" : "ok"
+    }
+  },
+  "test" : "stopDuringPublicationLeavesNoReceiptAndThePublishRetrySucceedsAfterRestart"
+}

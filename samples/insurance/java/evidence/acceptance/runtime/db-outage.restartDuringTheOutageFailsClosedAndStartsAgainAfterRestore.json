@@ -1,0 +1,49 @@
+{
+  "container_owned_by_test" : true,
+  "java_runtime" : "21.0.12+8-1-22.04-Ubuntu",
+  "postgres_image" : "postgres:15-alpine",
+  "recorded_at" : "2026-09-21T07:48:44.635629387Z",
+  "restart_during_outage" : {
+    "db_after_restart" : {
+      "current" : "root",
+      "discard_reason" : "orphaned: writer lease expired at open",
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 07:48:50.27925",
+      "status" : "DISCARDED"
+    },
+    "db_before_outage" : {
+      "current" : "root",
+      "discard_reason" : null,
+      "entries" : 2,
+      "entry_sha256" : "ad33740a8c598b818f7cea395667bfa0df03792d3a9460d0dc31deb679a02c00",
+      "has_output" : false,
+      "last_ordinal" : 2,
+      "last_status" : "DUPL",
+      "lease_expires_at" : "2026-09-21 07:48:50.27925",
+      "status" : "PENDING"
+    },
+    "outage" : {
+      "container_state" : "exited",
+      "direct_jdbc_connect" : "PSQLException: Connection to localhost:45939 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.",
+      "restart_exit" : 1,
+      "restart_root_cause" : "PSQLException: Connection to localhost:45939 refused"
+    },
+    "rerun" : {
+      "generation" : "g2",
+      "matches_oracle" : true,
+      "polout_sha256" : "410586a6e97a0d31e57fb176284d2fdfd18ef32cff916ebbf8f6d70dbdc28409",
+      "resout_sha256" : "b61cfb4fd4930046b559c8ae6566aed5f01b676982d3553dd3ae6affbe80e6ca",
+      "transactions_count" : 4
+    },
+    "restore" : {
+      "container_state" : "running",
+      "direct_jdbc_connect" : "ok"
+    }
+  },
+  "schema" : "insurance-java-db-outage-v1",
+  "test" : "restartDuringTheOutageFailsClosedAndStartsAgainAfterRestore"
+}

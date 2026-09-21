@@ -213,8 +213,14 @@ evidence only.
   response, inside publication before the flip, after publication) and real
   HTTP client timeout / 503 / server-500 at both commit boundaries through a
   TCP fault proxy (`HttpBoundaryTest`), each followed by direct DB inspection,
-  restart and retry; runtime evidence in `evidence/acceptance/runtime/`. Not
-  covered: a PostgreSQL outage mid-generation, power loss.
+  restart and retry; and an actual PostgreSQL outage mid-generation
+  (`DbOutageTest`: the test-owned container is `docker stop`ped / `pause`d
+  after a committed prefix and during publication, the live service fails the
+  request with 500 and no receipt, the DB is restored and the prefix, retry,
+  heartbeat and publication are verified against the oracle; a service restart
+  during the outage exits non-zero). Runtime evidence in
+  `evidence/acceptance/runtime/`. Not covered: power loss, network partition,
+  failover; no takeover/resume (D1/D2/D4 pending decision).
 - Done: A3 fresh guest acceptance (full corpus on three paths, 16 targeted
   cases) with Java `batch`/`http-gen`/`http-json` parity against it
   (`evidence/acceptance/`).
