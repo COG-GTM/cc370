@@ -524,6 +524,98 @@ class GenerationApiTest {
         http.getForEntity("/v1/namespaces/nobody/current", String.class).getStatusCode());
   }
 
+  // ---------------------------------------------------------------- T-11 admission order
+
+  /**
+   * 200 concurrent HTTP requests against one pending generation. The admission ticket ({@link
+   * AdmissionSequencer#HEADER}) is assigned when the servlet chain first sees the request; the
+   * committed ordinal must equal that ticket for every request, and the persisted request and
+   * result streams must be in ticket order. Each client thread records its own (ticket, request,
+   * result) triple, so the physical order is checked against evidence gathered outside the store.
+   */
+  @Test
+  void twoHundredConcurrentRequestsCommitInAdmissionOrder() throws Exception {
+    int n = 200;
+    byte[][] masters = new byte[n][];
+    for (int i = 0; i < n; i++) {
+      masters[i] = fresh(String.format("%08d", i + 1), 500_000, 20_000 + i, 0).bytes();
+    }
+    byte[] seed = concat(masters);
+    ResponseEntity<String> imported =
+        http.postForEntity(
+            NS + "/import",
+            new ImportRequest(
+                "root", b64(seed), manifestB64(manifest("bootstrap", n, 0, seed, new byte[0]))),
+            String.class);
+    assertEquals(HttpStatus.CREATED, imported.getStatusCode(), imported.getBody());
+    ResponseEntity<String> begun =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest(
+                "root",
+                "wide",
+                b64(seed),
+                manifestB64(manifest("a", n, n, seed, new byte[40 * n]))),
+            String.class);
+    assertEquals(HttpStatus.CREATED, begun.getStatusCode(), begun.getBody());
+    LeaseResponse lease =
+        Json.read(begun.getBody().getBytes(StandardCharsets.UTF_8), LeaseResponse.class);
+
+    record Observed(long ticket, byte[] request, ApplyResponse response) {}
+    java.util.concurrent.ExecutorService pool =
+        java.util.concurrent.Executors.newFixedThreadPool(32);
+    java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+    List<java.util.concurrent.Future<Observed>> futures = new java.util.ArrayList<>();
+    try {
+      for (int i = 0; i < n; i++) {
+        byte[] request = txn(String.format("%08d", i + 1), 1, VALUATION, 'P', 100 + i).bytes();
+        futures.add(
+            pool.submit(
+                () -> {
+                  go.await();
+                  ResponseEntity<String> r = raw(lease, request);
+                  long ticket = Long.parseLong(r.getHeaders().getFirst(AdmissionSequencer.HEADER));
+                  return new Observed(ticket, request, apply(r));
+                }));
+      }
+      go.countDown();
+      List<Observed> observed = new java.util.ArrayList<>();
+      for (java.util.concurrent.Future<Observed> f : futures) {
+        observed.add(f.get(120, java.util.concurrent.TimeUnit.SECONDS));
+      }
+      observed.sort(java.util.Comparator.comparingLong(Observed::ticket));
+      byte[] resout =
+          http.getForEntity(NS + "/generations/wide/peek/resout", byte[].class).getBody();
+      assertEquals(96 * n, resout.length);
+      List<byte[]> persistedRequests = new java.util.ArrayList<>();
+      try (java.sql.Connection c = dataSource.getConnection();
+          java.sql.PreparedStatement ps =
+              c.prepareStatement(
+                  "SELECT e.request FROM generation_entry e JOIN generation g ON g.id ="
+                      + " e.generation_id WHERE g.namespace = 'api' AND g.name = 'wide' ORDER BY"
+                      + " e.ordinal");
+          java.sql.ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          persistedRequests.add(rs.getBytes(1));
+        }
+      }
+      assertEquals(n, persistedRequests.size());
+      for (int i = 0; i < n; i++) {
+        Observed o = observed.get(i);
+        assertEquals(i + 1, o.ticket(), "tickets are dense");
+        assertEquals(o.ticket(), o.response().ordinal(), "ordinal follows admission");
+        assertEquals("OKAY", o.response().status());
+        assertArrayEquals(o.request(), Hex.parse(o.response().requestHex()));
+        assertArrayEquals(o.request(), persistedRequests.get(i), "physical order = tickets");
+        assertArrayEquals(
+            Hex.parse(o.response().resultHex()),
+            java.util.Arrays.copyOfRange(resout, i * 96, (i + 1) * 96));
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
   // ---------------------------------------------------------------- stateless probe
 
   @Test
