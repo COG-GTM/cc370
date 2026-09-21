@@ -40,6 +40,7 @@ import insurance.legacy.codec.Layout.Transaction;
 import insurance.legacy.codec.Records;
 import insurance.legacy.codec.ResultRecord;
 import insurance.legacy.codec.TransactionRecord;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import javax.sql.DataSource;
@@ -85,7 +86,15 @@ class GenerationApiTest {
     return concat(a001().bytes(), fresh("00000002", 500_000, 20_000, 0).bytes());
   }
 
+  /**
+   * Generations that are never published pin a placeholder request stream (three zero records): the
+   * manifest must exist and bind to the seed and the rate table before any request is taken.
+   */
   private LeaseResponse importAndBegin(String gen) {
+    return importAndBegin(gen, manifest("a", 2, 3, seed(), new byte[120]));
+  }
+
+  private LeaseResponse importAndBegin(String gen, ExpectedManifest pinned) {
     ResponseEntity<String> imported =
         http.postForEntity(
             NS + "/import",
@@ -93,11 +102,20 @@ class GenerationApiTest {
                 "root", b64(seed()), manifestB64(manifest("bootstrap", 2, 0, seed(), new byte[0]))),
             String.class);
     assertEquals(HttpStatus.CREATED, imported.getStatusCode(), imported.getBody());
-    ResponseEntity<LeaseResponse> begun =
+    ResponseEntity<String> begun =
         http.postForEntity(
-            NS + "/generations", new BeginRequest("root", gen, b64(seed())), LeaseResponse.class);
-    assertEquals(HttpStatus.CREATED, begun.getStatusCode());
-    return begun.getBody();
+            NS + "/generations",
+            new BeginRequest("root", gen, b64(seed()), manifestB64(pinned)),
+            String.class);
+    assertEquals(HttpStatus.CREATED, begun.getStatusCode(), begun.getBody());
+    return Json.read(begun.getBody().getBytes(StandardCharsets.UTF_8), LeaseResponse.class);
+  }
+
+  private ResponseEntity<String> publish(LeaseResponse lease, String mode) {
+    return http.postForEntity(
+        NS + "/generations/" + lease.generation() + "/publish",
+        new PublishRequest(lease.fence(), mode),
+        String.class);
   }
 
   private ResponseEntity<String> typed(LeaseResponse lease, TypedTransaction t) {
@@ -116,8 +134,7 @@ class GenerationApiTest {
 
   private static ApplyResponse apply(ResponseEntity<String> r) {
     assertEquals(HttpStatus.OK, r.getStatusCode(), r.getBody());
-    return Json.read(
-        r.getBody().getBytes(java.nio.charset.StandardCharsets.UTF_8), ApplyResponse.class);
+    return Json.read(r.getBody().getBytes(StandardCharsets.UTF_8), ApplyResponse.class);
   }
 
   /** Every typed response field must agree with the independently decoded result bytes. */
@@ -265,9 +282,10 @@ class GenerationApiTest {
 
   @Test
   void publishServesOutputsOnlyAfterPublicationAndReceiptCountsTypedVersusRaw() {
-    LeaseResponse lease = importAndBegin("g1");
     TransactionRecord t1 = txn("00000001", 1, VALUATION, 'P', 10_000);
     TransactionRecord t2 = txn("00000002", 1, VALUATION, 'W', 5_000);
+    byte[] txnin = concat(t1.bytes(), t2.bytes());
+    LeaseResponse lease = importAndBegin("g1", manifest("a", 2, 2, seed(), txnin));
     apply(typed(lease, TypedCodec.decode(t1).orElseThrow()));
     apply(raw(lease, t2.bytes()));
     // pending: named reads are refused, peek works
@@ -279,15 +297,10 @@ class GenerationApiTest {
         http.getForEntity(NS + "/generations/g1/receipt", String.class).getStatusCode());
     assertEquals(
         192, http.getForEntity(NS + "/generations/g1/peek/resout", byte[].class).getBody().length);
-    byte[] txnin = concat(t1.bytes(), t2.bytes());
-    ResponseEntity<Receipt> published =
-        http.postForEntity(
-            NS + "/generations/g1/publish",
-            new PublishRequest(
-                lease.fence(), "http-json", manifestB64(manifest("a", 2, 2, seed(), txnin))),
-            Receipt.class);
-    assertEquals(HttpStatus.OK, published.getStatusCode());
-    Receipt receipt = published.getBody();
+    ResponseEntity<String> published = publish(lease, "http-json");
+    assertEquals(HttpStatus.OK, published.getStatusCode(), published.getBody());
+    Receipt receipt =
+        Json.read(published.getBody().getBytes(StandardCharsets.UTF_8), Receipt.class);
     assertEquals(1, receipt.typedRequests());
     assertEquals(1, receipt.rawRequests());
     assertEquals(2, receipt.resultsCount());
@@ -319,8 +332,8 @@ class GenerationApiTest {
 
   @Test
   void wrongFenceAndCasFailuresAreConflicts() {
-    LeaseResponse lease = importAndBegin("slow");
     TransactionRecord t1 = txn("00000001", 1, VALUATION, 'P', 10_000);
+    LeaseResponse lease = importAndBegin("slow", manifest("a", 2, 1, seed(), t1.bytes()));
     assertEquals(
         HttpStatus.CONFLICT,
         http.postForEntity(
@@ -329,26 +342,19 @@ class GenerationApiTest {
                 String.class)
             .getStatusCode());
     // another writer publishes first
-    LeaseResponse fast =
+    ResponseEntity<String> fastBegun =
         http.postForEntity(
-                NS + "/generations", new BeginRequest("root", "fast", null), LeaseResponse.class)
-            .getBody();
-    apply(raw(fast, t1.bytes()));
-    assertEquals(
-        HttpStatus.OK,
-        http.postForEntity(
-                NS + "/generations/fast/publish",
-                new PublishRequest(
-                    fast.fence(), "http-gen", manifestB64(manifest("a", 2, 1, seed(), t1.bytes()))),
-                String.class)
-            .getStatusCode());
-    apply(raw(lease, t1.bytes()));
-    ResponseEntity<String> cas =
-        http.postForEntity(
-            NS + "/generations/slow/publish",
-            new PublishRequest(
-                lease.fence(), "http-gen", manifestB64(manifest("a", 2, 1, seed(), t1.bytes()))),
+            NS + "/generations",
+            new BeginRequest(
+                "root", "fast", null, manifestB64(manifest("a", 2, 1, seed(), t1.bytes()))),
             String.class);
+    assertEquals(HttpStatus.CREATED, fastBegun.getStatusCode(), fastBegun.getBody());
+    LeaseResponse fast =
+        Json.read(fastBegun.getBody().getBytes(StandardCharsets.UTF_8), LeaseResponse.class);
+    apply(raw(fast, t1.bytes()));
+    assertEquals(HttpStatus.OK, publish(fast, "http-gen").getStatusCode());
+    apply(raw(lease, t1.bytes()));
+    ResponseEntity<String> cas = publish(lease, "http-gen");
     assertEquals(HttpStatus.CONFLICT, cas.getStatusCode());
     assertTrue(cas.getBody().contains("\"kind\":\"cas\""), cas.getBody());
     assertEquals(
@@ -359,20 +365,102 @@ class GenerationApiTest {
   }
 
   @Test
-  void manifestMismatchAtPublishIs422AndDiscards() {
-    LeaseResponse lease = importAndBegin("g1");
+  void manifestPinnedAtCreationIsEnforcedAtPublishWith422AndDiscards() {
     TransactionRecord t1 = txn("00000001", 1, VALUATION, 'P', 10_000);
+    // pinned: two requests expected, only one arrives
+    LeaseResponse lease = importAndBegin("g1", manifest("a", 2, 2, seed(), t1.bytes()));
     apply(raw(lease, t1.bytes()));
-    ResponseEntity<String> r =
-        http.postForEntity(
-            NS + "/generations/g1/publish",
-            new PublishRequest(
-                lease.fence(), "http-gen", manifestB64(manifest("a", 2, 2, seed(), t1.bytes()))),
-            String.class);
+    ResponseEntity<String> r = publish(lease, "http-gen");
     assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, r.getStatusCode(), r.getBody());
     assertEquals(
         "DISCARDED",
         http.getForObject(NS + "/generations/g1", JsonNode.class).get("status").asText());
+    // the pinned manifest is readable for the generation and publish takes no manifest at all
+    JsonNode pinned = http.getForObject(NS + "/generations/g1/manifest", JsonNode.class);
+    assertEquals(2, pinned.get("transactions_count").asInt());
+    assertEquals(ExpectedManifest.SCHEMA, pinned.get("schema").asText());
+  }
+
+  @Test
+  void generationCreationRejectsMissingUnsupportedOrMisboundManifests() {
+    importAndBegin("ok");
+    // missing manifest
+    ResponseEntity<String> none =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest("root", "g-none", b64(seed()), null),
+            String.class);
+    assertEquals(HttpStatus.BAD_REQUEST, none.getStatusCode(), none.getBody());
+    // unsupported schema
+    ExpectedManifest good = manifest("a", 2, 1, seed(), new byte[40]);
+    ExpectedManifest badSchema =
+        new ExpectedManifest(
+            "insurance-expected-manifest-v0",
+            good.stage(),
+            good.policiesCount(),
+            good.transactionsCount(),
+            good.polinSha256(),
+            good.txninSha256(),
+            good.ratesSha256(),
+            null);
+    ResponseEntity<String> schema =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest("root", "g-schema", b64(seed()), manifestB64(badSchema)),
+            String.class);
+    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, schema.getStatusCode(), schema.getBody());
+    // rate table not the running V001 table
+    ExpectedManifest badRates =
+        new ExpectedManifest(
+            good.schema(),
+            good.stage(),
+            good.policiesCount(),
+            good.transactionsCount(),
+            good.polinSha256(),
+            good.txninSha256(),
+            "0".repeat(64),
+            null);
+    ResponseEntity<String> rates =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest("root", "g-rates", b64(seed()), manifestB64(badRates)),
+            String.class);
+    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, rates.getStatusCode(), rates.getBody());
+    // seed hash / count disagree with the published parent
+    ResponseEntity<String> seedHash =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest(
+                "root",
+                "g-seed",
+                b64(seed()),
+                manifestB64(manifest("a", 2, 1, a001().bytes(), new byte[40]))),
+            String.class);
+    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, seedHash.getStatusCode(), seedHash.getBody());
+    ResponseEntity<String> count =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest(
+                "root",
+                "g-count",
+                b64(seed()),
+                manifestB64(manifest("a", 1, 1, seed(), new byte[40]))),
+            String.class);
+    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, count.getStatusCode(), count.getBody());
+    // supplied POLIN differs from the pinned parent bytes
+    ResponseEntity<String> polin =
+        http.postForEntity(
+            NS + "/generations",
+            new BeginRequest("root", "g-polin", b64(a001().bytes()), manifestB64(good)),
+            String.class);
+    assertEquals(HttpStatus.CONFLICT, polin.getStatusCode(), polin.getBody());
+    // none of the rejected generations exist
+    for (String g : List.of("g-none", "g-schema", "g-rates", "g-seed", "g-count", "g-polin")) {
+      assertEquals(
+          HttpStatus.NOT_FOUND,
+          http.getForEntity(NS + "/generations/" + g, String.class).getStatusCode(),
+          g);
+    }
   }
 
   @Test

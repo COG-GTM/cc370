@@ -17,13 +17,20 @@ import insurance.legacy.codec.PolicyRecord;
 import insurance.legacy.codec.Records;
 import insurance.legacy.codec.ResultRecord;
 import insurance.legacy.codec.TransactionRecord;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -47,9 +54,21 @@ import org.springframework.transaction.support.TransactionTemplate;
  * 'PENDING'} and is fenced. Published rows are protected by database triggers against INSERT,
  * UPDATE and DELETE.
  *
- * <p>Restart: {@link #open} discards every PENDING generation and verifies the current ancestry of
- * every namespace (status, receipt hashes recomputed from the stored bytes, contiguous ordinals);
- * any inconsistency fails the open. Durability is PostgreSQL's; no power-loss test was run.
+ * <p>Manifest: the expected manifest is pinned on the generation row at {@code bootstrap}/{@code
+ * begin} (after the seed and rate-table checks) and is immutable; {@code publish} validates against
+ * the pinned copy only.
+ *
+ * <p>Ownership across instances: every store instance has a writer id; the pending generations it
+ * begins carry that id and a lease that a heartbeat renews while the instance is alive. {@link
+ * #open} discards only PENDING rows whose lease has expired (orphaned writers) and leaves live
+ * writers' rows untouched; the fence on every commit still rejects a writer whose row was discarded
+ * meanwhile. A pending generation is never resumed by another writer (fail closed; the caller
+ * reruns from the pinned published parent) -- verified-prefix takeover is NOT implemented.
+ *
+ * <p>Restart also verifies the current ancestry of every namespace (status, receipt hashes
+ * recomputed from the stored bytes, contiguous ordinals: {@code count = max = last_ordinal} over a
+ * unique {@code ordinal >= 1} key is a proof of the prefix 1..n); any inconsistency fails the open.
+ * Durability is PostgreSQL's; no power-loss test was run.
  */
 public final class JdbcGenerationStore implements GenerationStore {
 
@@ -61,45 +80,123 @@ public final class JdbcGenerationStore implements GenerationStore {
     }
   }
 
+  public static final Duration DEFAULT_LEASE = Duration.ofSeconds(60);
+
   private final JdbcClient db;
   private final TransactionTemplate tx;
   private final GenerationRepository generations;
+  private final String writerId;
+  private final Duration lease;
   private final List<String> discardedOnOpen = new ArrayList<>();
+  private final List<String> liveOnOpen = new ArrayList<>();
+  private final ScheduledExecutorService heartbeat;
 
-  private JdbcGenerationStore(JdbcClient db, TransactionTemplate tx, GenerationRepository repo) {
+  private JdbcGenerationStore(
+      JdbcClient db, TransactionTemplate tx, GenerationRepository repo, Duration lease) {
     this.db = db;
     this.tx = tx;
     this.generations = repo;
+    this.lease = lease;
+    this.writerId = ProcessHandle.current().pid() + "@" + hostName() + "/" + UUID.randomUUID();
+    this.heartbeat =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t = new Thread(r, "generation-lease-heartbeat");
+              t.setDaemon(true);
+              return t;
+            });
   }
 
   public static JdbcGenerationStore open(
       JdbcClient db, TransactionTemplate tx, GenerationRepository repo) {
-    JdbcGenerationStore store = new JdbcGenerationStore(db, tx, repo);
+    return open(db, tx, repo, DEFAULT_LEASE);
+  }
+
+  /**
+   * Opens the store: discards orphaned pending generations (expired lease), leaves live writers'
+   * pending generations alone, verifies every namespace's current ancestry and starts the lease
+   * heartbeat for the generations this instance will begin.
+   */
+  public static JdbcGenerationStore open(
+      JdbcClient db, TransactionTemplate tx, GenerationRepository repo, Duration lease) {
+    JdbcGenerationStore store = new JdbcGenerationStore(db, tx, repo, lease);
     store.tx.executeWithoutResult(
         s -> {
-          for (GenerationRow row : repo.findByStatus(GenerationStatus.PENDING.name())) {
-            store.markDiscarded(row.id());
-            store.discardedOnOpen.add(row.namespace() + "/" + row.name());
+          List<PendingLease> pending =
+              db.sql(
+                      "SELECT id, namespace, name, writer_id,"
+                          + " (lease_expires_at IS NOT NULL AND lease_expires_at > now()) AS live"
+                          + " FROM generation WHERE status = 'PENDING' FOR UPDATE")
+                  .query(PendingLease.class)
+                  .list();
+          for (PendingLease row : pending) {
+            if (row.live()) {
+              store.liveOnOpen.add(row.namespace() + "/" + row.name());
+            } else {
+              store.markDiscarded(row.id(), "orphaned: writer lease expired at open");
+              store.discardedOnOpen.add(row.namespace() + "/" + row.name());
+            }
           }
         });
     for (String ns : store.namespaces()) {
       store.verifyAncestry(ns);
     }
+    long period = Math.max(1, lease.toMillis() / 3);
+    store.heartbeat.scheduleAtFixedRate(store::renewLeases, period, period, TimeUnit.MILLISECONDS);
     return store;
   }
+
+  record PendingLease(long id, String namespace, String name, String writerId, boolean live) {}
 
   public List<String> discardedOnOpen() {
     return List.copyOf(discardedOnOpen);
   }
 
+  /** Pending generations of other live writers that this open() left untouched. */
+  public List<String> liveOnOpen() {
+    return List.copyOf(liveOnOpen);
+  }
+
+  public String writerId() {
+    return writerId;
+  }
+
+  /** Renews the lease of every pending generation this instance owns; safe to call directly. */
+  public int renewLeases() {
+    Integer n =
+        tx.execute(
+            s ->
+                db.sql(
+                        "UPDATE generation SET lease_expires_at = now() + ?::interval"
+                            + " WHERE status = 'PENDING' AND writer_id = ?")
+                    .params(lease.toMillis() + " milliseconds", writerId)
+                    .update());
+    return n == null ? 0 : n;
+  }
+
+  @Override
+  public void close() {
+    heartbeat.shutdownNow();
+  }
+
+  private static String hostName() {
+    try {
+      return InetAddress.getLocalHost().getHostName();
+    } catch (UnknownHostException e) {
+      return "localhost";
+    }
+  }
+
   // ---------------------------------------------------------------- lifecycle
 
   @Override
-  public GenerationInfo bootstrap(String namespace, String generation, List<PolicyRecord> masters) {
+  public GenerationInfo bootstrap(
+      String namespace, String generation, List<PolicyRecord> masters, ExpectedManifest manifest) {
     validateName(namespace);
     validateName(generation);
     PolicyTable table = PolicyTable.load(masters);
     byte[] seed = table.size() == 0 ? new byte[0] : Records.join(table.rows());
+    manifest.verifyInputs(seed, new byte[0]);
     return tx.execute(
         s -> {
           db.sql(
@@ -116,18 +213,8 @@ public final class JdbcGenerationStore implements GenerationStore {
           if (current != null) {
             throw new CasException(namespace + " already has a current generation");
           }
-          long id = insertGeneration(namespace, generation, null, 0L, table, seed);
+          long id = insertGeneration(namespace, generation, null, 0L, table, seed, manifest);
           insertPolicyState(id, table);
-          ExpectedManifest manifest =
-              new ExpectedManifest(
-                  ExpectedManifest.SCHEMA,
-                  "bootstrap",
-                  table.size(),
-                  0,
-                  Sha256.of(seed),
-                  Sha256.of(new byte[0]),
-                  null,
-                  null);
           GenerationInfo info =
               new GenerationInfo(
                   namespace,
@@ -139,9 +226,10 @@ public final class JdbcGenerationStore implements GenerationStore {
                   0,
                   0,
                   0,
-                  Sha256.of(seed));
+                  Sha256.of(seed),
+                  ReceiptContext.manifestSha256(manifest));
           Receipt receipt =
-              new ReceiptContext("bootstrap", "n/a", "n/a", "n/a")
+              new ReceiptContext("bootstrap", "n/a", "n/a", manifest.ratesSha256())
                   .complete(
                       info,
                       manifest,
@@ -166,17 +254,21 @@ public final class JdbcGenerationStore implements GenerationStore {
   }
 
   @Override
-  public Lease begin(String namespace, String parent, String generation) {
+  public Lease begin(
+      String namespace, String parent, String generation, ExpectedManifest manifest) {
     validateName(generation);
     GenerationRow parentRow = reachableRow(namespace, parent);
     byte[] seed = output(parentRow.id(), "state");
+    manifest.verifySeed(seed);
     PolicyTable table = PolicyTable.load(Records.policies(seed));
     try {
       return tx.execute(
           s -> {
             long fence =
                 db.sql("SELECT nextval('generation_fence_seq')").query(Long.class).single();
-            long id = insertGeneration(namespace, generation, parentRow.id(), fence, table, seed);
+            long id =
+                insertGeneration(
+                    namespace, generation, parentRow.id(), fence, table, seed, manifest);
             insertPolicyState(id, table);
             return new Lease(namespace, generation, parent, fence);
           });
@@ -215,24 +307,29 @@ public final class JdbcGenerationStore implements GenerationStore {
           Long ordinal =
               db.sql(
                       "UPDATE generation SET last_ordinal = last_ordinal + 1,"
-                          + " typed_requests = typed_requests + ?, raw_requests = raw_requests + ?"
+                          + " typed_requests = typed_requests + ?, raw_requests = raw_requests + ?,"
+                          + " lease_expires_at = now() + ?::interval"
                           + " WHERE namespace = ? AND name = ? AND status = 'PENDING' AND fence = ?"
+                          + " AND writer_id = ?"
                           + " RETURNING last_ordinal")
                   .params(
                       typed ? 1 : 0,
                       typed ? 0 : 1,
+                      this.lease.toMillis() + " milliseconds",
                       lease.namespace(),
                       lease.generation(),
-                      lease.fence())
+                      lease.fence(),
+                      writerId)
                   .query(Long.class)
                   .optional()
                   .orElseThrow(
                       () ->
                           new FencedException(
                               lease.generation()
-                                  + " is not an open pending generation held by"
-                                  + " fence "
-                                  + lease.fence()));
+                                  + " is not an open pending generation held by fence "
+                                  + lease.fence()
+                                  + " and writer "
+                                  + writerId));
           long id = idOf(lease.namespace(), lease.generation());
           Optional<PolicyRecord> master =
               db.sql("SELECT bytes FROM policy_state WHERE generation_id = ? AND policy_id = ?")
@@ -264,23 +361,25 @@ public final class JdbcGenerationStore implements GenerationStore {
   }
 
   @Override
-  public Receipt publish(Lease lease, ExpectedManifest manifest, ReceiptContext context) {
+  public Receipt publish(Lease lease, ReceiptContext context) {
     try {
       return tx.execute(
           s -> {
             GenerationRow row =
                 db.sql(
                         "SELECT id, namespace, name, parent_id, status, fence, policies_count,"
-                            + " last_ordinal, typed_requests, raw_requests, seed_polin_sha256"
+                            + " last_ordinal, typed_requests, raw_requests, seed_polin_sha256,"
+                            + " manifest_sha256"
                             + " FROM generation WHERE namespace = ? AND name = ? FOR UPDATE")
                     .params(lease.namespace(), lease.generation())
                     .query(GenerationRow.class)
                     .optional()
                     .orElseThrow(() -> new FencedException(lease.generation() + " does not exist"));
             if (row.generationStatus() != GenerationStatus.PENDING
-                || row.fence() != lease.fence()) {
+                || row.fence() != lease.fence()
+                || !writerId.equals(writerOf(row.id()))) {
               throw new FencedException(
-                  lease.generation() + " is " + row.status() + " or held by another fence");
+                  lease.generation() + " is " + row.status() + " or held by another writer");
             }
             Long current =
                 db.sql("SELECT current_generation_id FROM namespace WHERE name = ? FOR UPDATE")
@@ -297,16 +396,9 @@ public final class JdbcGenerationStore implements GenerationStore {
                       + "; expected-parent CAS failed");
             }
             byte[] seed = seed(row.id());
+            ExpectedManifest manifest = manifestOf(row.id(), row.manifestSha256());
             Rebuilt r = rebuild(row, seed);
-            if (!manifest.polinSha256().equals(Sha256.of(seed))) {
-              throw new GenerationException(
-                  "pinned POLIN hash does not match the seeded parent bytes");
-            }
-            if (!manifest.txninSha256().equals(Sha256.of(r.requests))) {
-              throw new GenerationException(
-                  "pinned TXNIN hash does not match the applied requests");
-            }
-            manifest.verifyOutputs(r.state, r.results, 0);
+            context.validatePublication(manifest, seed, r.requests, r.state, r.results);
             GenerationInfo published = row.toInfo(lease.parent()).with(GenerationStatus.PUBLISHED);
             Receipt receipt =
                 context.complete(
@@ -346,8 +438,8 @@ public final class JdbcGenerationStore implements GenerationStore {
                 db.sql(
                         "UPDATE generation SET status = 'DISCARDED'"
                             + " WHERE namespace = ? AND name = ?"
-                            + " AND status = 'PENDING' AND fence = ?")
-                    .params(lease.namespace(), lease.generation(), lease.fence())
+                            + " AND status = 'PENDING' AND fence = ? AND writer_id = ?")
+                    .params(lease.namespace(), lease.generation(), lease.fence(), writerId)
                     .update());
     if (n == null || n != 1) {
       throw new FencedException(lease.generation() + " is not an open pending generation");
@@ -358,10 +450,38 @@ public final class JdbcGenerationStore implements GenerationStore {
     tx.executeWithoutResult(
         s ->
             db.sql(
-                    "UPDATE generation SET status = 'DISCARDED' WHERE namespace = ? AND name = ?"
-                        + " AND status = 'PENDING' AND fence = ?")
-                .params(lease.namespace(), lease.generation(), lease.fence())
+                    "UPDATE generation SET status = 'DISCARDED',"
+                        + " discard_reason = 'publication validation failed'"
+                        + " WHERE namespace = ? AND name = ?"
+                        + " AND status = 'PENDING' AND fence = ? AND writer_id = ?")
+                .params(lease.namespace(), lease.generation(), lease.fence(), writerId)
                 .update());
+  }
+
+  private String writerOf(long id) {
+    return db.sql("SELECT writer_id FROM generation WHERE id = ?")
+        .param(id)
+        .query(String.class)
+        .optional()
+        .orElse("");
+  }
+
+  @Override
+  public Optional<ExpectedManifest> manifest(String namespace, String generation) {
+    return generations
+        .findByNamespaceAndName(namespace, generation)
+        .map(row -> manifestOf(row.id(), row.manifestSha256()));
+  }
+
+  private ExpectedManifest manifestOf(long id, String sourceSha256) {
+    String json =
+        db.sql("SELECT manifest FROM generation WHERE id = ?")
+            .param(id)
+            .query(String.class)
+            .optional()
+            .orElseThrow(() -> new IntegrityException("generation " + id + " has no manifest"));
+    return Json.read(json.getBytes(StandardCharsets.UTF_8), ExpectedManifest.class)
+        .withSourceSha256(sourceSha256);
   }
 
   // ---------------------------------------------------------------- reads
@@ -566,13 +686,26 @@ public final class JdbcGenerationStore implements GenerationStore {
       Long parentId,
       long fence,
       PolicyTable table,
-      byte[] seed) {
+      byte[] seed,
+      ExpectedManifest manifest) {
     return db.sql(
             "INSERT INTO generation (namespace, name, parent_id, status, fence,"
-                + " policies_count, seed_polin_sha256, seed)"
-                + " VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?)"
+                + " policies_count, seed_polin_sha256, seed, manifest, manifest_sha256,"
+                + " writer_id, lease_expires_at)"
+                + " VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, now() + ?::interval)"
                 + " RETURNING id")
-        .params(namespace, generation, parentId, fence, table.size(), Sha256.of(seed), seed)
+        .params(
+            namespace,
+            generation,
+            parentId,
+            fence,
+            table.size(),
+            Sha256.of(seed),
+            seed,
+            new String(Json.bytes(manifest), StandardCharsets.UTF_8),
+            ReceiptContext.manifestSha256(manifest),
+            writerId,
+            lease.toMillis() + " milliseconds")
         .query(Long.class)
         .single();
   }
@@ -608,9 +741,11 @@ public final class JdbcGenerationStore implements GenerationStore {
     }
   }
 
-  private void markDiscarded(long id) {
-    db.sql("UPDATE generation SET status = 'DISCARDED' WHERE id = ? AND status = 'PENDING'")
-        .param(id)
+  private void markDiscarded(long id, String reason) {
+    db.sql(
+            "UPDATE generation SET status = 'DISCARDED', discard_reason = ?"
+                + " WHERE id = ? AND status = 'PENDING'")
+        .params(reason, id)
         .update();
   }
 

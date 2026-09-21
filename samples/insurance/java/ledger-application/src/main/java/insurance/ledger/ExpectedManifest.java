@@ -16,6 +16,11 @@ import java.util.List;
  *
  * <p>{@code sourceSha256} is the SHA-256 of the manifest file bytes exactly as supplied (never
  * serialized); receipts bind it so a driver can check the receipt against the file it wrote.
+ *
+ * <p>Lifecycle: the manifest is supplied when a generation is created (import or begin), pinned in
+ * the store next to the seed, checked against the seed and the running rate table right away, and
+ * re-checked against the applied requests and the produced outputs at publication. Publication
+ * never accepts a manifest of its own.
  */
 public record ExpectedManifest(
     @JsonProperty("schema") String schema,
@@ -31,16 +36,19 @@ public record ExpectedManifest(
 
   /** Parses manifest bytes and pins their hash as {@link #sourceSha256()}. */
   public static ExpectedManifest parse(byte[] raw) {
-    ExpectedManifest m = Json.read(raw, ExpectedManifest.class);
+    return Json.read(raw, ExpectedManifest.class).withSourceSha256(Sha256.of(raw));
+  }
+
+  public ExpectedManifest withSourceSha256(String sha) {
     return new ExpectedManifest(
-        m.schema,
-        m.stage,
-        m.policiesCount,
-        m.transactionsCount,
-        m.polinSha256,
-        m.txninSha256,
-        m.ratesSha256,
-        Sha256.of(raw));
+        schema,
+        stage,
+        policiesCount,
+        transactionsCount,
+        polinSha256,
+        txninSha256,
+        ratesSha256,
+        sha);
   }
 
   public static final class ManifestException extends RuntimeException {
@@ -57,17 +65,78 @@ public record ExpectedManifest(
     }
   }
 
+  /** Schema, count sanity and hash shape; every other check builds on this one. */
+  public void verifySchema() {
+    List<String> problems = new ArrayList<>();
+    schemaProblems(problems);
+    if (!problems.isEmpty()) {
+      throw new ManifestException(problems);
+    }
+  }
+
+  /**
+   * Binds the manifest to the rate table the running contract actually uses. A manifest pinned
+   * against a different table (or none) is refused before any request is accepted.
+   */
+  public void verifyRates(String runningRateTableSha256) {
+    List<String> problems = new ArrayList<>();
+    schemaProblems(problems);
+    if (ratesSha256 == null || !ratesSha256.equals(runningRateTableSha256)) {
+      problems.add(
+          "manifest rates_sha256 "
+              + ratesSha256
+              + " does not match the running rate table "
+              + runningRateTableSha256);
+    }
+    if (!problems.isEmpty()) {
+      throw new ManifestException(problems);
+    }
+  }
+
+  /** Verifies the seeded master bytes alone (the request stream is not known yet). */
+  public void verifySeed(byte[] polin) {
+    List<String> problems = new ArrayList<>();
+    schemaProblems(problems);
+    checkStream(problems, "POLIN", polin, PolicyRecord.LENGTH, policiesCount, polinSha256);
+    if (!problems.isEmpty()) {
+      throw new ManifestException(problems);
+    }
+  }
+
   /** Verifies delivered input bytes against this manifest; throws listing every problem. */
   public void verifyInputs(byte[] polin, byte[] txnin) {
     List<String> problems = new ArrayList<>();
-    if (!SCHEMA.equals(schema)) {
-      problems.add("manifest schema " + schema + " is not " + SCHEMA);
-    }
+    schemaProblems(problems);
     checkStream(problems, "POLIN", polin, PolicyRecord.LENGTH, policiesCount, polinSha256);
     checkStream(problems, "TXNIN", txnin, TransactionRecord.LENGTH, transactionsCount, txninSha256);
     if (!problems.isEmpty()) {
       throw new ManifestException(problems);
     }
+  }
+
+  private void schemaProblems(List<String> problems) {
+    if (!SCHEMA.equals(schema)) {
+      problems.add("manifest schema " + schema + " is not " + SCHEMA);
+    }
+    if (stage == null || stage.isEmpty()) {
+      problems.add("manifest stage is missing");
+    }
+    if (policiesCount < 0 || transactionsCount < 0) {
+      problems.add("manifest counts must not be negative");
+    }
+    if (!isSha256(polinSha256)) {
+      problems.add("manifest polin_sha256 is not a SHA-256 hex digest");
+    }
+    if (!isSha256(txninSha256)) {
+      problems.add("manifest txnin_sha256 is not a SHA-256 hex digest");
+    }
+    if (!isSha256(ratesSha256)) {
+      problems.add("manifest rates_sha256 is not a SHA-256 hex digest");
+    }
+  }
+
+  private static boolean isSha256(String s) {
+    return s != null && s.matches("[0-9a-f]{64}");
   }
 
   /** Verifies produced outputs: one result per transaction, one master per policy. */

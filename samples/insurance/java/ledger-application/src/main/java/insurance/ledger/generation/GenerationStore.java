@@ -12,12 +12,16 @@ import java.util.function.Function;
 /**
  * Durable generation ledger. A namespace has at most one current generation. Generations are
  * bootstrapped (published root without parent) or begun as pending successors seeded from a
- * published parent. A pending generation has exactly one fenced writer; every applied request is
- * persisted atomically with its successor state under a contiguous serial ordinal. Publication
- * validates, flips the status and moves the namespace pointer with an expected-parent CAS under one
- * lock; published rows are never modified afterwards.
+ * published parent, each with an independently pinned {@link ExpectedManifest} supplied at creation
+ * time. A pending generation has exactly one fenced writer; every applied request is persisted
+ * atomically with its successor state under a contiguous serial ordinal. Publication validates
+ * against the pinned manifest, flips the status and moves the namespace pointer with an
+ * expected-parent CAS under one lock; published rows are never modified afterwards.
+ *
+ * <p>Closing a store releases whatever exclusive resource it holds (an OS file lock, a writer lease
+ * heartbeat); it does not discard or publish anything.
  */
-public interface GenerationStore {
+public interface GenerationStore extends AutoCloseable {
 
   /** Publication or lifecycle rule violation (not a legacy domain outcome). */
   class GenerationException extends RuntimeException {
@@ -50,9 +54,19 @@ public interface GenerationStore {
 
   record Applied(long ordinal, Evaluation evaluation) {}
 
-  GenerationInfo bootstrap(String namespace, String generation, List<PolicyRecord> masters);
+  /**
+   * Publishes a root generation from validated masters. The manifest must already have been checked
+   * against the raw POLIN bytes and the running rate table; it is pinned with the root.
+   */
+  GenerationInfo bootstrap(
+      String namespace, String generation, List<PolicyRecord> masters, ExpectedManifest manifest);
 
-  Lease begin(String namespace, String parent, String generation);
+  /**
+   * Opens a pending successor of {@code parent} and pins {@code manifest} to it. The manifest must
+   * describe the parent's published bytes (count and hash) and bind the running rate table;
+   * otherwise nothing is created.
+   */
+  Lease begin(String namespace, String parent, String generation, ExpectedManifest manifest);
 
   /** Resolves the current bytes of a policy inside a pending or published generation. */
   Optional<PolicyRecord> policy(String namespace, String generation, byte[] id);
@@ -70,11 +84,15 @@ public interface GenerationStore {
       boolean typed);
 
   /**
-   * Under the generation lock: verify fence, rebuild outputs, validate them against the pinned
-   * manifest, write the receipt, flip the status and move the namespace pointer with an
-   * expected-parent CAS. On any failure the generation is discarded, never published.
+   * Under the generation lock: verify fence, rebuild outputs, validate seed, applied requests,
+   * outputs and rate binding against the manifest pinned at {@link #begin}, write the receipt, flip
+   * the status and move the namespace pointer with an expected-parent CAS. On any failure the
+   * generation is discarded, never published.
    */
-  Receipt publish(Lease lease, ExpectedManifest manifest, ReceiptContext context);
+  Receipt publish(Lease lease, ReceiptContext context);
+
+  /** The manifest pinned to a generation of any status. */
+  Optional<ExpectedManifest> manifest(String namespace, String generation);
 
   void discard(Lease lease);
 
@@ -97,4 +115,7 @@ public interface GenerationStore {
   byte[] peekResout(String namespace, String generation);
 
   List<String> namespaces();
+
+  @Override
+  void close();
 }

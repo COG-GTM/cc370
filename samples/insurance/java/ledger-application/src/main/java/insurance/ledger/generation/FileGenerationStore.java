@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +40,7 @@ import java.util.function.Function;
  * root/&lt;ns&gt;/current.json                     {"current": "&lt;gen&gt;"}
  * root/&lt;ns&gt;/pending/&lt;gen&gt;/generation.json     status PENDING, fence, counters
  * root/&lt;ns&gt;/pending/&lt;gen&gt;/seed.bin            parent POLOUT bytes (128 x n)
+ * root/&lt;ns&gt;/pending/&lt;gen&gt;/manifest.json       the expected manifest pinned at begin
  * root/&lt;ns&gt;/pending/&lt;gen&gt;/journal.bin         one 265-byte entry per applied request
  * root/&lt;ns&gt;/published/&lt;gen&gt;/... + state.bin, results.bin, requests.bin, receipt.json
  * root/&lt;ns&gt;/discarded/&lt;gen&gt;/...
@@ -48,9 +51,16 @@ import java.util.function.Function;
  * Publication is two distinct operations: {@code rename(pending/gen, published/gen)} and then
  * replacement of {@code current.json} via a temporary file and {@code rename(2)}. They are not
  * jointly atomic: a crash between them leaves an orphan published directory that is not reachable
- * from {@code current.json} and is therefore never served. Fencing is in-process (one JVM, one
- * writer per pending generation); on open every pending generation is discarded (fail closed).
- * Files are fsynced, but no power-loss durability is claimed: no cut-power test has been run.
+ * from {@code current.json} and is therefore never served.
+ *
+ * <p>Ownership: {@link #open} takes an exclusive OS lock on {@code root/.store.lock} for the
+ * lifetime of the store and refuses to open while another process holds it, so recovery can never
+ * touch a live writer's pending directory. Because the lock is exclusive, any pending directory
+ * found on open belongs to a writer that no longer exists and is moved to {@code discarded/} (fail
+ * closed: a pending generation is never resumed or published by a later process; the caller reruns
+ * from the pinned published parent). Fencing within the process is one writer per pending
+ * generation. Files are fsynced, but no power-loss durability is claimed: no cut-power test has
+ * been run.
  */
 public final class FileGenerationStore implements GenerationStore {
   private static final int ENTRY =
@@ -64,8 +74,28 @@ public final class FileGenerationStore implements GenerationStore {
     }
   }
 
+  /** Another process holds the store lock; nothing was read or recovered. */
+  public static final class StoreLockedException extends GenerationException {
+    private static final long serialVersionUID = 1L;
+
+    public StoreLockedException(String message) {
+      super(message);
+    }
+  }
+
+  public static final String LOCK_FILE = ".store.lock";
+
+  /**
+   * Store roots locked by this JVM. POSIX record locks are per process and closing any channel on
+   * the lock file drops the process's lock, so a second in-process open must be refused before it
+   * opens (and later closes) a channel of its own.
+   */
+  private static final Set<Path> HELD_IN_JVM = new HashSet<>();
+
   private final Path root;
   private final Object lock = new Object();
+  private FileChannel lockChannel;
+  private FileLock osLock;
   private final Map<String, PolicyTable> tables = new HashMap<>();
   private final Map<String, GenerationInfo> pendingInfo = new HashMap<>();
   private long nextFence = System.nanoTime();
@@ -75,18 +105,87 @@ public final class FileGenerationStore implements GenerationStore {
     this.root = root;
   }
 
-  /** Opens (creating if needed) and verifies the store; stale pending generations are discarded. */
+  /**
+   * Opens (creating if needed) and verifies the store. The OS lock is taken before anything is
+   * read; a second process gets {@link StoreLockedException}. Orphaned pending generations are
+   * discarded only once the lock is held.
+   */
   public static FileGenerationStore open(Path root) {
     FileGenerationStore store = new FileGenerationStore(root);
     try {
       Files.createDirectories(root);
-      for (String ns : store.namespaces()) {
-        store.recover(ns);
+      store.acquireOsLock();
+      try {
+        for (String ns : store.namespaces()) {
+          store.recover(ns);
+        }
+      } catch (RuntimeException e) {
+        store.close();
+        throw e;
       }
     } catch (IOException e) {
+      store.close();
       throw new UncheckedIOException(e);
     }
     return store;
+  }
+
+  private void acquireOsLock() throws IOException {
+    Path lockPath = root.resolve(LOCK_FILE).toAbsolutePath().normalize();
+    synchronized (HELD_IN_JVM) {
+      if (HELD_IN_JVM.contains(lockPath)) {
+        throw new StoreLockedException(
+            "store " + root + " is already open in this process (" + LOCK_FILE + ")");
+      }
+      FileChannel channel =
+          FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+      FileLock acquired;
+      try {
+        acquired = channel.tryLock();
+      } catch (OverlappingFileLockException e) {
+        acquired = null;
+      }
+      if (acquired == null) {
+        channel.close();
+        throw new StoreLockedException(
+            "store " + root + " is locked by another process (" + LOCK_FILE + ")");
+      }
+      HELD_IN_JVM.add(lockPath);
+      lockChannel = channel;
+      osLock = acquired;
+    }
+  }
+
+  @Override
+  public void close() {
+    synchronized (lock) {
+      try {
+        if (osLock != null && osLock.isValid()) {
+          osLock.release();
+        }
+        if (lockChannel != null) {
+          lockChannel.close();
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      } finally {
+        if (osLock != null) {
+          synchronized (HELD_IN_JVM) {
+            HELD_IN_JVM.remove(root.resolve(LOCK_FILE).toAbsolutePath().normalize());
+          }
+        }
+        osLock = null;
+        lockChannel = null;
+        tables.clear();
+        pendingInfo.clear();
+      }
+    }
+  }
+
+  private void requireOpen() {
+    if (osLock == null) {
+      throw new GenerationException("store " + root + " is closed");
+    }
   }
 
   public List<String> discardedOnOpen() {
@@ -141,8 +240,10 @@ public final class FileGenerationStore implements GenerationStore {
   }
 
   @Override
-  public GenerationInfo bootstrap(String namespace, String generation, List<PolicyRecord> masters) {
+  public GenerationInfo bootstrap(
+      String namespace, String generation, List<PolicyRecord> masters, ExpectedManifest manifest) {
     synchronized (lock) {
+      requireOpen();
       validateName(namespace);
       validateName(generation);
       if (current(namespace).isPresent()) {
@@ -165,26 +266,19 @@ public final class FileGenerationStore implements GenerationStore {
               0,
               0,
               0,
-              Sha256.of(seed));
+              Sha256.of(seed),
+              ReceiptContext.manifestSha256(manifest));
+      manifest.verifyInputs(seed, new byte[0]);
       try {
         Files.createDirectories(dir);
         write(dir.resolve("seed.bin"), seed);
+        write(dir.resolve("manifest.json"), Json.bytes(manifest));
         write(dir.resolve("journal.bin"), new byte[0]);
         write(dir.resolve("state.bin"), seed);
         write(dir.resolve("results.bin"), new byte[0]);
         write(dir.resolve("requests.bin"), new byte[0]);
-        ExpectedManifest manifest =
-            new ExpectedManifest(
-                ExpectedManifest.SCHEMA,
-                "bootstrap",
-                table.size(),
-                0,
-                Sha256.of(seed),
-                Sha256.of(new byte[0]),
-                null,
-                null);
         Receipt receipt =
-            new ReceiptContext("bootstrap", "n/a", "n/a", "n/a")
+            new ReceiptContext("bootstrap", "n/a", "n/a", manifest.ratesSha256())
                 .complete(
                     info, manifest, seed, new byte[0], seed, new byte[0], BuildIdentity.runtime());
         write(dir.resolve("receipt.json"), Json.bytes(receipt));
@@ -198,8 +292,10 @@ public final class FileGenerationStore implements GenerationStore {
   }
 
   @Override
-  public Lease begin(String namespace, String parent, String generation) {
+  public Lease begin(
+      String namespace, String parent, String generation, ExpectedManifest manifest) {
     synchronized (lock) {
+      requireOpen();
       validateName(generation);
       Set<String> reachable = verifyAncestry(namespace);
       if (!reachable.contains(parent)) {
@@ -210,6 +306,7 @@ public final class FileGenerationStore implements GenerationStore {
         throw new GenerationException(generation + " already exists");
       }
       byte[] seed = read(publishedDir(namespace, parent).resolve("state.bin"));
+      manifest.verifySeed(seed);
       PolicyTable table = PolicyTable.load(Records.policies(seed));
       long fence = ++nextFence;
       GenerationInfo info =
@@ -223,10 +320,12 @@ public final class FileGenerationStore implements GenerationStore {
               0,
               0,
               0,
-              Sha256.of(seed));
+              Sha256.of(seed),
+              ReceiptContext.manifestSha256(manifest));
       try {
         Files.createDirectories(pdir);
         write(pdir.resolve("seed.bin"), seed);
+        write(pdir.resolve("manifest.json"), Json.bytes(manifest));
         write(pdir.resolve("journal.bin"), new byte[0]);
         write(pdir.resolve("generation.json"), Json.bytes(info));
       } catch (IOException e) {
@@ -294,11 +393,12 @@ public final class FileGenerationStore implements GenerationStore {
   }
 
   @Override
-  public Receipt publish(Lease lease, ExpectedManifest manifest, ReceiptContext context) {
+  public Receipt publish(Lease lease, ReceiptContext context) {
     synchronized (lock) {
       GenerationInfo info = checkedPending(lease);
       Path pdir = pendingDir(lease.namespace(), lease.generation());
       try {
+        ExpectedManifest manifest = readManifest(pdir, info.expectedManifestSha256());
         Optional<String> cur = current(lease.namespace());
         if (!cur.map(lease.parent()::equals).orElse(false)) {
           throw new CasException(
@@ -315,13 +415,7 @@ public final class FileGenerationStore implements GenerationStore {
               "journal has " + entries + " entries but last ordinal is " + info.lastOrdinal());
         }
         Rebuilt r = rebuild(seed, journal);
-        if (!manifest.polinSha256().equals(Sha256.of(seed))) {
-          throw new GenerationException("pinned POLIN hash does not match the seeded parent bytes");
-        }
-        if (!manifest.txninSha256().equals(Sha256.of(r.requests))) {
-          throw new GenerationException("pinned TXNIN hash does not match the applied requests");
-        }
-        manifest.verifyOutputs(r.state, r.results, 0);
+        context.validatePublication(manifest, seed, r.requests, r.state, r.results);
         GenerationInfo published = info.with(GenerationStatus.PUBLISHED);
         Receipt receipt =
             context.complete(
@@ -347,6 +441,25 @@ public final class FileGenerationStore implements GenerationStore {
         throw e;
       }
     }
+  }
+
+  @Override
+  public Optional<ExpectedManifest> manifest(String namespace, String generation) {
+    synchronized (lock) {
+      for (String kind : List.of("pending", "published", "discarded")) {
+        Path dir = root.resolve(namespace).resolve(kind).resolve(generation);
+        if (Files.isRegularFile(dir.resolve("manifest.json"))) {
+          GenerationInfo info = Json.read(dir.resolve("generation.json"), GenerationInfo.class);
+          return Optional.of(readManifest(dir, info.expectedManifestSha256()));
+        }
+      }
+      return Optional.empty();
+    }
+  }
+
+  private static ExpectedManifest readManifest(Path dir, String sourceSha256) {
+    return Json.read(dir.resolve("manifest.json"), ExpectedManifest.class)
+        .withSourceSha256(sourceSha256);
   }
 
   @Override

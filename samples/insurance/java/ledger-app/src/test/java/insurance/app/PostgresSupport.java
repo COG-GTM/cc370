@@ -16,6 +16,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 /** One PostgreSQL container per test JVM plus the record fixtures shared by the app tests. */
 public final class PostgresSupport {
+  /** Hash of the frozen V001 rate table; every test manifest binds it. */
+  public static final String RATES_SHA256 =
+      insurance.ledger.BuildIdentity.rateTableSha256(insurance.contract.v001.RateTable.FROZEN);
+
   private PostgresSupport() {}
 
   public static final PostgreSQLContainer<?> PG =
@@ -87,7 +91,7 @@ public final class PostgresSupport {
         txns,
         Sha256.of(polin),
         Sha256.of(txnin),
-        null,
+        RATES_SHA256,
         null);
   }
 }

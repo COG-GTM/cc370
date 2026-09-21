@@ -1,5 +1,6 @@
 package insurance.ledger.generation;
 
+import static insurance.ledger.LedgerFixtures.RATES_SHA256;
 import static insurance.ledger.LedgerFixtures.a001;
 import static insurance.ledger.LedgerFixtures.concat;
 import static insurance.ledger.LedgerFixtures.fresh;
@@ -29,17 +30,33 @@ import insurance.legacy.codec.TransactionRecord;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class FileGenerationStoreTest {
   private static final String NS = "t";
   private static final ReceiptContext CTX =
-      new ReceiptContext("batch", "0000000", "jar:sha256:test", "rates:test");
+      new ReceiptContext("batch", "0000000", "jar:sha256:test", RATES_SHA256);
 
   @TempDir Path dir;
+  private final List<FileGenerationStore> opened = new ArrayList<>();
+
+  @AfterEach
+  void closeStores() {
+    for (FileGenerationStore s : opened) {
+      s.close();
+    }
+  }
+
+  private FileGenerationStore open() {
+    FileGenerationStore s = FileGenerationStore.open(dir);
+    opened.add(s);
+    return s;
+  }
 
   private static byte[] seed() {
     return concat(a001().bytes(), fresh("00000002", 500_000, 20_000, 0).bytes());
@@ -61,17 +78,26 @@ class FileGenerationStoreTest {
   }
 
   private FileGenerationStore bootstrapped() {
-    FileGenerationStore store = FileGenerationStore.open(dir);
+    FileGenerationStore store = open();
     service(store).bootstrap(NS, "root", seed(), manifest("bootstrap", 2, 0, seed(), new byte[0]));
     return store;
   }
 
+  private static ExpectedManifest stageManifest() {
+    return manifest("a", 2, 3, seed(), txnin());
+  }
+
+  private static Lease begin(
+      PolicyLedgerService svc, String parent, String gen, ExpectedManifest manifest) {
+    return svc.begin(NS, parent, gen, Optional.of(seed()), manifest);
+  }
+
   private Receipt runGeneration(PolicyLedgerService svc, String parent, String gen) {
-    Lease lease = svc.begin(NS, parent, gen, Optional.of(seed()));
+    Lease lease = begin(svc, parent, gen, stageManifest());
     for (TransactionRecord t : requests()) {
       svc.apply(lease, t, false);
     }
-    return svc.publish(lease, manifest("a", 2, 3, seed(), txnin()), "batch");
+    return svc.publish(lease, "batch");
   }
 
   @Test
@@ -80,7 +106,17 @@ class FileGenerationStoreTest {
     assertEquals(Optional.of("root"), store.current(NS));
     assertArrayEquals(seed(), store.polout(NS, "root"));
     assertEquals(0, store.resout(NS, "root").length);
-    assertThrows(CasException.class, () -> store.bootstrap(NS, "root2", List.of(a001())));
+    assertThrows(
+        CasException.class,
+        () ->
+            store.bootstrap(
+                NS,
+                "root2",
+                List.of(a001()),
+                manifest("bootstrap", 1, 0, a001().bytes(), new byte[0])));
+    assertEquals(
+        Optional.of(manifest("bootstrap", 2, 0, seed(), new byte[0])),
+        store.manifest(NS, "root").map(m -> m.withSourceSha256(null)));
   }
 
   @Test
@@ -102,8 +138,10 @@ class FileGenerationStoreTest {
     assertFalse(java.util.Arrays.equals(seed(), g1));
 
     // successor must be seeded from the pinned parent whose bytes match supplied POLIN
-    assertThrows(GenerationException.class, () -> svc.begin(NS, "g1", "g2", Optional.of(seed())));
-    Lease g2 = svc.begin(NS, "g1", "g2", Optional.of(g1));
+    assertThrows(
+        GenerationException.class,
+        () -> svc.begin(NS, "g1", "g2", Optional.of(seed()), manifest("b", 2, 1, g1, txnin())));
+    Lease g2 = svc.begin(NS, "g1", "g2", Optional.of(g1), manifest("b", 2, 1, g1, txnin()));
     Applied applied = svc.apply(g2, txn("00000001", 1, LedgerFixtures.VALUATION, 'P', 1), false);
     assertEquals(Status.CNFL, applied.evaluation().status());
     assertEquals(1, applied.ordinal());
@@ -112,13 +150,12 @@ class FileGenerationStoreTest {
   @Test
   void publishRequiresPinnedManifestToMatchAppliedRequestsAndOutputs() {
     PolicyLedgerService svc = service(bootstrapped());
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    // pinned before any request: two requests expected, three arrive
+    Lease lease = begin(svc, "root", "g1", manifest("a", 2, 2, seed(), txnin()));
     for (TransactionRecord t : requests()) {
       svc.apply(lease, t, false);
     }
-    ExpectedManifest wrongCount = manifest("a", 2, 2, seed(), txnin());
-    assertThrows(
-        ExpectedManifest.ManifestException.class, () -> svc.publish(lease, wrongCount, "batch"));
+    assertThrows(ExpectedManifest.ManifestException.class, () -> svc.publish(lease, "batch"));
     // failed publication discards the pending generation; the lease is dead
     assertThrows(GenerationException.class, () -> svc.apply(lease, requests().get(0), false));
     assertEquals(Optional.of("root"), svc.store().current(NS));
@@ -128,11 +165,11 @@ class FileGenerationStoreTest {
   @Test
   void onlyOneOpenWriterPerGenerationAndStaleFencesAreRejected() {
     PolicyLedgerService svc = service(bootstrapped());
-    Lease first = svc.begin(NS, "root", "g1", Optional.empty());
-    assertThrows(GenerationException.class, () -> svc.begin(NS, "root", "g1", Optional.empty()));
+    Lease first = begin(svc, "root", "g1", stageManifest());
+    assertThrows(GenerationException.class, () -> begin(svc, "root", "g1", stageManifest()));
     svc.discard(first);
     assertThrows(GenerationException.class, () -> svc.apply(first, requests().get(0), false));
-    Lease again = svc.begin(NS, "root", "g1b", Optional.empty());
+    Lease again = begin(svc, "root", "g1b", stageManifest());
     Lease forged = new Lease(NS, "g1b", "root", again.fence() + 1);
     assertThrows(FencedException.class, () -> svc.apply(forged, requests().get(0), false));
   }
@@ -140,30 +177,68 @@ class FileGenerationStoreTest {
   @Test
   void publishCasFailsWhenCurrentMovedUnderTheLease() {
     PolicyLedgerService svc = service(bootstrapped());
-    Lease slow = svc.begin(NS, "root", "slow", Optional.empty());
+    Lease slow = begin(svc, "root", "slow", stageManifest());
     runGeneration(svc, "root", "fast");
     assertEquals(Optional.of("fast"), svc.store().current(NS));
     for (TransactionRecord t : requests()) {
       svc.apply(slow, t, false);
     }
-    assertThrows(
-        CasException.class, () -> svc.publish(slow, manifest("a", 2, 3, seed(), txnin()), "batch"));
+    assertThrows(CasException.class, () -> svc.publish(slow, "batch"));
     assertEquals(Optional.of("fast"), svc.store().current(NS));
     assertThrows(GenerationException.class, () -> svc.store().polout(NS, "slow"));
   }
 
   @Test
   void pendingResultsAreNotServedAsPublishedAndRestartDiscardsThem() {
-    PolicyLedgerService svc = service(bootstrapped());
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    FileGenerationStore store = bootstrapped();
+    PolicyLedgerService svc = service(store);
+    Lease lease = begin(svc, "root", "g1", stageManifest());
     svc.apply(lease, requests().get(0), false);
     assertThrows(GenerationException.class, () -> svc.store().resout(NS, "g1"));
     assertEquals(96, svc.store().peekResout(NS, "g1").length);
 
-    FileGenerationStore reopened = FileGenerationStore.open(dir);
+    // the writer dies (its OS lock is released with it) and a fresh process opens the store
+    store.close();
+    FileGenerationStore reopened = open();
     assertEquals(List.of(NS + "/g1"), reopened.discardedOnOpen());
     assertEquals(Optional.of("root"), reopened.current(NS));
     assertThrows(GenerationException.class, () -> reopened.peekResout(NS, "g1"));
+    assertTrue(Files.isDirectory(dir.resolve(NS).resolve("discarded").resolve("g1")));
+    // the dead writer's lease is not resumable through the new instance either
+    assertThrows(
+        GenerationException.class, () -> service(reopened).apply(lease, requests().get(0), false));
+  }
+
+  @Test
+  void secondOpenOfALiveStoreIsRefusedBeforeItCanTouchPendingWork() throws Exception {
+    FileGenerationStore store = bootstrapped();
+    PolicyLedgerService svc = service(store);
+    Lease lease = begin(svc, "root", "g1", stageManifest());
+    svc.apply(lease, requests().get(0), false);
+    // same JVM, second instance: refused by the OS lock (JVM-wide overlapping lock)
+    assertThrows(
+        FileGenerationStore.StoreLockedException.class, () -> FileGenerationStore.open(dir));
+    // another process: refused too, and the live pending directory is untouched
+    Process other = TwoProcess.tryOpen(dir);
+    assertEquals(5, other.waitFor());
+    assertTrue(Files.isDirectory(dir.resolve(NS).resolve("pending").resolve("g1")));
+    assertEquals(2, svc.apply(lease, requests().get(1), false).ordinal());
+    // once this writer closes, the other process may open and recover
+    store.close();
+    Process after = TwoProcess.tryOpen(dir);
+    assertEquals(0, after.waitFor());
+    assertTrue(Files.isDirectory(dir.resolve(NS).resolve("discarded").resolve("g1")));
+    assertThrows(GenerationException.class, () -> svc.apply(lease, requests().get(2), false));
+  }
+
+  @Test
+  void closedStoreRefusesWorkAndReleasesTheLock() {
+    FileGenerationStore store = bootstrapped();
+    store.close();
+    assertThrows(
+        GenerationException.class, () -> begin(service(store), "root", "g1", stageManifest()));
+    FileGenerationStore again = open();
+    assertEquals(Optional.of("root"), again.current(NS));
   }
 
   @Test
@@ -173,12 +248,14 @@ class FileGenerationStoreTest {
     Files.createDirectories(orphan);
     Files.write(orphan.resolve("state.bin"), seed());
     assertThrows(GenerationException.class, () -> store.polout(NS, "orphan"));
-    assertThrows(GenerationException.class, () -> store.begin(NS, "orphan", "g1"));
+    assertThrows(GenerationException.class, () -> store.begin(NS, "orphan", "g1", stageManifest()));
   }
 
   @Test
   void restartFailsClosedWhenPublishedBytesDoNotMatchReceipt() throws IOException {
-    runGeneration(service(bootstrapped()), "root", "g1");
+    FileGenerationStore store = bootstrapped();
+    runGeneration(service(store), "root", "g1");
+    store.close();
     Path results = dir.resolve(NS).resolve("published").resolve("g1").resolve("results.bin");
     byte[] raw = Files.readAllBytes(results);
     raw[16] ^= 0x01;
@@ -188,10 +265,13 @@ class FileGenerationStoreTest {
 
   @Test
   void restartRebuildsAncestryAndRefusesMissingParent() throws IOException {
-    runGeneration(service(bootstrapped()), "root", "g1");
-    FileGenerationStore reopened = FileGenerationStore.open(dir);
+    FileGenerationStore store = bootstrapped();
+    runGeneration(service(store), "root", "g1");
+    store.close();
+    FileGenerationStore reopened = open();
     assertEquals(Optional.of("g1"), reopened.current(NS));
     assertArrayEquals(seed(), reopened.polout(NS, "root"));
+    reopened.close();
     Path rootDir = dir.resolve(NS).resolve("published").resolve("root");
     Files.move(rootDir, dir.resolve("hidden-root"));
     assertThrows(FileGenerationStore.IntegrityException.class, () -> FileGenerationStore.open(dir));

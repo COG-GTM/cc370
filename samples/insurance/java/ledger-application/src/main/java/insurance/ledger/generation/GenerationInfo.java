@@ -12,7 +12,8 @@ public record GenerationInfo(
     @JsonProperty("last_ordinal") long lastOrdinal,
     @JsonProperty("typed_requests") int typedRequests,
     @JsonProperty("raw_requests") int rawRequests,
-    @JsonProperty("seed_polin_sha256") String seedPolinSha256) {
+    @JsonProperty("seed_polin_sha256") String seedPolinSha256,
+    @JsonProperty("expected_manifest_sha256") String expectedManifestSha256) {
 
   public GenerationInfo with(GenerationStatus newStatus) {
     return new GenerationInfo(
@@ -25,7 +26,8 @@ public record GenerationInfo(
         lastOrdinal,
         typedRequests,
         rawRequests,
-        seedPolinSha256);
+        seedPolinSha256,
+        expectedManifestSha256);
   }
 
   public GenerationInfo advanced(boolean typed) {
@@ -39,6 +41,7 @@ public record GenerationInfo(
         lastOrdinal + 1,
         typedRequests + (typed ? 1 : 0),
         rawRequests + (typed ? 0 : 1),
-        seedPolinSha256);
+        seedPolinSha256,
+        expectedManifestSha256);
   }
 }

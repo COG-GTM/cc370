@@ -1,5 +1,6 @@
 package insurance.ledger;
 
+import insurance.contract.v001.RateTable;
 import insurance.legacy.codec.Cp037;
 import insurance.legacy.codec.Fullword;
 import insurance.legacy.codec.Layout.Policy;
@@ -10,6 +11,9 @@ import java.util.Arrays;
 
 public final class LedgerFixtures {
   private LedgerFixtures() {}
+
+  /** Hash of the frozen V001 rate table; every test manifest binds it. */
+  public static final String RATES_SHA256 = BuildIdentity.rateTableSha256(RateTable.FROZEN);
 
   public static final int ISSUE = 20240101;
   public static final int VALUATION = 20250101;
@@ -56,7 +60,7 @@ public final class LedgerFixtures {
         txns,
         Sha256.of(polin),
         Sha256.of(txnin),
-        null,
+        RATES_SHA256,
         null);
   }
 }

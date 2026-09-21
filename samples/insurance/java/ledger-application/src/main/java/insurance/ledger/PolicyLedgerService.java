@@ -38,28 +38,41 @@ public final class PolicyLedgerService {
     return contract;
   }
 
-  /** Bootstraps a namespace from supplied POLIN bytes pinned by an independent manifest. */
+  /**
+   * Bootstraps a namespace from supplied POLIN bytes pinned by an independent manifest. The
+   * manifest must bind the running rate table and describe the raw POLIN bytes (count, hash, empty
+   * TXNIN) before any master is parsed.
+   */
   public GenerationInfo bootstrap(
       String namespace, String generation, byte[] polin, ExpectedManifest manifest) {
+    manifest.verifyRates(receiptContext.rateTableSha256());
     manifest.verifyInputs(polin, new byte[0]);
     List<PolicyRecord> masters = Records.policies(polin);
-    return store.bootstrap(namespace, generation, masters);
+    return store.bootstrap(namespace, generation, masters, manifest);
   }
 
   /**
-   * Opens a pending successor of {@code parent}. When {@code expectedPolin} is supplied, the
-   * parent's published POLOUT bytes must equal it exactly; a mismatch refuses to seed.
+   * Opens a pending successor of {@code parent} with its expected manifest pinned. The manifest
+   * must bind the running rate table and describe the parent's published POLOUT bytes; when {@code
+   * expectedPolin} is supplied, the parent's bytes must additionally equal it exactly. Any mismatch
+   * refuses to seed and creates nothing.
    */
   public Lease begin(
-      String namespace, String parent, String generation, Optional<byte[]> expectedPolin) {
+      String namespace,
+      String parent,
+      String generation,
+      Optional<byte[]> expectedPolin,
+      ExpectedManifest manifest) {
+    manifest.verifyRates(receiptContext.rateTableSha256());
     if (expectedPolin.isPresent()) {
       byte[] parentBytes = store.polout(namespace, parent);
       if (!java.util.Arrays.equals(parentBytes, expectedPolin.get())) {
         throw new GenerationStore.GenerationException(
             "published parent " + parent + " bytes differ from the supplied POLIN");
       }
+      manifest.verifySeed(expectedPolin.get());
     }
-    return store.begin(namespace, parent, generation);
+    return store.begin(namespace, parent, generation, manifest);
   }
 
   /** Applies one raw 40-byte request in arrival order and persists it under the lease. */
@@ -73,14 +86,15 @@ public final class PolicyLedgerService {
         .orElseGet(() -> contract.noPolicy(request));
   }
 
-  public Receipt publish(Lease lease, ExpectedManifest manifest, String stageMode) {
+  /** Publishes against the manifest pinned at {@link #begin}; no manifest is accepted here. */
+  public Receipt publish(Lease lease, String stageMode) {
     ReceiptContext ctx =
         new ReceiptContext(
             stageMode,
             receiptContext.sourceCommit(),
             receiptContext.buildIdentity(),
             receiptContext.rateTableSha256());
-    return store.publish(lease, manifest, ctx);
+    return store.publish(lease, ctx);
   }
 
   public void discard(Lease lease) {

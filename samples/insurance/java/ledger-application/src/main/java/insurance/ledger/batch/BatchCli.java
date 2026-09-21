@@ -10,6 +10,7 @@ import insurance.ledger.Receipt;
 import insurance.ledger.Sha256;
 import insurance.ledger.generation.FileGenerationStore;
 import insurance.ledger.generation.GenerationInfo;
+import insurance.ledger.generation.GenerationStore;
 import insurance.ledger.generation.GenerationStore.Lease;
 import insurance.ledger.generation.ReceiptContext;
 import insurance.legacy.codec.Records;
@@ -34,7 +35,8 @@ import java.util.Optional;
  * batch verify    --store DIR                                     (fail-closed open)
  * </pre>
  *
- * <p>Exit codes: 0 success, 2 manifest/input rejection, 3 lifecycle/publication failure, 4 usage.
+ * <p>Exit codes: 0 success, 2 manifest/input rejection, 3 lifecycle/publication failure, 4 usage, 5
+ * store locked by another process.
  */
 public final class BatchCli {
   private BatchCli() {}
@@ -66,6 +68,9 @@ public final class BatchCli {
     } catch (ExpectedManifest.ManifestException e) {
       err.println(Json.MAPPER.valueToTree(Map.of("rejected", e.problems())).toPrettyString());
       return 2;
+    } catch (FileGenerationStore.StoreLockedException e) {
+      err.println(Json.MAPPER.valueToTree(Map.of("locked", e.getMessage())).toPrettyString());
+      return 5;
     } catch (insurance.ledger.generation.GenerationStore.GenerationException
         | insurance.contract.v001.PolicyTable.BadMasterException
         | Records.PartialRecordException e) {
@@ -93,53 +98,90 @@ public final class BatchCli {
   }
 
   private static int bootstrap(Map<String, String> o, PrintStream out) throws IOException {
-    PolicyLedgerService svc =
-        service(Path.of(req(o, "store")), o.getOrDefault("source-commit", "unknown"));
     byte[] polin = Files.readAllBytes(Path.of(req(o, "polin")));
     ExpectedManifest manifest =
         ExpectedManifest.parse(Files.readAllBytes(Path.of(req(o, "manifest"))));
-    GenerationInfo info = svc.bootstrap(req(o, "namespace"), req(o, "generation"), polin, manifest);
-    out.write(Json.bytes(info));
-    return 0;
+    PolicyLedgerService svc =
+        service(Path.of(req(o, "store")), o.getOrDefault("source-commit", "unknown"));
+    try {
+      GenerationInfo info =
+          svc.bootstrap(req(o, "namespace"), req(o, "generation"), polin, manifest);
+      out.write(Json.bytes(info));
+      return 0;
+    } finally {
+      svc.store().close();
+    }
   }
 
   private static int runGeneration(Map<String, String> o, PrintStream out) throws IOException {
-    PolicyLedgerService svc =
-        service(Path.of(req(o, "store")), o.getOrDefault("source-commit", "unknown"));
     byte[] polin = Files.readAllBytes(Path.of(req(o, "polin")));
     byte[] txnin = Files.readAllBytes(Path.of(req(o, "txnin")));
     ExpectedManifest manifest =
         ExpectedManifest.parse(Files.readAllBytes(Path.of(req(o, "manifest"))));
     manifest.verifyInputs(polin, txnin);
     String ns = req(o, "namespace");
-    Lease lease = svc.begin(ns, req(o, "parent"), req(o, "generation"), Optional.of(polin));
-    Receipt receipt;
-    try {
-      for (TransactionRecord t : Records.transactions(txnin)) {
-        svc.apply(lease, t, false);
+    PolicyLedgerService svc =
+        service(Path.of(req(o, "store")), o.getOrDefault("source-commit", "unknown"));
+    try (GenerationStore store = svc.store()) {
+      Lease lease =
+          svc.begin(ns, req(o, "parent"), req(o, "generation"), Optional.of(polin), manifest);
+      Receipt receipt;
+      try {
+        for (TransactionRecord t : Records.transactions(txnin)) {
+          svc.apply(lease, t, false);
+          killSwitch(o, "kill-after-commit", store, lease);
+        }
+        killSwitch(o, "kill-before-publish", store, lease);
+        receipt = svc.publish(lease, "batch");
+        killSwitch(o, "kill-after-publish", store, lease);
+      } catch (RuntimeException e) {
+        if (store
+            .info(ns, lease.generation())
+            .map(i -> i.status().name().equals("PENDING"))
+            .orElse(false)) {
+          svc.discard(lease);
+        }
+        throw e;
       }
-      receipt = svc.publish(lease, manifest, "batch");
-    } catch (RuntimeException e) {
-      if (svc.store()
-          .info(ns, lease.generation())
-          .map(i -> i.status().name().equals("PENDING"))
-          .orElse(false)) {
-        svc.discard(lease);
-      }
-      throw e;
+      Path outDir = Path.of(req(o, "out"));
+      Files.createDirectories(outDir);
+      byte[] polout = store.polout(ns, lease.generation());
+      byte[] resout = store.resout(ns, lease.generation());
+      Files.write(outDir.resolve("polout.bin"), polout);
+      Files.write(outDir.resolve("resout.bin"), resout);
+      Files.write(outDir.resolve("receipt.json"), Json.bytes(receipt));
+      Files.write(
+          outDir.resolve("generation.json"),
+          Json.bytes(store.info(ns, lease.generation()).orElseThrow()));
+      out.write(Json.bytes(receipt));
+      return 0;
     }
-    Path outDir = Path.of(req(o, "out"));
-    Files.createDirectories(outDir);
-    byte[] polout = svc.store().polout(ns, lease.generation());
-    byte[] resout = svc.store().resout(ns, lease.generation());
-    Files.write(outDir.resolve("polout.bin"), polout);
-    Files.write(outDir.resolve("resout.bin"), resout);
-    Files.write(outDir.resolve("receipt.json"), Json.bytes(receipt));
-    Files.write(
-        outDir.resolve("generation.json"),
-        Json.bytes(svc.store().info(ns, lease.generation()).orElseThrow()));
-    out.write(Json.bytes(receipt));
-    return 0;
+  }
+
+  /**
+   * Test hook: {@code --kill-after-commit N} halts the JVM (no shutdown hooks, no close, no
+   * discard) right after the N-th request has been durably committed; {@code --kill-before-publish
+   * 1} halts after the last commit and before publication; {@code --kill-after-publish 1} halts
+   * after publication returned. Used by the process-kill tests to produce a dead writer at a
+   * defined boundary.
+   */
+  private static void killSwitch(
+      Map<String, String> o, String key, GenerationStore store, Lease lease) {
+    String v = o.get(key);
+    if (v == null) {
+      return;
+    }
+    GenerationInfo info = store.info(lease.namespace(), lease.generation()).orElseThrow();
+    boolean fire =
+        switch (key) {
+          case "kill-after-commit" -> info.lastOrdinal() == Long.parseLong(v);
+          default -> Long.parseLong(v) == 1;
+        };
+    if (fire) {
+      System.err.println("kill switch " + key + " at ordinal " + info.lastOrdinal());
+      System.err.flush();
+      Runtime.getRuntime().halt(137);
+    }
   }
 
   private static int inbat(Map<String, String> o, PrintStream out) throws IOException {
@@ -173,16 +215,27 @@ public final class BatchCli {
   }
 
   private static int verify(Map<String, String> o, PrintStream out) throws IOException {
-    FileGenerationStore store = FileGenerationStore.open(Path.of(req(o, "store")));
-    Map<String, Object> report = new LinkedHashMap<>();
-    report.put("discarded_on_open", store.discardedOnOpen());
-    Map<String, String> current = new HashMap<>();
-    for (String ns : store.namespaces()) {
-      current.put(ns, store.current(ns).orElse(null));
+    try (FileGenerationStore store = FileGenerationStore.open(Path.of(req(o, "store")))) {
+      Map<String, Object> report = new LinkedHashMap<>();
+      report.put("discarded_on_open", store.discardedOnOpen());
+      Map<String, String> current = new HashMap<>();
+      for (String ns : store.namespaces()) {
+        current.put(ns, store.current(ns).orElse(null));
+      }
+      report.put("current", current);
+      if (o.containsKey("hold-seconds")) {
+        out.write(Json.bytes(report));
+        out.flush();
+        try {
+          Thread.sleep(Long.parseLong(o.get("hold-seconds")) * 1000L);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+        return 0;
+      }
+      out.write(Json.bytes(report));
+      return 0;
     }
-    report.put("current", current);
-    out.write(Json.bytes(report));
-    return 0;
   }
 
   private static String req(Map<String, String> o, String key) {

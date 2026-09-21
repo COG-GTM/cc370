@@ -18,7 +18,8 @@ public record GenerationRow(
     long lastOrdinal,
     int typedRequests,
     int rawRequests,
-    String seedPolinSha256) {
+    String seedPolinSha256,
+    String manifestSha256) {
 
   public GenerationStatus generationStatus() {
     return GenerationStatus.valueOf(status);
@@ -35,6 +36,7 @@ public record GenerationRow(
         lastOrdinal,
         typedRequests,
         rawRequests,
-        seedPolinSha256);
+        seedPolinSha256,
+        manifestSha256);
   }
 }

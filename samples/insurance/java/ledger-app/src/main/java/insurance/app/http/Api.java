@@ -8,7 +8,9 @@ import insurance.ledger.typed.TypedTransaction;
  * Wire types of the stateful HTTP API. Bulk legacy files travel as base64 ({@code *Base64}), single
  * records as hex ({@code *Hex}); JSON field values are never a substitute for the bytes. Expected
  * manifests travel as the exact bytes of the pinned manifest file ({@code manifestBase64}) so the
- * receipt binds the caller's document, not a re-serialisation.
+ * receipt binds the caller's document, not a re-serialisation. The manifest is supplied when the
+ * generation is created ({@code /import}, {@code /generations}) and is pinned from then on; {@code
+ * /publish} carries only the fence and the stage mode.
  */
 public final class Api {
   private Api() {}
@@ -21,7 +23,8 @@ public final class Api {
   public record BeginRequest(
       @JsonProperty("parent") String parent,
       @JsonProperty("generation") String generation,
-      @JsonProperty("polinBase64") String polinBase64) {}
+      @JsonProperty("polinBase64") String polinBase64,
+      @JsonProperty("manifestBase64") String manifestBase64) {}
 
   public record LeaseResponse(
       @JsonProperty("namespace") String namespace,
@@ -59,9 +62,7 @@ public final class Api {
       @JsonProperty("resoutBase64") String resoutBase64) {}
 
   public record PublishRequest(
-      @JsonProperty("fence") long fence,
-      @JsonProperty("mode") String mode,
-      @JsonProperty("manifestBase64") String manifestBase64) {}
+      @JsonProperty("fence") long fence, @JsonProperty("mode") String mode) {}
 
   public record FenceRequest(@JsonProperty("fence") long fence) {}
 

@@ -23,8 +23,16 @@ master for stage N+1). Anchors and A are independent roots (separate namespaces)
 at the first failing stage. tools/compare.py is imported unchanged; Java receipts are validated
 here, with every hash recomputed from the actual bytes rather than trusted from the receipt.
 
+Observed authorities (a2/a3) are accepted only after their guest receipt passes the UNCHANGED
+legacy validator (compare.validate_receipt) with every hash recomputed here from the four files:
+a missing/failed/timed-out/ABENDed/nonzero-RC receipt, a missing file, a hash mismatch or a count
+that disagrees with coverage.json stops the run before any Java code is executed.
+
 HTTP modes additionally check, per request: the echoed request bytes equal the bytes sent, the
-ordinal is the physical position, the typed/raw flag equals the driver's own decision, and for
+ordinal is the physical position, the typed/raw flag equals the driver's own decision, the raw
+top-level status equals the status decoded from the returned bytes, the returned result bytes
+equal the authority's result record for that position (field/raw differences are reported and
+the stage FAILS in both HTTP modes even if the persisted RESOUT is later found correct), and for
 typed responses every JSON result field equals the field decoded here from the returned result
 bytes (matching recordHex alone is not accepted).
 
@@ -51,7 +59,7 @@ SAMPLE = HERE.parent.parent  # samples/insurance
 sys.path.insert(0, str(SAMPLE / "tools"))
 
 import codec  # noqa: E402  (unchanged legacy record codec: field offsets only)
-from compare import differences  # noqa: E402  (unchanged legacy comparator)
+from compare import differences, validate_receipt  # noqa: E402  (unchanged legacy comparator)
 
 CHAIN = ["a", "a-replay", "b", "b-replay"]
 ROOTS = {"anchors": ["anchors"], "a": CHAIN}
@@ -144,7 +152,44 @@ def typed_result_errors(response: dict, expected_hex: str) -> list[str]:
     return errors
 
 
+def response_errors(resp: dict, record: bytes, position: int, view: dict | None,
+                    expected_result: bytes) -> list[str]:
+    """Every check applied to ONE immediate HTTP response; any entry fails the stage.
+
+    The returned result bytes are compared with the authority's result record for the same
+    physical position right here, so a wrong immediate response cannot be hidden by a correct
+    persisted RESOUT read back after publication.
+    """
+    errs = []
+    if (resp.get("requestHex") or "").lower() != record.hex():
+        errs.append("echoed request bytes differ from the bytes sent")
+    if resp.get("ordinal") != position + 1:
+        errs.append(f"ordinal {resp.get('ordinal')} != physical position {position + 1}")
+    if bool(resp.get("typed")) != (view is not None):
+        errs.append("typed flag differs from the driver's decision")
+    result_hex = (resp.get("resultHex") or "").lower()
+    if len(result_hex) != 192 or not re.fullmatch(r"[0-9a-f]{192}", result_hex):
+        errs.append(f"resultHex is not 96 bytes: {result_hex[:40]!r}")
+        return errs
+    got = bytes.fromhex(result_hex)
+    decoded = codec.decode(got, "result")
+    if resp.get("status") != decoded["status"]:
+        errs.append(f"status: json {resp.get('status')!r} != bytes {decoded['status']!r}")
+    if resp.get("accepted") != (decoded["status"] == "OKAY"):
+        errs.append(f"accepted: json {resp.get('accepted')!r} for status {decoded['status']!r}")
+    if got != expected_result:
+        for d in differences(expected_result, got, "result", {1: f"position {position}"}):
+            errs.append("immediate result differs from authority: " + json.dumps(d, sort_keys=True))
+    if view is not None:
+        errs += typed_result_errors(resp, result_hex)
+    return errs
+
+
 # ---------------------------------------------------------------------------- authorities
+
+
+class AuthorityError(Exception):
+    """The observed authority could not be trusted; nothing was compared."""
 
 
 class Authority:
@@ -156,8 +201,10 @@ class Authority:
         self.case_ids: dict[str, dict[int, str]] = {}
         for c in cases:
             self.case_ids.setdefault(c["stage"], {})[c["record"]] = c["id"]
+        self.receipts: dict[str, dict] = {}
 
     def stage_bytes(self, stage: str) -> dict[str, bytes]:
+        """Authority bytes for a stage; a2/a3 are refused unless the guest receipt validates."""
         s = self.stages[stage]
         if self.kind == "a1":
             return {
@@ -167,7 +214,33 @@ class Authority:
                 "resout": (self.golden / s["expected_results"]).read_bytes(),
             }
         d = self.root / stage
-        return {k: (d / f"{k}.bin").read_bytes() for k in ("polin", "txnin", "polout", "resout")}
+        data = {}
+        for k in ("polin", "txnin", "polout", "resout"):
+            f = d / f"{k}.bin"
+            if not f.is_file():
+                raise AuthorityError(f"{self.kind} {stage}: missing {f}")
+            data[k] = f.read_bytes()
+        receipt_path = d / "receipt.json"
+        if not receipt_path.is_file():
+            raise AuthorityError(f"{self.kind} {stage}: missing guest receipt {receipt_path}")
+        try:
+            receipt = json.loads(receipt_path.read_text())
+        except ValueError as e:
+            raise AuthorityError(f"{self.kind} {stage}: unreadable guest receipt: {e}") from None
+        if not isinstance(receipt, dict):
+            raise AuthorityError(f"{self.kind} {stage}: guest receipt is not an object")
+        try:
+            validate_receipt(receipt, {f"{k}_sha256": sha(v) for k, v in data.items()})
+        except ValueError as e:
+            raise AuthorityError(f"{self.kind} {stage}: guest receipt rejected: {e}")
+        policies, txns = self.counts(stage)
+        if len(data["polin"]) != policies * 128 or len(data["polout"]) != policies * 128:
+            raise AuthorityError(f"{self.kind} {stage}: master bytes are not {policies} x 128")
+        if len(data["txnin"]) != txns * 40 or len(data["resout"]) != txns * 96:
+            raise AuthorityError(f"{self.kind} {stage}: transaction/result bytes are not "
+                                 f"{txns} x 40/96")
+        self.receipts[stage] = receipt
+        return data
 
     def counts(self, stage: str) -> tuple[int, int]:
         s = self.stages[stage]
@@ -196,7 +269,7 @@ def validate_java_receipt(receipt: dict, expected: dict[str, object]) -> list[st
 
 
 def manifest_for(stage: str, policies: int, txns: int, polin: bytes, txnin: bytes,
-                 rates_sha: str | None) -> tuple[dict, bytes]:
+                 rates_sha: str) -> tuple[dict, bytes]:
     manifest = {
         "schema": MANIFEST_SCHEMA, "stage": stage,
         "policies_count": policies, "transactions_count": txns,
@@ -310,9 +383,11 @@ class HttpRunner:
         out = Outcome()
         base = f"/v1/namespaces/{ns}"
         try:
+            # The expected manifest is pinned at creation; publish never accepts one.
             lease = self._json("POST", f"{base}/generations", {
                 "parent": parent, "generation": gen,
-                "polinBase64": base64.b64encode(data["polin"]).decode()})
+                "polinBase64": base64.b64encode(data["polin"]).decode(),
+                "manifestBase64": base64.b64encode(manifest_bytes).decode()})
         except HttpError as e:
             out.errors.append(f"begin: {e}")
             return out
@@ -337,21 +412,15 @@ class HttpRunner:
                 out.request_errors.append({"record": i, "typed": view is not None, "error": str(e),
                                            "request_hex": record.hex()})
                 break  # the generation is now short; publication will report the count gap
-            errs = []
-            if resp.get("requestHex", "").lower() != record.hex():
-                errs.append("echoed request bytes differ from the bytes sent")
-            if resp.get("ordinal") != i + 1:
-                errs.append(f"ordinal {resp.get('ordinal')} != physical position {i + 1}")
-            if bool(resp.get("typed")) != (view is not None):
-                errs.append("typed flag differs from the driver's decision")
-            if view is not None:
-                errs += typed_result_errors(resp, resp.get("resultHex", "").lower())
+            expected = expected_results[i * 96:(i + 1) * 96]
+            errs = response_errors(resp, record, i, view, expected)
             if errs:
                 out.request_errors.append({"record": i, "typed": view is not None, "errors": errs,
                                            "request_hex": record.hex(),
+                                           "expected_result_hex": expected.hex(),
                                            "response": resp})
-            expected = expected_results[i * 96:(i + 1) * 96].hex()
-            if first_result_mismatch is None and resp.get("resultHex", "").lower() != expected:
+            if first_result_mismatch is None and \
+                    (resp.get("resultHex") or "").lower() != expected.hex():
                 first_result_mismatch = i
             if view is None:
                 out.raw += 1
@@ -360,8 +429,7 @@ class HttpRunner:
         out.first_result_mismatch = first_result_mismatch
         try:
             out.receipt = self._json("POST", f"{base}/generations/{gen}/publish", {
-                "fence": fence, "mode": self.mode,
-                "manifestBase64": base64.b64encode(manifest_bytes).decode()})
+                "fence": fence, "mode": self.mode})
         except HttpError as e:
             out.errors.append(f"publish: {e}")
             return out
@@ -382,9 +450,16 @@ class HttpRunner:
 
 def run_stage(args, runner, auth: Authority, jar_sha: str, rates_sha: str, ns: str, parent: str,
               stage: str) -> dict:
-    data = auth.stage_bytes(stage)
-    policies, txns = auth.counts(stage)
     gen = f"{ns}-{stage}"
+    try:
+        data = auth.stage_bytes(stage)
+    except AuthorityError as e:
+        return {"stage": stage, "namespace": ns, "generation": gen, "parent": parent,
+                "authority_rejected": str(e), "errors": [str(e)], "request_errors": [],
+                "mismatches": [], "receipt_errors": [], "typed_requests": 0, "raw_requests": 0,
+                "expected_counts": dict(zip(("policies", "transactions"), auth.counts(stage))),
+                "passed": False}
+    policies, txns = auth.counts(stage)
     manifest, manifest_bytes = manifest_for(stage, policies, txns, data["polin"], data["txnin"],
                                             rates_sha)
     stage_dir = args.work / "stages" / f"{ns}--{gen}"
@@ -429,16 +504,23 @@ def run_stage(args, runner, auth: Authority, jar_sha: str, rates_sha: str, ns: s
                                        auth.case_ids.get(stage, {}))
     result["mismatches"] += differences(data["polout"], out.polout, "state")
     result["receipt"] = out.receipt
+    if auth.kind != "a1":
+        result["guest_receipt"] = auth.receipts[stage]
     result["passed"] = not result["errors"] and not result["mismatches"] \
         and not result["receipt_errors"] and not result["request_errors"]
     return result
 
 
-def bootstrap(args, runner, auth: Authority, ns: str, stage: str) -> dict:
-    data = auth.stage_bytes(stage)
-    policies, _ = auth.counts(stage)
+def bootstrap(args, runner, auth: Authority, ns: str, stage: str, rates_sha: str) -> dict:
     gen = f"{ns}-root"
-    _, manifest_bytes = manifest_for(f"{stage}-root", policies, 0, data["polin"], b"", None)
+    try:
+        data = auth.stage_bytes(stage)
+    except AuthorityError as e:
+        return {"namespace": ns, "generation": gen, "polin_sha256": None,
+                "error": f"authority rejected: {e}"}
+    policies, _ = auth.counts(stage)
+    _, manifest_bytes = manifest_for(f"{stage}-root", policies, 0, data["polin"], b"",
+                                     rates_sha)
     error = runner.bootstrap(ns, gen, data["polin"], manifest_bytes)
     return {"namespace": ns, "generation": gen, "polin_sha256": sha(data["polin"]),
             "error": error}
@@ -487,7 +569,7 @@ def main() -> None:
     }
     for root, stages in ROOTS.items():
         ns = f"{args.namespace_prefix}{root}"
-        boot = bootstrap(args, runner, auth, ns, stages[0])
+        boot = bootstrap(args, runner, auth, ns, stages[0], rates_sha)
         report["roots"].append(boot)
         if boot["error"]:
             report["stopped_at"] = f"{ns}:bootstrap"

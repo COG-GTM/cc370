@@ -81,7 +81,8 @@ public class GenerationController {
             ns,
             required(body.parent(), "parent"),
             required(body.generation(), "generation"),
-            pinned);
+            pinned,
+            manifest(body.manifestBase64()));
     return new LeaseResponse(lease.namespace(), lease.generation(), lease.parent(), lease.fence());
   }
 
@@ -140,12 +141,11 @@ public class GenerationController {
   @PostMapping("/generations/{gen}/publish")
   public Receipt publish(
       @PathVariable String ns, @PathVariable String gen, @RequestBody PublishRequest body) {
-    ExpectedManifest manifest = manifest(body.manifestBase64());
     String mode = body.mode() == null ? "http" : body.mode();
     if (!mode.matches("[a-z0-9-]{1,32}")) {
       throw new TypedEnvelopeException("mode must match [a-z0-9-]{1,32}");
     }
-    return service.publish(lease(ns, gen, body.fence()), manifest, mode);
+    return service.publish(lease(ns, gen, body.fence()), mode);
   }
 
   @PostMapping("/generations/{gen}/discard")
@@ -166,6 +166,12 @@ public class GenerationController {
   @GetMapping("/generations/{gen}")
   public GenerationInfo info(@PathVariable String ns, @PathVariable String gen) {
     return store().info(ns, gen).orElseThrow(() -> new NotFoundException(ns + "/" + gen));
+  }
+
+  /** The expected manifest pinned when the generation was created (any lifecycle status). */
+  @GetMapping("/generations/{gen}/manifest")
+  public ExpectedManifest manifest(@PathVariable String ns, @PathVariable String gen) {
+    return store().manifest(ns, gen).orElseThrow(() -> new NotFoundException(ns + "/" + gen));
   }
 
   @GetMapping("/generations/{gen}/receipt")

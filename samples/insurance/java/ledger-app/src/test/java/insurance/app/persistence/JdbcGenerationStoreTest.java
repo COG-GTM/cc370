@@ -1,5 +1,6 @@
 package insurance.app.persistence;
 
+import static insurance.app.PostgresSupport.RATES_SHA256;
 import static insurance.app.PostgresSupport.VALUATION;
 import static insurance.app.PostgresSupport.a001;
 import static insurance.app.PostgresSupport.concat;
@@ -38,6 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +55,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class JdbcGenerationStoreTest {
   private static final String NS = "t";
   private static final ReceiptContext CTX =
-      new ReceiptContext("http", "0000000", "jar:sha256:test", "rates:test");
+      new ReceiptContext("http", "0000000", "jar:sha256:test", RATES_SHA256);
 
   @DynamicPropertySource
   static void datasource(DynamicPropertyRegistry registry) {
@@ -73,6 +75,11 @@ class JdbcGenerationStoreTest {
     PostgresSupport.resetSchema(dataSource);
     store = open();
     svc = service(store);
+  }
+
+  @AfterEach
+  void closeStore() {
+    store.close();
   }
 
   private JdbcGenerationStore open() {
@@ -102,12 +109,20 @@ class JdbcGenerationStoreTest {
     svc.bootstrap(NS, "root", seed(), manifest("bootstrap", 2, 0, seed(), new byte[0]));
   }
 
+  private static ExpectedManifest stageManifest() {
+    return manifest("a", 2, 3, seed(), txnin());
+  }
+
+  private Lease begin(String parent, String gen, ExpectedManifest manifest) {
+    return svc.begin(NS, parent, gen, Optional.of(seed()), manifest);
+  }
+
   private Receipt runGeneration(String parent, String gen) {
-    Lease lease = svc.begin(NS, parent, gen, Optional.of(seed()));
+    Lease lease = begin(parent, gen, stageManifest());
     for (TransactionRecord t : requests()) {
       svc.apply(lease, t, false);
     }
-    return svc.publish(lease, manifest("a", 2, 3, seed(), txnin()), "http");
+    return svc.publish(lease, "http");
   }
 
   private long generationId(String gen) {
@@ -126,7 +141,14 @@ class JdbcGenerationStoreTest {
     assertArrayEquals(seed(), store.polout(NS, "root"));
     assertEquals(0, store.resout(NS, "root").length);
     assertEquals(GenerationStatus.PUBLISHED, store.info(NS, "root").orElseThrow().status());
-    assertThrows(CasException.class, () -> store.bootstrap(NS, "root2", List.of(a001())));
+    assertThrows(
+        CasException.class,
+        () ->
+            store.bootstrap(
+                NS,
+                "root2",
+                List.of(a001()),
+                manifest("bootstrap", 1, 0, a001().bytes(), new byte[0])));
   }
 
   @Test
@@ -147,8 +169,10 @@ class JdbcGenerationStoreTest {
     byte[] g1 = store.polout(NS, "g1");
     assertFalse(java.util.Arrays.equals(seed(), g1));
     // successors are seeded from the pinned published parent, and its bytes must match POLIN
-    assertThrows(GenerationException.class, () -> svc.begin(NS, "g1", "g2", Optional.of(seed())));
-    Lease g2 = svc.begin(NS, "g1", "g2", Optional.of(g1));
+    assertThrows(
+        GenerationException.class,
+        () -> svc.begin(NS, "g1", "g2", Optional.of(seed()), manifest("b", 2, 1, g1, txnin())));
+    Lease g2 = svc.begin(NS, "g1", "g2", Optional.of(g1), manifest("b", 2, 1, g1, txnin()));
     Applied applied = svc.apply(g2, txn("00000001", 1, VALUATION, 'P', 1), false);
     assertEquals(Status.CNFL, applied.evaluation().status());
     assertEquals(1, applied.ordinal());
@@ -158,8 +182,8 @@ class JdbcGenerationStoreTest {
   @Test
   void emptyTxninPublishesUnchangedMasterAndZeroResults() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.of(seed()));
-    Receipt r = svc.publish(lease, manifest("empty", 2, 0, seed(), new byte[0]), "http");
+    Lease lease = begin("root", "g1", manifest("empty", 2, 0, seed(), new byte[0]));
+    Receipt r = svc.publish(lease, "http");
     assertEquals(0, r.resultsCount());
     assertArrayEquals(seed(), store.polout(NS, "g1"));
     assertEquals(0, store.resout(NS, "g1").length);
@@ -168,13 +192,15 @@ class JdbcGenerationStoreTest {
   @Test
   void publishValidatesAgainstPinnedManifestAndDiscardsOnFailure() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    // the manifest pinned at begin expects two requests; three arrive (an unexpectedly long input)
+    Lease lease = begin("root", "g1", manifest("a", 2, 2, seed(), txnin()));
     for (TransactionRecord t : requests()) {
       svc.apply(lease, t, false);
     }
-    ExpectedManifest truncated = manifest("a", 2, 2, seed(), txnin());
-    assertThrows(
-        ExpectedManifest.ManifestException.class, () -> svc.publish(lease, truncated, "http"));
+    assertEquals(
+        Optional.of(manifest("a", 2, 2, seed(), txnin())),
+        store.manifest(NS, "g1").map(m -> m.withSourceSha256(null)));
+    assertThrows(ExpectedManifest.ManifestException.class, () -> svc.publish(lease, "http"));
     assertEquals(GenerationStatus.DISCARDED, store.info(NS, "g1").orElseThrow().status());
     assertThrows(GenerationException.class, () -> svc.apply(lease, requests().get(0), false));
     assertThrows(GenerationException.class, () -> store.polout(NS, "g1"));
@@ -184,16 +210,115 @@ class JdbcGenerationStoreTest {
   @Test
   void wrongTxninHashIsRejectedEvenWhenCountsMatch() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    byte[] other = txnin();
+    other[39] ^= 0x01;
+    Lease lease = begin("root", "g1", manifest("a", 2, 3, seed(), other));
     for (TransactionRecord t : requests()) {
       svc.apply(lease, t, false);
     }
-    byte[] other = txnin();
-    other[39] ^= 0x01;
-    assertThrows(
-        GenerationException.class,
-        () -> svc.publish(lease, manifest("a", 2, 3, seed(), other), "http"));
+    assertThrows(ExpectedManifest.ManifestException.class, () -> svc.publish(lease, "http"));
     assertEquals(Optional.of("root"), store.current(NS));
+    assertEquals(GenerationStatus.DISCARDED, store.info(NS, "g1").orElseThrow().status());
+  }
+
+  @Test
+  void manifestIsCheckedBeforeAnyRequestIsAccepted() {
+    bootstrap();
+    ExpectedManifest good = stageManifest();
+    // unsupported schema
+    assertThrows(
+        ExpectedManifest.ManifestException.class,
+        () ->
+            begin(
+                "root",
+                "g1",
+                new ExpectedManifest(
+                    "insurance-expected-manifest-v0",
+                    good.stage(),
+                    good.policiesCount(),
+                    good.transactionsCount(),
+                    good.polinSha256(),
+                    good.txninSha256(),
+                    good.ratesSha256(),
+                    null)));
+    // rate table the running contract does not use
+    assertThrows(
+        ExpectedManifest.ManifestException.class,
+        () ->
+            begin(
+                "root",
+                "g1",
+                new ExpectedManifest(
+                    good.schema(),
+                    good.stage(),
+                    good.policiesCount(),
+                    good.transactionsCount(),
+                    good.polinSha256(),
+                    good.txninSha256(),
+                    Sha256.of(new byte[] {1}),
+                    null)));
+    // missing rate binding
+    assertThrows(
+        ExpectedManifest.ManifestException.class,
+        () ->
+            begin(
+                "root",
+                "g1",
+                new ExpectedManifest(
+                    good.schema(),
+                    good.stage(),
+                    good.policiesCount(),
+                    good.transactionsCount(),
+                    good.polinSha256(),
+                    good.txninSha256(),
+                    null,
+                    null)));
+    // POLIN hash / count that do not describe the pinned parent
+    byte[] otherSeed = seed();
+    otherSeed[20] ^= 0x01;
+    assertThrows(
+        ExpectedManifest.ManifestException.class,
+        () -> begin("root", "g1", manifest("a", 2, 3, otherSeed, txnin())));
+    assertThrows(
+        ExpectedManifest.ManifestException.class,
+        () -> begin("root", "g1", manifest("a", 1, 3, seed(), txnin())));
+    // nothing was created by any of the refusals
+    assertTrue(store.info(NS, "g1").isEmpty());
+    // bootstrap enforces the same binding
+    assertThrows(
+        ExpectedManifest.ManifestException.class,
+        () ->
+            svc.bootstrap(
+                "n2",
+                "root",
+                seed(),
+                new ExpectedManifest(
+                    good.schema(),
+                    "bootstrap",
+                    2,
+                    0,
+                    Sha256.of(seed()),
+                    Sha256.of(new byte[0]),
+                    null,
+                    null)));
+    assertTrue(store.info("n2", "root").isEmpty());
+  }
+
+  @Test
+  void publicationIsBoundToThePinnedManifestNotToWhatArrived() {
+    bootstrap();
+    // manifest pinned for three specific requests; only two arrive (aligned truncation)
+    Lease lease = begin("root", "g1", stageManifest());
+    svc.apply(lease, requests().get(0), false);
+    svc.apply(lease, requests().get(1), false);
+    assertThrows(ExpectedManifest.ManifestException.class, () -> svc.publish(lease, "http"));
+    assertEquals(GenerationStatus.DISCARDED, store.info(NS, "g1").orElseThrow().status());
+    // genuinely empty input is distinguishable: an empty manifest publishes an empty generation
+    Lease empty = begin("root", "g2", manifest("empty", 2, 0, seed(), new byte[0]));
+    assertEquals(0, svc.publish(empty, "http").resultsCount());
+    // ... whereas an empty arrival against a non-empty manifest is refused
+    Lease missing = begin("g2", "g3", manifest("a", 2, 3, seed(), txnin()));
+    assertThrows(ExpectedManifest.ManifestException.class, () -> svc.publish(missing, "http"));
   }
 
   // ---------------------------------------------------------------- fencing and CAS
@@ -201,29 +326,26 @@ class JdbcGenerationStoreTest {
   @Test
   void oneWriterPerGenerationAndStaleFencesAreRejected() {
     bootstrap();
-    Lease first = svc.begin(NS, "root", "g1", Optional.empty());
-    assertThrows(GenerationException.class, () -> svc.begin(NS, "root", "g1", Optional.empty()));
+    Lease first = begin("root", "g1", stageManifest());
+    assertThrows(GenerationException.class, () -> begin("root", "g1", stageManifest()));
     svc.discard(first);
     assertThrows(FencedException.class, () -> svc.apply(first, requests().get(0), false));
-    Lease again = svc.begin(NS, "root", "g1b", Optional.empty());
+    Lease again = begin("root", "g1b", stageManifest());
     Lease forged = new Lease(NS, "g1b", "root", again.fence() + 1);
     assertThrows(FencedException.class, () -> svc.apply(forged, requests().get(0), false));
-    assertThrows(
-        FencedException.class,
-        () -> svc.publish(forged, manifest("a", 2, 0, seed(), new byte[0]), "http"));
+    assertThrows(FencedException.class, () -> svc.publish(forged, "http"));
     assertEquals(GenerationStatus.PENDING, store.info(NS, "g1b").orElseThrow().status());
   }
 
   @Test
   void publishCasFailsWhenCurrentMovedUnderTheLease() {
     bootstrap();
-    Lease slow = svc.begin(NS, "root", "slow", Optional.empty());
+    Lease slow = begin("root", "slow", stageManifest());
     runGeneration("root", "fast");
     for (TransactionRecord t : requests()) {
       svc.apply(slow, t, false);
     }
-    assertThrows(
-        CasException.class, () -> svc.publish(slow, manifest("a", 2, 3, seed(), txnin()), "http"));
+    assertThrows(CasException.class, () -> svc.publish(slow, "http"));
     assertEquals(Optional.of("fast"), store.current(NS));
     assertEquals(GenerationStatus.DISCARDED, store.info(NS, "slow").orElseThrow().status());
     assertThrows(GenerationException.class, () -> store.polout(NS, "slow"));
@@ -235,7 +357,7 @@ class JdbcGenerationStoreTest {
     int n = 6;
     List<Lease> leases = new ArrayList<>();
     for (int i = 0; i < n; i++) {
-      Lease lease = svc.begin(NS, "root", "s" + i, Optional.of(seed()));
+      Lease lease = begin("root", "s" + i, stageManifest());
       for (TransactionRecord t : requests()) {
         svc.apply(lease, t, false);
       }
@@ -249,7 +371,7 @@ class JdbcGenerationStoreTest {
           pool.submit(
               () -> {
                 go.await();
-                return svc.publish(lease, manifest("a", 2, 3, seed(), txnin()), "http");
+                return svc.publish(lease, "http");
               }));
     }
     go.countDown();
@@ -286,11 +408,11 @@ class JdbcGenerationStoreTest {
   @Test
   void applyAfterPublicationIsFencedAndLeavesThePublishedGenerationUntouched() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.of(seed()));
+    Lease lease = begin("root", "g1", stageManifest());
     for (TransactionRecord t : requests()) {
       svc.apply(lease, t, false);
     }
-    Receipt receipt = svc.publish(lease, manifest("a", 2, 3, seed(), txnin()), "http");
+    Receipt receipt = svc.publish(lease, "http");
     byte[] resout = store.resout(NS, "g1");
     assertThrows(
         FencedException.class,
@@ -338,18 +460,25 @@ class JdbcGenerationStoreTest {
   @Test
   void concurrentWritersUnderOneFenceGetContiguousOrdinalsAndSerialEvaluation() throws Exception {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
-    int n = 40;
-    ExecutorService pool = Executors.newFixedThreadPool(8);
+    int n = 200;
+    // every request is the same bytes, so the expected TXNIN is known before any of them arrives
+    // regardless of the (nondeterministic) arrival order; a serial evaluation must yield exactly
+    // one OKAY (the first arrival) and n-1 byte-exact replays (DUPL)
+    TransactionRecord same = txn("00000001", 1, VALUATION, 'P', 100);
+    byte[] expectedTxnin = new byte[n * 40];
+    for (int i = 0; i < n; i++) {
+      System.arraycopy(same.bytes(), 0, expectedTxnin, i * 40, 40);
+    }
+    Lease lease = begin("root", "g1", manifest("c", 2, n, seed(), expectedTxnin));
+    ExecutorService pool = Executors.newFixedThreadPool(16);
     CountDownLatch go = new CountDownLatch(1);
     List<Future<Applied>> futures = new ArrayList<>();
     for (int i = 1; i <= n; i++) {
-      int seq = i;
       futures.add(
           pool.submit(
               () -> {
                 go.await();
-                return svc.apply(lease, txn("00000001", seq, VALUATION, 'P', 100), false);
+                return svc.apply(lease, same, false);
               }));
     }
     go.countDown();
@@ -361,22 +490,23 @@ class JdbcGenerationStoreTest {
     assertEquals(
         IntStream.rangeClosed(1, n).boxed().toList(),
         applied.stream().map(Applied::ordinal).sorted().map(Long::intValue).toList());
-    // every accepted request saw the master left by the previous accepted one: exactly one OKAY
-    // per sequence number that arrived in ascending order, everything else ORDR by contract
     long okay = applied.stream().filter(a -> a.evaluation().status() == Status.OKAY).count();
-    assertTrue(okay >= 1 && okay <= n);
-    long ordr = applied.stream().filter(a -> a.evaluation().status() == Status.ORDR).count();
-    assertEquals(n, okay + ordr);
-    int finalSeq =
-        store.policy(NS, "g1", insurance.legacy.codec.Cp037.encode("00000001")).orElseThrow().seq();
+    long dupl = applied.stream().filter(a -> a.evaluation().status() == Status.DUPL).count();
+    assertEquals(1, okay);
+    assertEquals(n - 1, dupl);
     assertEquals(
+        1L,
         applied.stream()
             .filter(a -> a.evaluation().status() == Status.OKAY)
-            .mapToInt(a -> a.evaluation().result().seq())
-            .max()
-            .orElseThrow(),
-        finalSeq);
-    // the persisted arrival order is what publication binds to
+            .findFirst()
+            .orElseThrow()
+            .ordinal());
+    assertEquals(
+        1,
+        store
+            .policy(NS, "g1", insurance.legacy.codec.Cp037.encode("00000001"))
+            .orElseThrow()
+            .seq());
     byte[] arrived =
         concat(
             db.sql("SELECT request FROM generation_entry WHERE generation_id = ? ORDER BY ordinal")
@@ -384,9 +514,10 @@ class JdbcGenerationStoreTest {
                 .query(byte[].class)
                 .list()
                 .toArray(byte[][]::new));
-    Receipt r = svc.publish(lease, manifest("c", 2, n, seed(), arrived), "http");
+    assertArrayEquals(expectedTxnin, arrived);
+    Receipt r = svc.publish(lease, "http");
     assertEquals(n, r.resultsCount());
-    assertArrayEquals(arrived, store.requests(NS, "g1"));
+    assertArrayEquals(expectedTxnin, store.requests(NS, "g1"));
   }
 
   // ---------------------------------------------------------------- retry boundaries
@@ -394,7 +525,7 @@ class JdbcGenerationStoreTest {
   @Test
   void retryAfterCommittedRequestIsDuplWhileStillLatestAndOrdrAfterIntervening() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    Lease lease = begin("root", "g1", stageManifest());
     TransactionRecord p1 = txn("00000001", 1, VALUATION, 'P', 10_000);
     assertEquals(Status.OKAY, svc.apply(lease, p1, false).evaluation().status());
     // response lost after commit: identical retry is a byte-exact replay of the latest request
@@ -413,7 +544,7 @@ class JdbcGenerationStoreTest {
   @Test
   void failureBeforeCommitLeavesNoOrdinalSoRetryIsOkay() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    Lease lease = begin("root", "g1", stageManifest());
     TransactionRecord p1 = txn("00000001", 1, VALUATION, 'P', 10_000);
     RuntimeException boom = new RuntimeException("crash before commit");
     RuntimeException thrown =
@@ -495,7 +626,7 @@ class JdbcGenerationStoreTest {
   @Test
   void pendingEntriesAreAppendOnly() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    Lease lease = begin("root", "g1", stageManifest());
     svc.apply(lease, requests().get(0), false);
     long id = generationId("g1");
     assertThrows(
@@ -512,20 +643,71 @@ class JdbcGenerationStoreTest {
   // ---------------------------------------------------------------- restart
 
   @Test
-  void pendingResultsAreNotServedAsPublishedAndRestartDiscardsThem() {
+  void pendingResultsAreNotServedAsPublishedAndAnotherInstanceLeavesLiveWritersAlone() {
     bootstrap();
-    Lease lease = svc.begin(NS, "root", "g1", Optional.empty());
+    Lease lease = begin("root", "g1", stageManifest());
     svc.apply(lease, requests().get(0), false);
     assertThrows(GenerationException.class, () -> store.resout(NS, "g1"));
     assertEquals(96, store.peekResout(NS, "g1").length);
     assertTrue(store.receipt(NS, "g1").isEmpty());
 
-    JdbcGenerationStore reopened = open();
-    assertEquals(List.of(NS + "/g1"), reopened.discardedOnOpen());
-    assertEquals(Optional.of("root"), reopened.current(NS));
-    assertThrows(GenerationException.class, () -> reopened.peekResout(NS, "g1"));
+    // a second instance starting while this writer is alive must not invalidate its generation
+    try (JdbcGenerationStore other = open()) {
+      assertEquals(List.of(), other.discardedOnOpen());
+      assertEquals(List.of(NS + "/g1"), other.liveOnOpen());
+      assertEquals(Optional.of("root"), other.current(NS));
+      assertEquals(GenerationStatus.PENDING, other.info(NS, "g1").orElseThrow().status());
+      // and the live writer keeps working
+      assertEquals(2, svc.apply(lease, requests().get(1), false).ordinal());
+      // the other instance does not own the lease: its commits under the same fence are refused
+      assertThrows(
+          GenerationException.class, () -> service(other).apply(lease, requests().get(2), false));
+    }
+  }
+
+  @Test
+  void orphanedPendingGenerationIsDiscardedOnceItsLeaseExpiredAndNeverResumed() {
+    bootstrap();
+    Lease lease = begin("root", "g1", stageManifest());
+    svc.apply(lease, requests().get(0), false);
+    // simulate the writer dying: stop its heartbeat and let the lease lapse
+    store.close();
+    db.sql("UPDATE generation SET lease_expires_at = now() - interval '1 second' WHERE name = 'g1'")
+        .update();
+    store = open();
+    assertEquals(List.of(NS + "/g1"), store.discardedOnOpen());
+    assertEquals(GenerationStatus.DISCARDED, store.info(NS, "g1").orElseThrow().status());
+    assertEquals(
+        "orphaned: writer lease expired at open",
+        db.sql("SELECT discard_reason FROM generation WHERE name = 'g1'")
+            .query(String.class)
+            .single());
+    assertEquals(Optional.of("root"), store.current(NS));
+    assertThrows(GenerationException.class, () -> store.peekResout(NS, "g1"));
     assertThrows(
-        FencedException.class, () -> service(reopened).apply(lease, requests().get(0), false));
+        FencedException.class, () -> service(store).apply(lease, requests().get(0), false));
+    // the committed prefix is not resumed: a rerun starts again from the pinned parent
+    Lease rerun = begin("root", "g1-rerun", stageManifest());
+    assertEquals(1, svc.apply(rerun, requests().get(0), false).ordinal());
+  }
+
+  @Test
+  void heartbeatRenewsOnlyThisWritersLeases() {
+    bootstrap();
+    begin("root", "g1", stageManifest());
+    java.time.OffsetDateTime before =
+        db.sql("SELECT lease_expires_at FROM generation WHERE name = 'g1'")
+            .query(java.time.OffsetDateTime.class)
+            .single();
+    assertEquals(1, store.renewLeases());
+    java.time.OffsetDateTime after =
+        db.sql("SELECT lease_expires_at FROM generation WHERE name = 'g1'")
+            .query(java.time.OffsetDateTime.class)
+            .single();
+    assertFalse(after.isBefore(before));
+    try (JdbcGenerationStore other = open()) {
+      assertEquals(0, other.renewLeases());
+    }
   }
 
   @Test
@@ -561,9 +743,10 @@ class JdbcGenerationStoreTest {
   void restartRebuildsAncestryAndServesOnlyReachableGenerations() {
     bootstrap();
     runGeneration("root", "g1");
-    JdbcGenerationStore reopened = open();
-    assertEquals(Optional.of("g1"), reopened.current(NS));
-    assertArrayEquals(seed(), reopened.polout(NS, "root"));
-    assertEquals(GenerationStatus.PUBLISHED, reopened.info(NS, "g1").orElseThrow().status());
+    try (JdbcGenerationStore reopened = open()) {
+      assertEquals(Optional.of("g1"), reopened.current(NS));
+      assertArrayEquals(seed(), reopened.polout(NS, "root"));
+      assertEquals(GenerationStatus.PUBLISHED, reopened.info(NS, "g1").orElseThrow().status());
+    }
   }
 }
