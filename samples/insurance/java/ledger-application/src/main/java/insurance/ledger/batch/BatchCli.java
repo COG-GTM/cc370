@@ -128,6 +128,7 @@ public final class BatchCli {
       Receipt receipt;
       try {
         for (TransactionRecord t : Records.transactions(txnin)) {
+          killSwitch(o, "kill-before-commit", store, lease);
           svc.apply(lease, t, false);
           killSwitch(o, "kill-after-commit", store, lease);
         }
@@ -159,11 +160,11 @@ public final class BatchCli {
   }
 
   /**
-   * Test hook: {@code --kill-after-commit N} halts the JVM (no shutdown hooks, no close, no
-   * discard) right after the N-th request has been durably committed; {@code --kill-before-publish
-   * 1} halts after the last commit and before publication; {@code --kill-after-publish 1} halts
-   * after publication returned. Used by the process-kill tests to produce a dead writer at a
-   * defined boundary.
+   * Test hook: {@code --kill-before-commit N} halts the JVM (no shutdown hooks, no close, no
+   * discard) right before the N-th request is applied; {@code --kill-after-commit N} right after
+   * the N-th request has been durably committed; {@code --kill-before-publish 1} after the last
+   * commit and before publication; {@code --kill-after-publish 1} after publication returned. Used
+   * by the process-kill tests to produce a dead writer at a defined boundary.
    */
   private static void killSwitch(
       Map<String, String> o, String key, GenerationStore store, Lease lease) {
@@ -174,6 +175,7 @@ public final class BatchCli {
     GenerationInfo info = store.info(lease.namespace(), lease.generation()).orElseThrow();
     boolean fire =
         switch (key) {
+          case "kill-before-commit" -> info.lastOrdinal() == Long.parseLong(v) - 1;
           case "kill-after-commit" -> info.lastOrdinal() == Long.parseLong(v);
           default -> Long.parseLong(v) == 1;
         };

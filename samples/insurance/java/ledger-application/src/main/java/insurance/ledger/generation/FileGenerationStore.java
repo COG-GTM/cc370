@@ -86,6 +86,12 @@ public final class FileGenerationStore implements GenerationStore {
   public static final String LOCK_FILE = ".store.lock";
 
   /**
+   * Test hook: when this system property is {@code true} the JVM halts between the two publication
+   * renames (directory moved to {@code published/}, {@code current.json} not yet replaced).
+   */
+  public static final String HALT_BETWEEN_RENAMES = "insurance.store.halt-between-renames";
+
+  /**
    * Store roots locked by this JVM. POSIX record locks are per process and closing any channel on
    * the lock file drops the process's lock, so a second in-process open must be refused before it
    * opens (and later closes) a channel of its own.
@@ -197,6 +203,11 @@ public final class FileGenerationStore implements GenerationStore {
     if (Files.isDirectory(pending)) {
       for (Path gen : list(pending)) {
         Path target = root.resolve(ns).resolve("discarded").resolve(gen.getFileName());
+        Path infoFile = gen.resolve("generation.json");
+        if (Files.isRegularFile(infoFile)) {
+          GenerationInfo info = Json.read(infoFile, GenerationInfo.class);
+          write(infoFile, Json.bytes(info.with(GenerationStatus.DISCARDED)));
+        }
         Files.createDirectories(target.getParent());
         Files.move(gen, target, StandardCopyOption.ATOMIC_MOVE);
         discardedOnOpen.add(ns + "/" + gen.getFileName());
@@ -428,6 +439,9 @@ public final class FileGenerationStore implements GenerationStore {
         Path target = publishedDir(lease.namespace(), lease.generation());
         Files.createDirectories(target.getParent());
         Files.move(pdir, target, StandardCopyOption.ATOMIC_MOVE);
+        if (Boolean.getBoolean(HALT_BETWEEN_RENAMES)) {
+          Runtime.getRuntime().halt(137);
+        }
         setCurrent(lease.namespace(), lease.generation());
         tables.remove(key(lease.namespace(), lease.generation()));
         pendingInfo.remove(key(lease.namespace(), lease.generation()));
@@ -516,10 +530,11 @@ public final class FileGenerationStore implements GenerationStore {
             root.resolve(namespace).resolve(kind).resolve(generation).resolve("generation.json");
         if (Files.isRegularFile(file)) {
           GenerationInfo info = Json.read(file, GenerationInfo.class);
-          if (kind.equals("published") && !verifyAncestry(namespace).contains(generation)) {
-            return Optional.of(info.with(GenerationStatus.DISCARDED));
+          if (kind.equals("published") && verifyAncestry(namespace).contains(generation)) {
+            return Optional.of(info);
           }
-          return Optional.of(info);
+          // orphan published directory, or a pending directory moved by recovery
+          return Optional.of(info.with(GenerationStatus.DISCARDED));
         }
       }
       return Optional.empty();
