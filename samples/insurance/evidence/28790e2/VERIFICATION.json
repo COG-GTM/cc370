@@ -1,0 +1,279 @@
+{
+  "a001_actual": {
+    "age": 1,
+    "cash": 113259,
+    "charge": 3964,
+    "date": 20250101,
+    "death": 1000000,
+    "fee": 350,
+    "id": "00000001",
+    "interest": 3259,
+    "loan": 0,
+    "op": "P",
+    "rate": 325,
+    "reserved": "000000",
+    "seq": 1,
+    "status": "OKAY",
+    "surrender": 109295,
+    "tail": "00000000000000000000000000000000",
+    "version": "V001"
+  },
+  "builds": {
+    "as370-iewl": {
+      "errors": [],
+      "job": "INSHOST",
+      "job_id": "JOB00181",
+      "passed": true,
+      "purged": true,
+      "steps": [
+        [
+          "LSMOK",
+          "0000"
+        ],
+        [
+          "LBAT",
+          "0000"
+        ],
+        [
+          "SMOKE",
+          "0000"
+        ]
+      ]
+    },
+    "as370-ld370": {
+      "errors": [],
+      "job": "INSLD",
+      "job_id": "JOB00232",
+      "passed": true,
+      "purged": true,
+      "steps": [
+        [
+          "C001",
+          "0000"
+        ],
+        [
+          "C002",
+          "0000"
+        ],
+        [
+          "SMOKE",
+          "0000"
+        ]
+      ]
+    },
+    "ifox-iewl": {
+      "errors": [],
+      "job": "INSBUILD",
+      "job_id": "JOB00128",
+      "passed": true,
+      "purged": true,
+      "steps": [
+        [
+          "ACALC",
+          "0000"
+        ],
+        [
+          "AVAL",
+          "0000"
+        ],
+        [
+          "APACK",
+          "0000"
+        ],
+        [
+          "ADATE",
+          "0000"
+        ],
+        [
+          "ARATE",
+          "0000"
+        ],
+        [
+          "ASMOK",
+          "0000"
+        ],
+        [
+          "ABAT",
+          "0000"
+        ],
+        [
+          "LSMOK",
+          "0000"
+        ],
+        [
+          "LBAT",
+          "0000"
+        ],
+        [
+          "SMOKE",
+          "0000"
+        ]
+      ]
+    }
+  },
+  "clean_worktree": true,
+  "cross_backend_bytes_identical": true,
+  "deck_modules": 7,
+  "deck_non_end_cards": 81,
+  "redacted_cards": 159,
+  "runtime_files": 2249,
+  "source_commit": "28790e2a3f343980f15d8bffd55e5811fbfa2ee5",
+  "stages": {
+    "as370-iewl": [
+      {
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/anchors.polin.bin",
+        "job_id": "JOB00183",
+        "master_records": 10,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 10,
+        "stage": "anchors"
+      },
+      {
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/polin.bin",
+        "job_id": "JOB00186",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 4097,
+        "stage": "a"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-iewl/a/polout.bin",
+        "job_id": "JOB00189",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 244,
+        "stage": "a-replay"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-iewl/a/polout.bin",
+        "job_id": "JOB00192",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 4097,
+        "stage": "b"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-iewl/b/polout.bin",
+        "job_id": "JOB00195",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 256,
+        "stage": "b-replay"
+      }
+    ],
+    "as370-ld370": [
+      {
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/anchors.polin.bin",
+        "job_id": "JOB00234",
+        "master_records": 10,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 10,
+        "stage": "anchors"
+      },
+      {
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/polin.bin",
+        "job_id": "JOB00237",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 4097,
+        "stage": "a"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-ld370/a/polout.bin",
+        "job_id": "JOB00240",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 244,
+        "stage": "a-replay"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-ld370/a/polout.bin",
+        "job_id": "JOB00243",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 4097,
+        "stage": "b"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-ld370/b/polout.bin",
+        "job_id": "JOB00246",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 256,
+        "stage": "b-replay"
+      }
+    ],
+    "ifox-iewl": [
+      {
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/anchors.polin.bin",
+        "job_id": "JOB00131",
+        "master_records": 10,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 10,
+        "stage": "anchors"
+      },
+      {
+        "input_generation": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/polin.bin",
+        "job_id": "JOB00134",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 4097,
+        "stage": "a"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/ifox-iewl/a/polout.bin",
+        "job_id": "JOB00137",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 244,
+        "stage": "a-replay"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/ifox-iewl/a/polout.bin",
+        "job_id": "JOB00140",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 4097,
+        "stage": "b"
+      },
+      {
+        "input_generation": "/home/ubuntu/mvs-demo/application-live-02/ifox-iewl/b/polout.bin",
+        "job_id": "JOB00143",
+        "master_records": 256,
+        "rc": {
+          "RUN": 0
+        },
+        "result_records": 256,
+        "stage": "b-replay"
+      }
+    ]
+  }
+}

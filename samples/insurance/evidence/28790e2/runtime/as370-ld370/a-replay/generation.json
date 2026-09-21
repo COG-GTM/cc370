@@ -1,0 +1,25 @@
+{
+  "dataset_prefix": "IBMUSER.LIVE02.LR.G03",
+  "input": "/home/ubuntu/mvs-demo/application-live-02/as370-ld370/a/polout.bin",
+  "input_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+  "receipt": {
+    "abend": null,
+    "build_manifest_sha256": "a4b2772aba00abeaf6219c3751ccc7c1d421741ac2c7079c019066047c837f62",
+    "guest_manifest_sha256": "e64c0159fe32a10dc7b7dad55f339c827af53389a93ddf0497f56d36b9f97299",
+    "input_generation": "/home/ubuntu/mvs-demo/application-live-02/as370-ld370/a/polout.bin",
+    "job_id": "JOB00240",
+    "job_result_sha256": "2fe59d8ecaab1dcae2039cab0443ba0b327a0db2272a4cfb90ff0544445c2d42",
+    "outcome": "completed",
+    "polin_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+    "polout_sha256": "218da2fb84c513e3315225920b483adbc198780b0c2d3390b916462f82df5bd3",
+    "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0",
+    "resout_sha256": "f9e4860d519851c789b9012029a678119997961001a354d71c2bb60cf2d9f8ff",
+    "schema": "insurance-run-v1",
+    "step_rc": {
+      "RUN": 0
+    },
+    "timed_out": false,
+    "txnin_sha256": "b1e20d2fcf727142b4a47b6aeee0d3fb4abf171e1f79bf68014c100754976bb2"
+  },
+  "status": "validated"
+}
