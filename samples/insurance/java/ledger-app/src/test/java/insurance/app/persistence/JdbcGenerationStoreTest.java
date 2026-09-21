@@ -640,6 +640,123 @@ class JdbcGenerationStoreTest {
         () -> db.sql("DELETE FROM generation_entry WHERE generation_id = ?").param(id).update());
   }
 
+  // ------------------------------------------- guard / publication lock synchronisation
+
+  /**
+   * Connection A begins a direct child-row write while the generation is PENDING (the guard's
+   * locking read succeeds and holds a share lock on the generation row) and does not commit.
+   * Publication on another connection must wait for A instead of publishing underneath it; once A
+   * rolls back the publication completes and A's retry is rejected as PUBLISHED.
+   */
+  @Test
+  void directChildWriteBegunWhilePendingBlocksPublicationUntilItEnds() throws Exception {
+    bootstrap();
+    TransactionRecord t1 = requests().get(0);
+    Lease lease = begin("root", "g1", manifest("a", 2, 1, seed(), t1.bytes()));
+    svc.apply(lease, t1, false);
+    long id = generationId("g1");
+    byte[] first = java.util.Arrays.copyOf(store.peekResout(NS, "g1"), 96);
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try (java.sql.Connection a = dataSource.getConnection()) {
+      a.setAutoCommit(false);
+      try (java.sql.PreparedStatement ins =
+          a.prepareStatement(
+              "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed)"
+                  + " VALUES (?, 2, ?, ?, false)")) {
+        ins.setLong(1, id);
+        ins.setBytes(2, t1.bytes());
+        ins.setBytes(3, first);
+        assertEquals(1, ins.executeUpdate()); // guard passed: still PENDING, share lock held
+      }
+      Future<Receipt> publish = pool.submit(() -> svc.publish(lease, "http"));
+      assertThrows(
+          java.util.concurrent.TimeoutException.class,
+          () -> publish.get(700, java.util.concurrent.TimeUnit.MILLISECONDS),
+          "publication must block on the guard's row lock");
+      assertEquals(GenerationStatus.PENDING, store.info(NS, "g1").orElseThrow().status());
+      a.rollback();
+      Receipt receipt = publish.get(30, java.util.concurrent.TimeUnit.SECONDS);
+      assertEquals(1, receipt.resultsCount());
+      assertEquals(Optional.of("g1"), store.current(NS));
+      // the same statement after publication is rejected by the guard
+      try (java.sql.PreparedStatement ins =
+          a.prepareStatement(
+              "INSERT INTO generation_entry (generation_id, ordinal, request, result, typed)"
+                  + " VALUES (?, 2, ?, ?, false)")) {
+        ins.setLong(1, id);
+        ins.setBytes(2, t1.bytes());
+        ins.setBytes(3, first);
+        java.sql.SQLException e = assertThrows(java.sql.SQLException.class, ins::executeUpdate);
+        assertTrue(e.getMessage().contains("PUBLISHED"), e.getMessage());
+        a.rollback();
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+    assertEquals(96, store.resout(NS, "g1").length);
+  }
+
+  /**
+   * The converse order: the publisher holds the generation row {@code FOR UPDATE} first and flips
+   * the status; a direct child-row write on another connection blocks in the guard's locking read
+   * and, once the publisher commits, is rejected instead of committing into a published generation.
+   */
+  @Test
+  void directChildWriteWaitsForThePublisherLockAndIsRejectedAfterTheFlip() throws Exception {
+    bootstrap();
+    Lease lease = begin("root", "g1", stageManifest());
+    svc.apply(lease, requests().get(0), false);
+    long id = generationId("g1");
+    byte[] first = java.util.Arrays.copyOf(store.peekResout(NS, "g1"), 96);
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try (java.sql.Connection publisher = dataSource.getConnection()) {
+      publisher.setAutoCommit(false);
+      try (java.sql.PreparedStatement lock =
+          publisher.prepareStatement("SELECT id FROM generation WHERE id = ? FOR UPDATE")) {
+        lock.setLong(1, id);
+        assertTrue(lock.executeQuery().next());
+      }
+      try (java.sql.PreparedStatement flip =
+          publisher.prepareStatement("UPDATE generation SET status = 'PUBLISHED' WHERE id = ?")) {
+        flip.setLong(1, id);
+        assertEquals(1, flip.executeUpdate());
+      }
+      Future<Integer> write =
+          pool.submit(
+              () -> {
+                try (java.sql.Connection a = dataSource.getConnection();
+                    java.sql.PreparedStatement ins =
+                        a.prepareStatement(
+                            "INSERT INTO generation_entry"
+                                + " (generation_id, ordinal, request, result, typed)"
+                                + " VALUES (?, 2, ?, ?, false)")) {
+                  ins.setLong(1, id);
+                  ins.setBytes(2, requests().get(0).bytes());
+                  ins.setBytes(3, first);
+                  return ins.executeUpdate();
+                }
+              });
+      assertThrows(
+          java.util.concurrent.TimeoutException.class,
+          () -> write.get(700, java.util.concurrent.TimeUnit.MILLISECONDS),
+          "guard must block on the publisher's row lock");
+      publisher.commit();
+      java.util.concurrent.ExecutionException e =
+          assertThrows(
+              java.util.concurrent.ExecutionException.class,
+              () -> write.get(30, java.util.concurrent.TimeUnit.SECONDS));
+      assertTrue(e.getCause().getMessage().contains("PUBLISHED"), e.getCause().getMessage());
+    } finally {
+      pool.shutdownNow();
+    }
+    assertEquals(
+        1,
+        db.sql("SELECT count(*) FROM generation_entry WHERE generation_id = ?")
+            .param(id)
+            .query(Integer.class)
+            .single());
+  }
+
   // ---------------------------------------------------------------- restart
 
   @Test
