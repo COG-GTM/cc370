@@ -1,0 +1,15 @@
+python3 tools/lint.py
+IFOX00 columns and local labels: PASS
+python3 -m compileall -q tools tests
+----------------------------------------------------------------------
+Ran 23 tests in 0.948s
+
+OK
+/home/ubuntu/repos/cc370/samples/insurance/build/hostbin/as370 -I /home/ubuntu/repos/cc370/samples/insurance/copy -a=/home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.lst --sym=/home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.sym -o /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.obj /home/ubuntu/repos/cc370/samples/insurance/src/INSSMOK.asm
+DSECT and codec layouts: PASS (INSSMOK.sym)
+/home/ubuntu/repos/cc370/ld370/ld370 --norent --noreus --entry INSSMOK --name INSSMOK -o /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK -iebcopy /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.obj
+DSECT and codec layouts: PASS (INSBAT.sym)
+/home/ubuntu/repos/cc370/ld370/ld370 --norent --noreus --entry INSSMOK --name INSSMOK -o /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK -iebcopy /home/ubuntu/repos/cc370/samples/insurance/build/INSSMOK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.obj
+/home/ubuntu/repos/cc370/ld370/ld370 --norent --noreus --entry INSBAT --name INSBAT -o /home/ubuntu/repos/cc370/samples/insurance/build/INSBAT -iebcopy /home/ubuntu/repos/cc370/samples/insurance/build/INSBAT.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSCALC.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSVAL.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSPACK.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSDATE.obj /home/ubuntu/repos/cc370/samples/insurance/build/INSRATE.obj
+python3 tools/corpus.py verify
+Verified 21 frozen artifacts against deterministic regeneration

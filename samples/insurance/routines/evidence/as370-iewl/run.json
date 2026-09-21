@@ -1,0 +1,55 @@
+{
+ "backend": "as370-iewl",
+ "capture_records": 184,
+ "capture_sha256": "2121c27da9b626f46f1a049a4e7caa9480d50d8e70fbf10dfcf51345c6bfdbc9",
+ "cases_passed": 184,
+ "cases_sha256": "8f97f1c50b76aa94dd9a30f1359ba39f9d49f64c7ea98d01db7576f795b2329f",
+ "comparison_passed": true,
+ "findings": 0,
+ "fixture_manifest_sha256": "e0aea975d978e9c1692ae30fe99f9deca030e53d1886d8f7091e12d2b5bf71c9",
+ "fixture_version": "v1",
+ "jobs": {
+  "allocate": {
+   "errors": [],
+   "job": "INSALLOC",
+   "job_id": "JOB00008",
+   "passed": true,
+   "purged": true,
+   "steps": [
+    [
+     "ALLOC",
+     "0000"
+    ]
+   ]
+  },
+  "link": {
+   "errors": [],
+   "job": "INSRLNK",
+   "job_id": "JOB00010",
+   "passed": true,
+   "purged": true,
+   "steps": [
+    [
+     "LDRV",
+     "0000"
+    ]
+   ]
+  },
+  "run": {
+   "errors": [],
+   "job": "INSRRUN",
+   "job_id": "JOB00012",
+   "passed": true,
+   "purged": true,
+   "steps": [
+    [
+     "DRV",
+     "0000"
+    ]
+   ]
+  }
+ },
+ "prefix": "INSR.H2",
+ "schema": "insurance-routines-run-v1",
+ "scope": "observed MVS 3.8j execution of the linked INSDRV load module under Hercules; direct-call evidence for INSPACK/INSDATE/INSRATE/INSVAL/INSCALC only"
+}

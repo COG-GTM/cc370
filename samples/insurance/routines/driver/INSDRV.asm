@@ -1,0 +1,181 @@
+* ROUTINE HARNESS DRIVER: CALL REAL LINKED ROUTINES, RECORD RAW STATE.
+* ONE FB512 CASE RECORD IN, ONE FB1536 CAPTURE RECORD OUT, SAME ORDER.
+* THE DRIVER NEVER INTERPRETS RESULTS; THE HOST COMPARATOR DOES.
+         COPY  INSWORK
+INSDRV   INSENT
+         LA    11,4095(12)
+         LA    11,1(11)
+         USING INSDRV+4096,11
+         OPEN  (CASES,INPUT,CAPTURE,OUTPUT)
+         TM    CASES+48,X'10'
+         BNO   IOFAIL
+         TM    CAPTURE+48,X'10'
+         BNO   IOFAIL
+         XC    ORDINAL,ORDINAL
+NEXT     GET   CASES,CASEREC
+         L     2,ORDINAL
+         LA    2,1(2)
+         ST    2,ORDINAL
+         XC    CAPREC(256),CAPREC
+         XC    CAPREC+256(256),CAPREC+256
+         XC    CAPREC+512(256),CAPREC+512
+         XC    CAPREC+768(256),CAPREC+768
+         XC    CAPREC+1024(256),CAPREC+1024
+         XC    CAPREC+1280(256),CAPREC+1280
+         MVC   CAPID,CSID
+         MVC   CAPRTN,CSRTN
+         MVC   CAPORD,ORDINAL
+         MVC   CAPFLG,CSFLG
+* ROUTINE LOOKUP: EXTERNAL V-CONSTANTS ONLY, NEVER INTERNAL LABELS.
+         LA    3,RTNTAB
+         LA    4,5
+RTLOOP   CLC   CSRTN,0(3)
+         BE    RTFOUND
+         LA    3,16(3)
+         BCT   4,RTLOOP
+         B     BADRTN
+RTFOUND  ST    3,RTNPTR
+* FRESH GUARD PATTERNS AROUND WORK, ARGUMENT AND SAVE AREA.
+         MVC   GWLO,PATWLO
+         MVC   GWHI,PATWHI
+         MVC   GALO,PATALO
+         MVC   GAHI,PATAHI
+         MVC   GSLO,PATSLO
+         MVC   GSHI,PATSHI
+* WORK IMAGE: FULL RELOAD, OR KEEP PRIOR STATE WITH OPTIONAL OVERLAYS.
+         TM    CSFLG,X'80'
+         BO    KEEP
+         MVC   AREA(256),CSWORK
+         MVC   AREA+256(WORKLEN-256),CSWORK+256
+         B     LOADARG
+KEEP     TM    CSFLG,X'40'
+         BZ    KEEPT
+         MVC   AREA(128),CSWORK
+KEEPT    TM    CSFLG,X'20'
+         BZ    LOADARG
+         MVC   AREA+128(40),CSWORK+128
+LOADARG  MVC   ARGA,CSARG
+         MVC   CAPWB(256),AREA
+         MVC   CAPWB+256(WORKLEN-256),AREA+256
+* R1 CONVENTION PER ROUTINE; SENTINELS IN EVERY OTHER FREE REGISTER.
+         L     3,RTNPTR
+         L     15,8(3)
+         LA    1,AREA
+         TM    15(3),X'01'
+         BZ    REGS
+         LA    1,ARGA
+REGS     L     0,=X'0BAD0000'
+         L     2,=X'0BAD0002'
+         L     3,=X'0BAD0003'
+         L     4,=X'0BAD0004'
+         L     5,=X'0BAD0005'
+         L     6,=X'0BAD0006'
+         L     7,=X'0BAD0007'
+         L     8,=X'0BAD0008'
+         L     9,=X'0BAD0009'
+         L     10,=X'0BAD000A'
+         L     14,=X'0BAD000E'
+         STM   0,15,CAPRB
+         BALR  14,15
+RETPT    STM   0,15,CAPRA
+* CAPTURE IMMEDIATELY: NOTHING BELOW WRITES INTO AREA, ARGA OR GUARDS.
+         MVC   CAPSA(72),SAVE
+         L     3,SAVE+8
+         MVC   CAPCSA(72),0(3)
+         MVC   CAPGWL,GWLO
+         MVC   CAPGWH,GWHI
+         MVC   CAPARG,ARGA
+         MVC   CAPGAL,GALO
+         MVC   CAPGAH,GAHI
+         MVC   CAPGSL,GSLO
+         MVC   CAPGSH,GSHI
+         LA    3,AREA
+         ST    3,CAPAWK
+         LA    3,ARGA
+         ST    3,CAPAARG
+         LA    3,SAVE
+         ST    3,CAPASAV
+         LA    3,RETPT
+         ST    3,CAPARET
+         ST    12,CAPBASE
+         MVC   CAPWA(256),AREA
+         MVC   CAPWA+256(WORKLEN-256),AREA+256
+         PUT   CAPTURE,CAPREC
+         B     NEXT
+CASEEND  XC    RETCODE,RETCODE
+         B     FINISH
+BADRTN   MVC   RETCODE,=F'12'
+         B     FINISH
+IOFAIL   MVC   RETCODE,=F'16'
+FINISH   CLOSE (CASES,,CAPTURE)
+         L     15,RETCODE
+         INSRET
+         LTORG
+         DS    0F
+RTNTAB   DC    CL8'INSPACK ',V(INSPACK),X'00000001'
+         DC    CL8'INSDATE ',V(INSDATE),X'00000000'
+         DC    CL8'INSRATE ',V(INSRATE),X'00000000'
+         DC    CL8'INSVAL  ',V(INSVAL),X'00000000'
+         DC    CL8'INSCALC ',V(INSCALC),X'00000000'
+PATWLO   DC    16X'A5'
+PATWHI   DC    16X'5A'
+PATALO   DC    8X'C3'
+PATAHI   DC    8X'3C'
+PATSLO   DC    8X'96'
+PATSHI   DC    8X'69'
+ORDINAL  DC    F'0'
+RTNPTR   DC    F'0'
+RETCODE  DC    F'16'
+         DS    0D
+GSLO     DS    XL8
+SAVE     DS    18F
+GSHI     DS    XL8
+GALO     DS    XL8
+ARGA     DS    XL8
+GAHI     DS    XL8
+CASES    DCB   DDNAME=CASEIN,DSORG=PS,MACRF=GM,RECFM=FB,               X
+               LRECL=512,BLKSIZE=5120,EODAD=CASEEND
+CAPTURE  DCB   DDNAME=CAPOUT,DSORG=PS,MACRF=PM,RECFM=FB,               X
+               LRECL=1536,BLKSIZE=15360
+         DS    0D
+CASEREC  DS    0XL512
+CSID     DS    CL8
+CSRTN    DS    CL8
+CSORD    DS    F
+CSFLG    DS    X
+         DS    XL3
+CSARG    DS    XL8
+CSWORK   DS    (WORKLEN)C
+         DS    XL(CASEREC+512-*)
+         DS    0D
+CAPREC   DS    0XL1536
+CAPID    DS    CL8
+CAPRTN   DS    CL8
+CAPORD   DS    F
+CAPFLG   DS    X
+         DS    XL3
+CAPRB    DS    16F
+CAPRA    DS    16F
+CAPSA    DS    18F
+CAPCSA   DS    18F
+CAPGWL   DS    XL16
+CAPGWH   DS    XL16
+CAPARG   DS    XL8
+CAPGAL   DS    XL8
+CAPGAH   DS    XL8
+CAPGSL   DS    XL8
+CAPGSH   DS    XL8
+CAPAWK   DS    F
+CAPAARG  DS    F
+CAPASAV  DS    F
+CAPARET  DS    F
+CAPBASE  DS    F
+         DS    XL12
+CAPWB    DS    (WORKLEN)C
+CAPWA    DS    (WORKLEN)C
+         DS    XL(CAPREC+1536-*)
+         DS    0D
+GWLO     DS    XL16
+AREA     DS    (WORKLEN)C
+GWHI     DS    XL16
+         END   INSDRV

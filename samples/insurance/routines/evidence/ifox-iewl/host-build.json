@@ -1,0 +1,44 @@
+{
+ "core_decks": {
+  "INSCALC.obj": "927c311d0cf52b20dad334a44cdc92281de38f1f1f3de6821a44b32dc5ae5f43",
+  "INSDATE.obj": "10348f6a6d34b8d3ea1cb2967c1c7551d1e1eedd740ddc033777a30b7d49e416",
+  "INSPACK.obj": "4017d65b71a7b0f11164fc855287d0cc03914e5ee97970c80a0f71e3923bc656",
+  "INSRATE.obj": "1bd3b3ae10ec083116292e48b04969821ef7284289e6dfa8268b512c7378eb51",
+  "INSVAL.obj": "8cecfef0a2d575dc7f6a0a7f4385f3fef03cfd796562e0f8e7147150416182d4"
+ },
+ "core_manifest": {
+  "macros": {},
+  "outputs": {
+   "INSCALC.obj": "927c311d0cf52b20dad334a44cdc92281de38f1f1f3de6821a44b32dc5ae5f43",
+   "INSDATE.obj": "10348f6a6d34b8d3ea1cb2967c1c7551d1e1eedd740ddc033777a30b7d49e416",
+   "INSPACK.obj": "4017d65b71a7b0f11164fc855287d0cc03914e5ee97970c80a0f71e3923bc656",
+   "INSRATE.obj": "1bd3b3ae10ec083116292e48b04969821ef7284289e6dfa8268b512c7378eb51",
+   "INSSMOK.iebcopy": "3ee3acbf8fd8358c806ac93a01c9238d4fcbedad2d4d244514f23b710982d23e",
+   "INSSMOK.obj": "22fa81a84a0a03660735ae280992ca914da0684c1a5ffb0590eddc9cc5dfdd1b",
+   "INSVAL.obj": "8cecfef0a2d575dc7f6a0a7f4385f3fef03cfd796562e0f8e7147150416182d4"
+  },
+  "scope": "host build only; not observed MVS execution",
+  "source_commit": "28790e2a3f343980f15d8bffd55e5811fbfa2ee5",
+  "sources": {
+   "copy/INSENT.mac": "22edaa1aa44a4827ec28038a73560037eea480032545ae8a4297354f091fbcb4",
+   "copy/INSRET.mac": "3f7b484e7005988b853d8311da5f360047ccf547fbcbfa6b6451152629ad0b0b",
+   "copy/INSWORK.copy": "2168c2674d343bcb6c38f3f0cf758062642c0ddc970e18cb2354efd69169ef72",
+   "src/INSBAT.asm": "adfe94b32b990a550b7e9dcea6dfdd9bf4cbbefde9d2f0b0616ed0564297eea9",
+   "src/INSCALC.asm": "80b7c66e830169fc858112e809599b783f23e52fc4b56b6b9c579e3974cb4feb",
+   "src/INSDATE.asm": "43f9beb750b680a92fd27c4507f2dd14f8d82ca8d7ccfcb898df3056f3dfed9b",
+   "src/INSPACK.asm": "c1a29689c826e2799e2052ef22b5e495106f7e674774a45214e01490f89ad0ab",
+   "src/INSRATE.asm": "1c121f7951fe36ff12572db3922062373e6adf906476965610dccd313c071e98",
+   "src/INSSMOK.asm": "c9e1c8c1463c2d3dab6cd6a68990e7ef1148f184f0490268ad1f28041678124c",
+   "src/INSVAL.asm": "5a8ff4a18f5e938a9d22c8a09bb3c392f913bbc0f238652182f6509786e81557"
+  },
+  "toolchain": {
+   "as370/as370": "7d3c9543d7ea9d415ef0220fb1c3de81186300983146eabdc47b7050d132cb34",
+   "ld370/ld370": "690969aa8b482b47950e91a65d32a31209182e82ffc9853757da173d506b2707"
+  }
+ },
+ "driver_deck": "a60919cf75180928701d0bc31695991ba074e7c115692988ad904eb7e6dd19fa",
+ "driver_ld370_iebcopy": "e5bd11188f3245a07fbed34370769f911f23aa3bb2c01605624ae9f4ebe5a2ab",
+ "driver_source": "864b34f1917b0d346beb2bb52d949c92026ba52cad25573c5b148163b1a7046c",
+ "maclib": "/home/ubuntu/mvs-demo/export/ascii",
+ "scope": "host build only; not observed MVS execution"
+}

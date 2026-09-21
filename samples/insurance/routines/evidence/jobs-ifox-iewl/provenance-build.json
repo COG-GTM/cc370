@@ -1,0 +1,115 @@
+{
+  "backend": "ifox-iewl",
+  "host_toolchain": {
+    "as370": "7d3c9543d7ea9d415ef0220fb1c3de81186300983146eabdc47b7050d132cb34",
+    "file370": "778c0713fa21aba5df1d8550311c6cccdae36cb6f03b2e4f716c06dd78b396c1",
+    "ld370": "690969aa8b482b47950e91a65d32a31209182e82ffc9853757da173d506b2707"
+  },
+  "job": {
+    "errors": [],
+    "job": "INSBUILD",
+    "job_id": "JOB00082",
+    "passed": true,
+    "purged": true,
+    "steps": [
+      [
+        "ACALC",
+        "0000"
+      ],
+      [
+        "AVAL",
+        "0000"
+      ],
+      [
+        "APACK",
+        "0000"
+      ],
+      [
+        "ADATE",
+        "0000"
+      ],
+      [
+        "ARATE",
+        "0000"
+      ],
+      [
+        "ASMOK",
+        "0000"
+      ],
+      [
+        "ABAT",
+        "0000"
+      ],
+      [
+        "LSMOK",
+        "0000"
+      ],
+      [
+        "LBAT",
+        "0000"
+      ],
+      [
+        "SMOKE",
+        "0000"
+      ]
+    ]
+  },
+  "load_prefix": "INSJ.I2",
+  "raw_job_evidence": {
+    "commands.txt": "62f5c31059bc112aaa08dedc4b0f2e60077dd18af8cc6e90d4320a2cf26402ed",
+    "console.log": "539aec7c7687d8608fa5d482931115f94aa752c3242ccf659e22e8420301f698",
+    "ifox.punch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "prt002.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "prt00e.txt": "5506d0d87e1ae0c177c09c1ce2d17cc7e3e78a5b3a1d8c2f9e862e543999b7cc",
+    "prt00f.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "5fdec51c98c1d02804e8f73f5a3529ea078e84a7269a7a90ea7005152f0b60a3",
+    "submitted.ebcdic": "866cd4d5fb4a8162a98201709125bf0648301b06e38ad85c306bbadf0656f9ff",
+    "submitted.jcl": "029d870bf05dc7f65097bc825d181032db60f0a7f6bc2538eae2f68a15c0d9cb"
+  },
+  "source_commit": "28790e2a3f343980f15d8bffd55e5811fbfa2ee5",
+  "sources": {
+    "copy": {
+      "INSENT.mac": "22edaa1aa44a4827ec28038a73560037eea480032545ae8a4297354f091fbcb4",
+      "INSRET.mac": "3f7b484e7005988b853d8311da5f360047ccf547fbcbfa6b6451152629ad0b0b",
+      "INSWORK.copy": "2168c2674d343bcb6c38f3f0cf758062642c0ddc970e18cb2354efd69169ef72"
+    },
+    "jcl": {
+      "build.jcl": "e2529af72c4d836ab6f7ed18ea196b326e356da6d65c8209cd4f7702862fd692",
+      "link.jcl": "1def4eab74dcb84128ce9c4aca59bff60d2548d7b59870335931e1164677f3d7",
+      "run.jcl": "169e20815122f20d8f53dd1f79011c83dec2bea3fbb2133618cbb987d5acab0d"
+    },
+    "src": {
+      "INSBAT.asm": "adfe94b32b990a550b7e9dcea6dfdd9bf4cbbefde9d2f0b0616ed0564297eea9",
+      "INSCALC.asm": "80b7c66e830169fc858112e809599b783f23e52fc4b56b6b9c579e3974cb4feb",
+      "INSDATE.asm": "43f9beb750b680a92fd27c4507f2dd14f8d82ca8d7ccfcb898df3056f3dfed9b",
+      "INSPACK.asm": "c1a29689c826e2799e2052ef22b5e495106f7e674774a45214e01490f89ad0ab",
+      "INSRATE.asm": "1c121f7951fe36ff12572db3922062373e6adf906476965610dccd313c071e98",
+      "INSSMOK.asm": "c9e1c8c1463c2d3dab6cd6a68990e7ef1148f184f0490268ad1f28041678124c",
+      "INSVAL.asm": "5a8ff4a18f5e938a9d22c8a09bb3c392f913bbc0f238652182f6509786e81557"
+    },
+    "tools": {
+      "build.py": "26022c3ee638dc3895f23d588599187a542ae7b210376024e8188519a51cfc04",
+      "check_layout.py": "427b66cd6fc5569d569323f8c76189b5627ccf6066e3c2e3decc954aa66e2710",
+      "codec.py": "0a228b1e5b48798149906c34177708a71509a920ceb75d2fe98f38e433a99df6",
+      "compare.py": "80d18c3007351ced5e605193f0fb421c23e490b22b8c1c3fef9d5acf21453c77",
+      "corpus.py": "efe4a2b9508bfd55b11bc314ff3f98ffe947758846f4e38dcf9a11b2cb9e146a",
+      "deck_compare.py": "59d3571cdbf9068109607186be6310ce5819bbfbd4c80cde02446727ab3b4770",
+      "lint.py": "5b680a08b6b0281fb6df9970823751dacef9ab2752adefd9ade8cd42b44cd2cc",
+      "oracle.py": "466a9ddd29a4e73a23db3e78f05d60fba43074335f42df737a67a903a66eca61",
+      "render_jcl.py": "6692f83bc21650f65498f4b1f8355ff999d0aeefad2c09b75921c2a7843816e7",
+      "tk5.py": "40dca2d5b6e74dd2fbde1c994259136b456b339e4202b7f3d4e23361b7f6e8f2",
+      "tk5_controls.py": "4669a5302f93b1e37b617473ce590b39376a9963f512732e9150cfd430d9e80b",
+      "tk5_decks.py": "130f2d9b614cedda626139f47b218f7195c016d81413211381699c3f3fd41b43",
+      "tk5_demo.py": "ba1800600364fa99b81d86657d9c0a372297bd1e011d4339622648b47b1bd28e",
+      "tk5_job.py": "67573c4b1ca7e01830b5b47e20a945b4dca6ec01af735d8fa7c3a50e531e19c1",
+      "tk5_linker.py": "da2edb1ce3d497dfcbbedca2f0df0dfcff7e0c726b7becb227efbf8ac0ee806a",
+      "tk5_macros.sh": "308947dbb5985667fb4ccc37e7589b44251f7fb8bde90e9161d112d677f7adda",
+      "tk5_provenance.py": "5911327b130cdaf4a1b06264c91f6f67829d00d5c0a104df4544885efc8a35b5",
+      "tk5_recovery.py": "42e25a42bafd735f7e5fd1f3b46e29ce6e082304469d26b6f0b7178e3af0273f",
+      "tk5_setup.sh": "255eb65856b56103926894a9d8a5f395cca6905e5a93704163e335adcc8afbac",
+      "tk5_start.sh": "5231164f47dec073e4d19e66cd8b5d37ea63797a0907798e7cc4d5a80e482b73",
+      "tk5_validate.py": "5ca1492934da23b26d3aeb31f2d5cd695cef56b42c73971e4de225298fd53230"
+    }
+  },
+  "worktree_status": "?? samples/insurance/routines/\n"
+}

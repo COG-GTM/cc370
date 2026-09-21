@@ -1,0 +1,135 @@
+                         IIIIIIIIII   NN        NN   SSSSSSSSSS   RRRRRRRRRRR   RRRRRRRRRRR   UU        UU  NN        NN
+                        IIIIIIIIII   NNN       NN  SSSSSSSSSSSS  RRRRRRRRRRRR  RRRRRRRRRRRR  UU        UU  NNN       NN
+                           II       NNNN      NN  SS        SS  RR        RR  RR        RR  UU        UU  NNNN      NN
+                          II       NN NN     NN  SS            RR        RR  RR        RR  UU        UU  NN NN     NN
+                         II       NN  NN    NN  SSS           RR        RR  RR        RR  UU        UU  NN  NN    NN
+                        II       NN   NN   NN   SSSSSSSSS    RRRRRRRRRRRR  RRRRRRRRRRRR  UU        UU  NN   NN   NN
+                       II       NN    NN  NN    SSSSSSSSS   RRRRRRRRRRR   RRRRRRRRRRR   UU        UU  NN    NN  NN
+                      II       NN     NN NN           SSS  RR    RR      RR    RR      UU        UU  NN     NN NN
+                     II       NN      NNNN            SS  RR     RR     RR     RR     UU        UU  NN      NNNN
+                    II       NN       NNN  SS        SS  RR      RR    RR      RR    UU        UU  NN       NNN
+               IIIIIIIIII   NN        NN  SSSSSSSSSSSS  RR       RR   RR       RR   UUUUUUUUUUUU  NN        NN
+              IIIIIIIIII   NN         N   SSSSSSSSSS   RR        RR  RR        RR   UUUUUUUUUU   NN         N
+
+
+
+                    JJJJJJJJJJ   2222222222         444                                                AAAAAAAAAA
+                    JJJJJJJJJJ  222222222222       4444                                               AAAAAAAAAAAA
+                        JJ      22        22      44 44                                               AA        AA
+                        JJ                22     44  44                                               AA        AA
+                        JJ                22    44   44                                               AA        AA
+                        JJ               22    44444444444                                            AAAAAAAAAAAA
+                        JJ             22     444444444444                                            AAAAAAAAAAAA
+                        JJ           22              44                                               AA        AA
+                  JJ    JJ         22                44                                               AA        AA
+                  JJ    JJ       22                  44                                               AA        AA
+                  JJJJJJJJ      222222222222         44                                               AA        AA
+                   JJJJJJ       222222222222         44                                               AA        AA
+
+
+****A  START  JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24  START  A****
+****A  START  JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24  START  A****
+****A  START  JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24  START  A****
+****A  START  JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24  START  A****
+                                                J E S 2   J O B   L O G
+
+
+ 5.18.10 JOB   24  $HASP373 INSRRUN  STARTED - INIT  1 - CLASS A - SYS TK5R
+ 5.18.10 JOB   24  IEF403I INSRRUN - STARTED - TIME=05.18.10
+ 5.18.10 JOB   24  IEFACTRT - Stepname  Procstep  Program   Retcode
+ 5.18.10 JOB   24  INSRRUN    DRV                 INSDRV    RC= 0000
+ 5.18.10 JOB   24  IEF404I INSRRUN - ENDED - TIME=05.18.10
+ 5.18.10 JOB   24  $HASP395 INSRRUN  ENDED
+
+
+------ JES2 JOB STATISTICS ------
+
+
+ 21 SEP 26 JOB EXECUTION DATE
+
+
+        12 CARDS READ
+
+
+        49 SYSOUT PRINT RECORDS
+
+
+         0 SYSOUT PUNCH RECORDS
+
+
+      0.00 MINUTES EXECUTION TIME
+    1     //INSRRUN  JOB (ACCT),'INSURANCE',CLASS=A,                              JOB   24
+          //         USER=HERC01,PASSWORD=,
+          //             MSGCLASS=A,MSGLEVEL=(1,1)
+    2     //DRV      EXEC PGM=INSDRV,REGION=1024K,TIME=(2,0)
+    3     //STEPLIB  DD DSN=INSR.L1.LOAD,DISP=SHR
+    4     //CASEIN   DD DSN=INSR.L1.CASES,DISP=OLD,
+          //             DCB=(RECFM=FB,LRECL=512,BLKSIZE=5120)
+    5     //CAPOUT   DD DSN=INSR.L1.CAPTURE,DISP=(NEW,CATLG,DELETE),
+          //             UNIT=SYSDA,SPACE=(TRK,(60,20)),
+          //             DCB=(RECFM=FB,LRECL=1536,BLKSIZE=15360)
+    6     //SYSUDUMP DD SYSOUT=*
+          //
+IEF236I ALLOC. FOR INSRRUN DRV
+IEF237I 190  ALLOCATED TO STEPLIB
+IEF237I 192  ALLOCATED TO CASEIN
+IEF237I 191  ALLOCATED TO CAPOUT
+IEF237I JES2 ALLOCATED TO SYSUDUMP
+IEF142I INSRRUN DRV - STEP WAS EXECUTED - COND CODE 0000
+IEF285I   INSR.L1.LOAD                                 KEPT          *--------0
+IEF285I   VOL SER NOS= TSO001.
+IEF285I   INSR.L1.CASES                                KEPT          *-------20
+IEF285I   VOL SER NOS= TSO003.
+IEF285I   INSR.L1.CAPTURE                              CATALOGED     *-------19
+IEF285I   VOL SER NOS= TSO002.
+IEF285I   JES2.JOB00024.SO0101                         SYSOUT
+IEF373I STEP /DRV     / START 26264.0518
+IEF374I STEP /DRV     / STOP  26264.0518 CPU    0MIN 00.01SEC SRB    0MIN 00.00SEC VIRT   116K SYS   172K
+************************************************************************************************************************************
+*     1. Jobstep of job: INSRRUN     Stepname: DRV         Program name: INSDRV     Executed on 21.09.26 from 05.18.10 to 05.18.10 *
+*         elapsed time  00:00:00,03                      CPU-Identifier:  TK5R           Page-in:      0                           *
+*             CPU time  00:00:00,01               Virtual Storage used:    116K         Page-out:      0                           *
+*           corr. CPU:  00:00:00,01   CPU time has been corrected by  1 / 1,0  multiplier                                          *
+*                                                                                                                                  *
+*     I/O Operation                                                                                                                *
+*     Number of records read via DD * or DD DATA:      0                                                                           *
+*     190.......0 192......20 191......19 DMY.......0                                                                              *
+*                                                                                                                                  *
+*                                          Charge for step (w/o SYSOUT):          0,01                                             *
+************************************************************************************************************************************
+IEF375I  JOB /INSRRUN / START 26264.0518
+IEF376I  JOB /INSRRUN / STOP  26264.0518 CPU    0MIN 00.01SEC SRB    0MIN 00.00SEC
+                         IIIIIIIIII   NN        NN   SSSSSSSSSS   RRRRRRRRRRR   RRRRRRRRRRR   UU        UU  NN        NN
+                        IIIIIIIIII   NNN       NN  SSSSSSSSSSSS  RRRRRRRRRRRR  RRRRRRRRRRRR  UU        UU  NNN       NN
+                           II       NNNN      NN  SS        SS  RR        RR  RR        RR  UU        UU  NNNN      NN
+                          II       NN NN     NN  SS            RR        RR  RR        RR  UU        UU  NN NN     NN
+                         II       NN  NN    NN  SSS           RR        RR  RR        RR  UU        UU  NN  NN    NN
+                        II       NN   NN   NN   SSSSSSSSS    RRRRRRRRRRRR  RRRRRRRRRRRR  UU        UU  NN   NN   NN
+                       II       NN    NN  NN    SSSSSSSSS   RRRRRRRRRRR   RRRRRRRRRRR   UU        UU  NN    NN  NN
+                      II       NN     NN NN           SSS  RR    RR      RR    RR      UU        UU  NN     NN NN
+                     II       NN      NNNN            SS  RR     RR     RR     RR     UU        UU  NN      NNNN
+                    II       NN       NNN  SS        SS  RR      RR    RR      RR    UU        UU  NN       NNN
+               IIIIIIIIII   NN        NN  SSSSSSSSSSSS  RR       RR   RR       RR   UUUUUUUUUUUU  NN        NN
+              IIIIIIIIII   NN         N   SSSSSSSSSS   RR        RR  RR        RR   UUUUUUUUUU   NN         N
+
+
+
+                    JJJJJJJJJJ   2222222222         444                                                AAAAAAAAAA
+                    JJJJJJJJJJ  222222222222       4444                                               AAAAAAAAAAAA
+                        JJ      22        22      44 44                                               AA        AA
+                        JJ                22     44  44                                               AA        AA
+                        JJ                22    44   44                                               AA        AA
+                        JJ               22    44444444444                                            AAAAAAAAAAAA
+                        JJ             22     444444444444                                            AAAAAAAAAAAA
+                        JJ           22              44                                               AA        AA
+                  JJ    JJ         22                44                                               AA        AA
+                  JJ    JJ       22                  44                                               AA        AA
+                  JJJJJJJJ      222222222222         44                                               AA        AA
+                   JJJJJJ       222222222222         44                                               AA        AA
+
+
+****A   END   JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24   END   A****
+****A   END   JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24   END   A****
+****A   END   JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24   END   A****
+****A   END   JOB   24  INSRRUN   INSURANCE             ROOM        5.18.10 AM 21 SEP 26  PRINTER1  SYS TK5R  JOB   24   END   A****
+

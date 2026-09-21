@@ -1,0 +1,1074 @@
+{
+ "all_ok": true,
+ "controls": [
+  {
+   "control": "synthetic clean capture (comparator self-test)",
+   "expected_class": null,
+   "ok": true,
+   "passed": true
+  },
+  {
+   "control": "known output: OSTAT last byte of CA001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "stable",
+    "expected": "'OKAY'",
+    "expected_raw": "d6d2c1e8",
+    "field": "work_after.OSTAT",
+    "observed": "'OKAC'",
+    "observed_raw": "d6d2c1c3",
+    "offset": 184,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: OINT low digit of CA001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "stable",
+    "expected": "11281",
+    "expected_raw": "0000000011281c",
+    "field": "work_after.OINT",
+    "observed": "11282",
+    "observed_raw": "0000000011282c",
+    "offset": 230,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: transaction byte of CA001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "stable",
+    "expected": "'00000001'",
+    "expected_raw": "f0f0f0f0f0f0f0f1",
+    "field": "work_after.TID",
+    "observed": "'90000001'",
+    "observed_raw": "f9f0f0f0f0f0f0f1",
+    "offset": 128,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: R15 of INSPACK reject PK008",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "PK008",
+    "class": "stable",
+    "expected": "8",
+    "expected_raw": null,
+    "field": "R15",
+    "observed": "0",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSPACK"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "scratch: WAGE of CA001",
+   "expected_class": "scratch",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "scratch",
+    "expected": "1",
+    "expected_raw": "00000001",
+    "field": "work_after.WAGE",
+    "observed": "7",
+    "observed_raw": "00000007",
+    "offset": 296,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "preserved: unrelated SREC byte after INSDATE DT001",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "DT001",
+    "class": "abi",
+    "expected": "'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'",
+    "expected_raw": "0000000000000000",
+    "field": "work_after.SID",
+    "observed": "'\\x00\\x00\\x00\\x00\\x00\\x9f\\x00\\x00'",
+    "observed_raw": "0000000000ff0000",
+    "offset": 0,
+    "routine": "INSDATE"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "preserved: unrelated TREC byte after INSVAL VL001",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "VL001",
+    "class": "abi",
+    "expected": "'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'",
+    "expected_raw": "0000000000000000",
+    "field": "work_after.TID",
+    "observed": "'\\x00\\x00\\x9f\\x00\\x00\\x00\\x00\\x00'",
+    "observed_raw": "0000ff0000000000",
+    "offset": 128,
+    "routine": "INSVAL"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "preserved: unrelated OREC byte after INSRATE RT002",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "RT002",
+    "class": "abi",
+    "expected": "'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'",
+    "expected_raw": "0000000000000000",
+    "field": "work_after.OID",
+    "observed": "'\\x00\\x00\\x9f\\x00\\x00\\x00\\x00\\x00'",
+    "observed_raw": "0000ff0000000000",
+    "offset": 168,
+    "routine": "INSRATE"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: WORD of INSDATE DT001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "DT001",
+    "class": "stable",
+    "expected": "0",
+    "expected_raw": "00000000",
+    "field": "work_after.WORD",
+    "observed": "1",
+    "observed_raw": "00000001",
+    "offset": 276,
+    "routine": "INSDATE"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: WRATE of INSRATE RT002",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "RT002",
+    "class": "stable",
+    "expected": "125",
+    "expected_raw": "00125c",
+    "field": "work_after.WRATE",
+    "observed": "120",
+    "observed_raw": "00120c",
+    "offset": 304,
+    "routine": "INSRATE"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: SREC input byte after INSVAL VL001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "VL001",
+    "class": "stable",
+    "expected": "'00000001'",
+    "expected_raw": "f0f0f0f0f0f0f0f1",
+    "field": "work_after.SID",
+    "observed": "'A0000001'",
+    "observed_raw": "c1f0f0f0f0f0f0f1",
+    "offset": 0,
+    "routine": "INSVAL"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: TREC input byte after INSCALC CA001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "stable",
+    "expected": "'00000001'",
+    "expected_raw": "f0f0f0f0f0f0f0f1",
+    "field": "work_after.TID",
+    "observed": "'00\\x9f00001'",
+    "observed_raw": "f0f0fff0f0f0f0f1",
+    "offset": 128,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "known output: R15 of INSVAL VL001",
+   "expected_class": "stable",
+   "findings": 1,
+   "first_finding": {
+    "case": "VL001",
+    "class": "stable",
+    "expected": "0",
+    "expected_raw": null,
+    "field": "R15",
+    "observed": "8",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSVAL"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "abi: R15 of INSDATE DT001 (always 0)",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "DT001",
+    "class": "abi",
+    "expected": "0",
+    "expected_raw": null,
+    "field": "R15",
+    "observed": "8",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSDATE"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "guard: low WORK guard byte",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "expected_raw": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "field": "guard_work_low",
+    "observed": "00a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "observed_raw": "00a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "guard: high save guard byte",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "6969696969696969",
+    "expected_raw": "6969696969696969",
+    "field": "guard_save_high",
+    "observed": "6969696969696900",
+    "observed_raw": "6969696969696900",
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "register: R7 not preserved",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0xbad0007",
+    "expected_raw": null,
+    "field": "R7(after)",
+    "observed": "0xbad0000",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "register: R13 not restored",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0x21800",
+    "expected_raw": null,
+    "field": "R13(after)",
+    "observed": "0x21100",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "register: R14 low byte",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0x2016c",
+    "expected_raw": null,
+    "field": "R14(after).low24",
+    "observed": "0x20100",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "save chain: callee back pointer",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0x21800",
+    "expected_raw": null,
+    "field": "callee_save[4] (back)",
+    "observed": "0x1800",
+    "observed_raw": "00001800",
+    "offset": 4,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "save chain: stored R2 in caller save",
+   "expected_class": "abi",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "abi",
+    "expected": "0xbad0002",
+    "expected_raw": null,
+    "field": "caller_save[28] (R2)",
+    "observed": "0xbad0000",
+    "observed_raw": null,
+    "offset": 28,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: case id byte",
+   "expected_class": "structure",
+   "findings": 2,
+   "first_finding": {
+    "case": "CA009",
+    "class": "structure",
+    "expected": "CA001/INSCALC",
+    "expected_raw": null,
+    "field": "identity/order",
+    "observed": "CA009/INSCALC",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: routine name",
+   "expected_class": "structure",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "structure",
+    "expected": "one of INSPACK,INSDATE,INSRATE,INSVAL,INSCALC",
+    "expected_raw": null,
+    "field": "routine",
+    "observed": "INSPALC",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSPALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: ordinal",
+   "expected_class": "structure",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "structure",
+    "expected": "101",
+    "expected_raw": null,
+    "field": "ordinal",
+    "observed": "255",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "identity: flags",
+   "expected_class": "structure",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "structure",
+    "expected": "0",
+    "expected_raw": null,
+    "field": "flags",
+    "observed": "128",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "harness: WORK before-image",
+   "expected_class": "harness",
+   "findings": 1,
+   "first_finding": {
+    "case": "CA001",
+    "class": "harness",
+    "expected": "500000",
+    "expected_raw": "0000000500000c",
+    "field": "work_before.SCASH",
+    "observed": "malformed:ff00000500000c",
+    "observed_raw": "ff00000500000c",
+    "offset": 27,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "harness: R1 sentinel",
+   "expected_class": "harness",
+   "findings": 3,
+   "first_finding": {
+    "case": "CA001",
+    "class": "harness",
+    "expected": "0x21000",
+    "expected_raw": null,
+    "field": "R1(before)",
+    "observed": "0x21001",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "missing record (CA001 removed)",
+   "expected_class": "structure",
+   "findings": 168,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "184",
+    "expected_raw": null,
+    "field": "record count",
+    "observed": "183",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "extra record (PK008 appended)",
+   "expected_class": "structure",
+   "findings": 4,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "184",
+    "expected_raw": null,
+    "field": "record count",
+    "observed": "185",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "duplicate/reordered (CA001 swapped with next)",
+   "expected_class": "structure",
+   "findings": 4,
+   "first_finding": {
+    "case": "CA002",
+    "class": "structure",
+    "expected": "101",
+    "expected_raw": null,
+    "field": "ordinal",
+    "observed": "102",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "INSCALC"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "truncated capture (last 100 bytes cut)",
+   "expected_class": "structure",
+   "findings": 3,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "multiple of 1536",
+    "expected_raw": null,
+    "field": "capture length",
+    "observed": "282524",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "empty capture",
+   "expected_class": "structure",
+   "findings": 185,
+   "first_finding": {
+    "case": "*",
+    "class": "structure",
+    "expected": "184",
+    "expected_raw": null,
+    "field": "record count",
+    "observed": "0",
+    "observed_raw": null,
+    "offset": null,
+    "routine": "*"
+   },
+   "ok": true,
+   "passed": false
+  },
+  {
+   "control": "fixtures: manifest schema changed",
+   "error": "fixture manifest invalid: schema 'insurance-routines-v0' != 'insurance-routines-v1'",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest version changed",
+   "error": "fixture manifest invalid: version 'v9' != 'v1'",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest case_count changed",
+   "error": "fixture manifest invalid: cases.bin length 94208 != 185 x 512",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest cases_per_routine changed",
+   "error": "fixture manifest invalid: cases_per_routine sum",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest identity_order swapped",
+   "error": "fixture manifest invalid: expected.json[1] identity/order != PK002/INSPACK",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest identity id changed",
+   "error": "fixture manifest invalid: expected.json[1] identity/order != ZZ999/INSPACK",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest byte class changed (INSDATE WVALID -> preserved)",
+   "error": "fixture manifest invalid: byte_classes[INSDATE] differ from harness",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest logical_io changed",
+   "error": "fixture manifest invalid: logical_io[INSRATE] differ from harness",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest worklen changed",
+   "error": "fixture manifest invalid: worklen",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest capture_lrecl changed",
+   "error": "fixture manifest invalid: capture_lrecl",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest declared input hash changed",
+   "error": "fixture manifest invalid: declared input copy/INSENT.mac changed since fixtures were built",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest declared input removed",
+   "error": "fixture manifest invalid: input src/INSCALC.asm exists but is not declared",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest undeclared input added",
+   "error": "fixture manifest invalid: declared input src/EXTRA.asm is not present in the repository",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest cases_sha256 changed",
+   "error": "fixture manifest invalid: cases.bin hash",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest expected_sha256 changed",
+   "error": "fixture manifest invalid: expected.json hash",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest missing key inputs",
+   "error": "fixture manifest invalid: missing key inputs",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest key wrong type",
+   "error": "fixture manifest invalid: identity_order must be list",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: expected.json content changed (hash must catch it)",
+   "error": "fixture manifest invalid: expected.json hash",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: expected.json reordered",
+   "error": "fixture manifest invalid: expected.json hash",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: cases.bin byte flipped",
+   "error": "fixture manifest invalid: cases.bin hash",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: cases.bin truncated by one record",
+   "error": "fixture manifest invalid: cases.bin hash",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest.json missing",
+   "error": "fixture manifest invalid: missing manifest.json",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: manifest.json not JSON",
+   "error": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: frozen src/INSDATE.asm modified on disk",
+   "error": "fixture manifest invalid: declared input src/INSDATE.asm changed since fixtures were built",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "fixtures: undeclared copy/ member added on disk",
+   "error": "fixture manifest invalid: input copy/INSNEW exists but is not declared",
+   "expected_class": "fixtures",
+   "ok": true
+  },
+  {
+   "control": "coverage: untouched evidence copy validates (self-test)",
+   "error": "",
+   "expected_class": "coverage",
+   "ok": true
+  },
+  {
+   "control": "coverage: run.json missing",
+   "error": "run.json: missing",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json schema changed",
+   "error": "run.json: schema",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json unknown backend",
+   "error": "run.json: unknown backend 'host-only'",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json guest step RC 0008",
+   "error": "run.json: job run steps not all RC 0000: [['DRV', '0008']]",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json run job missing",
+   "error": "run.json: job run missing",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json run job not passed",
+   "error": "run.json: job run did not pass cleanly",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json run job has JES errors",
+   "error": "run.json: job run did not pass cleanly",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json comparison_passed false",
+   "error": "run.json: comparison did not pass at run time",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json findings nonzero",
+   "error": "run.json: findings at run time",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json capture_records short",
+   "error": "run.json: capture_records 183 != 184",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json capture_sha256 differs from capture.bin",
+   "error": "capture.bin: hash differs from run.json receipt",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json cases_sha256 differs from fixtures",
+   "error": "run.json: guest consumed different cases.bin than the current fixtures",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: run.json fixture_version differs",
+   "error": "run.json: fixture_version",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: capture.bin byte flipped (hash mismatch)",
+   "error": "capture.bin: hash differs from run.json receipt",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: capture.bin extra record appended",
+   "error": "capture.bin: hash differs from run.json receipt",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: capture.bin missing",
+   "error": "capture.bin: missing",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json missing",
+   "error": "comparison.json: missing",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json passed false with cases_passed intact",
+   "error": "comparison.json: not passed",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json global '*' finding with cases_passed intact",
+   "error": "comparison.json: findings present",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json observed_records short",
+   "error": "comparison.json: record counts",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json cases_passed missing one",
+   "error": "comparison.json: cases_passed is not exactly the fixture case set",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json cases_passed unknown id",
+   "error": "comparison.json: cases_passed is not exactly the fixture case set",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json identity reordered",
+   "error": "comparison.json: observed identity/order",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json capture hash differs",
+   "error": "comparison.json: derived from a different capture",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json derived from other manifest",
+   "error": "comparison.json: derived against a different fixture manifest; re-run compare.py",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: comparison.json schema v1 (old comparator)",
+   "error": "comparison.json: schema",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json missing",
+   "error": "observed.json: missing",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json invalid flag",
+   "error": "observed.json: invalid bundle",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json problems recorded",
+   "error": "observed.json: invalid bundle",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json observation dropped",
+   "error": "observed.json: observation identity/order",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json observation duplicated",
+   "error": "observed.json: observation identity/order",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json observations reordered",
+   "error": "observed.json: observation identity/order",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json unknown id",
+   "error": "observed.json: observation identity/order",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json routine renamed",
+   "error": "observed.json: observation identity/order",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json capture hash differs",
+   "error": "observed.json: derived from a different capture",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  },
+  {
+   "control": "coverage: observed.json not JSON",
+   "error": "observed.json: not JSON (Expecting value: line 1 column 2 (char 1))",
+   "expected_class": "coverage",
+   "ok": true,
+   "rule_statuses": [
+    "FAIL"
+   ]
+  }
+ ],
+ "counts": {
+  "comparator": 33,
+  "coverage": 37,
+  "fixtures": 25
+ },
+ "note": "synthetic captures and mutated copies on the host; not guest observations",
+ "schema": "insurance-routines-controls-v2"
+}

@@ -1,0 +1,2153 @@
+{
+ "cases_measured": 184,
+ "cases_total": 184,
+ "evidence_policy": "a case is PASS only when its run receipt, guest job steps, capture hash/count, comparison report and decoded observations all validate; any defect marks every case of that run INVALID and the rule FAIL",
+ "fixture_manifest_sha256": "68e200992e715cc244a447c74c943146d8571e2442c3805865c3dca2ee166901",
+ "observed_runs": [
+  "as370-ld370"
+ ],
+ "rules": {
+  "CA-AGE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA052",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "age 9: day before tenth anniversary keeps fee",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA053",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "age 10: tenth anniversary zeroes fee",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA054",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "29 Feb issue: 28 Feb ten years later is still age 9",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA055",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "29 Feb issue: 1 Mar ten years later is age 10",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA056",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "age 0 on the same day",
+     "tags": []
+    }
+   ],
+   "description": "policy age = TDATE year - SISSUE year, minus one before the anniversary month/day; fee zero from age 10",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-CHG": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA048",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "30 cents at 500 bps: 1.5 -> 2",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA049",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "10 cents at 500 bps: 0.5 -> 1",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA050",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "9 cents at 500 bps: 0.45 -> 0",
+     "tags": []
+    }
+   ],
+   "description": "surrender charge = half_up(cash * fee / 10000); surrender = cash - charge - loan",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-CNFL": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA025",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "same sequence, different amount",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA026",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "same sequence, differs only in tail byte",
+     "tags": []
+    }
+   ],
+   "description": "TSEQ == SSEQ with different transaction bytes is CNFL",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-D": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA012",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "death quote: max(face,cash)-loan, policy stays open",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA013",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "death quote with amount -> AMNT",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA014",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "death quote when cash exceeds face",
+     "tags": []
+    }
+   ],
+   "description": "D death quote: ODEATH = max(face, cash) - loan; zero amount required; like Q it posts interest and advances SSEQ/SDATE/SLAST but does not close or settle the policy (no cash/loan/face movement)",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-DATE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA035",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "invalid transaction date",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA036",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "transaction before state date",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA037",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "same-day transaction: zero days, zero interest",
+     "tags": []
+    }
+   ],
+   "description": "invalid TDATE, or TDATE before SDATE -> DATE",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-DUPL": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA024",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "exact replay of SLAST",
+     "tags": []
+    }
+   ],
+   "description": "replayed transaction (TSEQ == SSEQ, identical 40 bytes) is DUPL and does not change state",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-FORM": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA027",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "TPAD nonzero",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA028",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "TTAIL nonzero",
+     "tags": []
+    }
+   ],
+   "description": "TPAD/TTAIL must be zero (FORM)",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-HIGH": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA065",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "MAXAMT cash, zero days, zero premium accepted",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA070",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "interest landing 793 cents below the cap commits",
+     "tags": []
+    }
+   ],
+   "description": "high values just below the cap commit",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-L": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA005",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "loan within cash",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA006",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "loan above cash -> FUND",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA007",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "loan equal to cash+interest accepted, surrender floors at 0",
+     "tags": []
+    }
+   ],
+   "description": "L increases SLOAN; loan above cash -> FUND",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-NEGA": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA031",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative amount",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA032",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative zero amount passes NEGA and adds nothing",
+     "tags": []
+    }
+   ],
+   "description": "negative TAMT -> NEGA; negative zero D0 is accepted as zero",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-NPOL": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA020",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "transaction for another policy",
+     "tags": []
+    }
+   ],
+   "description": "TID != SID -> NPOL after echoing cash/loan",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-ORDR": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA021",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sequence 0",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA022",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative sequence",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA023",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sequence below state sequence",
+     "tags": []
+    }
+   ],
+   "description": "TSEQ behind the state sequence (or non-positive) is ORDR; TDATE before SDATE is DATE",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-OVER": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA034",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "amount above MAXAMT rejected before dates",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA066",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "MAXAMT cash plus one cent premium -> OVER after op",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA067",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "quotient overflow: 406526027393 interest > MAXAMT",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA069",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day at 125 bps on MAXAMT (3424658) pushes cash over MAXAMT",
+     "tags": []
+    }
+   ],
+   "description": "cash + interest > 99999999999 -> OVER with OINT zeroed and state rolled back; SCASH=MAXAMT 19000101->20250101 gives interest 406526027393 > MAXAMT",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-P": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA001",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "premium: interest + premium committed",
+     "tags": []
+    }
+   ],
+   "description": "P adds the premium to cash after interest",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-PACK": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA029",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "TAMT bad digit",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA030",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "TAMT bad sign",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA033",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign F amount is accepted numerically",
+     "tags": []
+    }
+   ],
+   "description": "malformed TAMT packed digits/sign -> PACK",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-PREC": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA038",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "NPOL beats FORM/PACK/DATE",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA039",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "FORM beats PACK",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA040",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "PACK beats DATE",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA041",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "NEGA beats DATE",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA042",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "amount OVER beats DATE",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA068",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "quotient OVER beats TYPE",
+     "tags": []
+    }
+   ],
+   "description": "status precedence: STAT, NPOL, ORDR/DUPL/CNFL, FORM, PACK, NEGA, OVER(amount), DATE, then arithmetic; TYPE/AMNT/FUND/OVER after interest roll the state back",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-Q": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA010",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "quote mutates SSEQ/SDATE/SLAST/SCASH by interest only",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA011",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "quote with nonzero amount -> AMNT",
+     "tags": []
+    }
+   ],
+   "description": "Q requires zero amount (AMNT otherwise); posts interest and advances SSEQ/SDATE/SLAST",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-R": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA008",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "repayment within loan",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA009",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "repayment above loan -> FUND (negative loan)",
+     "tags": []
+    }
+   ],
+   "description": "R decreases SLOAN; loan below zero -> FUND",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-RATE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA057",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 19991231: rate 125",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA058",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 20000101: rate 175",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA059",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 20191231: rate 175",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA060",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 20200101: rate 225",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA061",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 20231231: rate 225",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA062",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 20240101: rate 300",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA063",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 20241231: rate 300",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA064",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "one day ending 20250101: rate 325",
+     "tags": []
+    }
+   ],
+   "description": "period-end rate at each INSRATE boundary applied to the interest formula",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-RAW": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA071",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign-F SCASH becomes canonical C after AP",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA072",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative-zero SLOAN raw D preserved by Q; OLOAN canonical",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA073",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative-zero SLOAN normalised by L",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA074",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign-F SFACE never rewritten",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA075",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign-F SCASH left raw when STAT rejects (bad id)",
+     "tags": []
+    }
+   ],
+   "description": "raw byte semantics: F-sign inputs echo as C-sign outputs; negative zero; transaction bytes preserved",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-SEQ": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA076",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "chain start: premium seq 1",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA077",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "second premium seq 2 on committed state",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA078",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "exact replay of seq 2 -> DUPL",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA079",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "seq 2 with different amount -> CNFL",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA080",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "older seq 1 -> ORDR",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA081",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "death quote seq 3",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA082",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "premium after death quote accepted: quote did not close policy",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA083",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "failed withdrawal after chain leaves seq 4 state intact",
+     "tags": [
+      "chain"
+     ]
+    },
+    {
+     "hand_worked": true,
+     "id": "CA084",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "state overlay only: new policy with stale OREC/scratch present",
+     "tags": [
+      "chain"
+     ]
+    }
+   ],
+   "description": "TSEQ <= 0 or TSEQ < SSEQ -> ORDR; TSEQ == SSEQ -> DUPL when TREC equals SLAST else CNFL; any TSEQ > SSEQ continues",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-STAT": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA018",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "invalid state (bad id): OCASH/OLOAN stay zero",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA019",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "malformed SCASH nibble -> STAT",
+     "tags": []
+    }
+   ],
+   "description": "invalid state -> STAT, OCASH/OLOAN stay zero, SREC unchanged",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-SURR": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA051",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "charge+loan above cash floors surrender at 0",
+     "tags": []
+    }
+   ],
+   "description": "surrender value when loan is present",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-TIE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA043",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "120 cents: 1.5 rounds half-up to 2",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA044",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "40 cents: exactly 0.5 rounds to 1",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA045",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "100 cents: 1.25 rounds down to 1",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA046",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "39 cents: 0.4875 rounds to 0",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA047",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "160 cents: 2.0 exact, no rounding",
+     "tags": []
+    }
+   ],
+   "description": "interest = half_up(cash * rate * days / 3650000); exact .5 ties round up (half-up on non-negative values)",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-TYPE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA015",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "unknown op X",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA016",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "lower-case p is not P",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA017",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "blank op",
+     "tags": []
+    }
+   ],
+   "description": "operation not in P/W/L/R/Q/D -> TYPE",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "CA-W": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "CA002",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "withdrawal within funds",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA003",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "withdrawal exceeding cash+interest -> FUND, full rollback",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "CA004",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "withdrawal of exactly cash+interest leaves zero",
+     "tags": []
+    }
+   ],
+   "description": "W subtracts from cash; cash below zero or below the loan -> FUND",
+   "routine": "INSCALC",
+   "status": "PASS"
+  },
+  "DT-1900": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT002",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "28 Feb 1900 valid",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT003",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "1900 is not a leap year (BR-002)",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT004",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "1 Mar 1900 ordinal skips no leap day",
+     "tags": []
+    }
+   ],
+   "description": "1900 is not a leap year (Gregorian century rule); 19000228 valid, 19000229 invalid, 19000301 ordinal 59",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-CONV": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT005",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "last day of 1900",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT006",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "year rollover",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT025",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "ordinal used by the overflow case",
+     "tags": []
+    }
+   ],
+   "description": "WYEAR, WMD and WORD (days since 19000101) written for valid dates",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-DAY": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT011",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "April has 30 days",
+     "tags": []
+    },
+    {
+     "hand_worked": false,
+     "id": "DT012",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "30 April valid",
+     "tags": []
+    },
+    {
+     "hand_worked": false,
+     "id": "DT013",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "31 December valid",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT016",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "day 0",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT017",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "day 32",
+     "tags": []
+    }
+   ],
+   "description": "day 0, 31 in a 30-day month, 32, and 30 in February invalid; 31 in a 31-day month valid",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-EPOCH": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT001",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "first valid day; ordinal 0",
+     "tags": []
+    }
+   ],
+   "description": "19000101 is ordinal 0",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-LEAP": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT007",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "1904 leap day valid; 4*365+31+28 = 1519",
+     "tags": []
+    },
+    {
+     "hand_worked": false,
+     "id": "DT008",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "2000 leap day valid under contract rule",
+     "tags": []
+    },
+    {
+     "hand_worked": false,
+     "id": "DT009",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "2024 leap day valid",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT010",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "2023 has no 29 Feb",
+     "tags": []
+    },
+    {
+     "hand_worked": false,
+     "id": "DT026",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "2020 leap day (age anniversary case)",
+     "tags": []
+    }
+   ],
+   "description": "leap years 1904, 2000 (400-year rule), 2024; 2023 and 2100 non-leap",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-MONTH": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT014",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "month 13",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT015",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "month 0",
+     "tags": []
+    }
+   ],
+   "description": "month 0 and 13 invalid",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-PREC": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT024",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "bad year and bad month: WYEAR written, WMD not",
+     "tags": []
+    }
+   ],
+   "description": "invalid month and invalid day in one value: rejected once, WMD/WORD not written",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-RANGE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT018",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "last valid day; ordinal 73048",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT019",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "year 2100 outside range; WYEAR still written",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT020",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "year 1899 outside range",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT023",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "max fullword: year 214748 rejected",
+     "tags": []
+    }
+   ],
+   "description": "years 1900..2099 valid; 1899 and 2100 invalid; zero and negative fullwords invalid",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "DT-SIGN": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "DT021",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "zero: rejected before year split; WYEAR untouched",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "DT022",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative: rejected before year split",
+     "tags": []
+    }
+   ],
+   "description": "negative or zero WDATE: WVALID=8 and WYEAR/WMD/WORD untouched",
+   "routine": "INSDATE",
+   "status": "PASS"
+  },
+  "PK-DIGIT": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "PK013",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "high nibble of byte 0 is A",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK014",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "low nibble of byte 0 is F",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK015",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "middle byte low nibble B",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK016",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "byte 5 low nibble F (F is only a sign)",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK017",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "high nibble of sign byte is A",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK018",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "all ones",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK019",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "CP037 zoned digits are not packed",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK020",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "bad digit and bad sign together",
+     "tags": []
+    }
+   ],
+   "description": "any digit nibble A-F in any position rejects (R15=8); positions 0, 3, 6 and high/low nibble",
+   "routine": "INSPACK",
+   "status": "PASS"
+  },
+  "PK-SIGN": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "PK008",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign nibble A (positive alt) rejected",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK009",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign nibble B (negative alt) rejected",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK010",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign nibble E rejected",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK011",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign nibble 0 rejected",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK012",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "sign nibble 9 rejected",
+     "tags": []
+    }
+   ],
+   "description": "sign nibble classes: C, D, F accepted (including negative zero D0); A, B, E and digit nibbles rejected",
+   "routine": "INSPACK",
+   "status": "PASS"
+  },
+  "PK-VALID": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "PK001",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "positive zero, sign C",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK002",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "thirteen nines, sign C",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK003",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative value, sign D",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK004",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative zero, sign D",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK005",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "unsigned/zoned-style sign F",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK006",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "zero with sign F",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "PK007",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "every digit value present",
+     "tags": []
+    }
+   ],
+   "description": "all seven digit nibbles 0-9 and a C/D/F sign nibble validate (R15=0)",
+   "routine": "INSPACK",
+   "status": "PASS"
+  },
+  "RT-AGE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "RT015",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "age 9 keeps fee",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT016",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "age 10 zeroes fee",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT017",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "age 11 zeroes fee",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT018",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative age is signed, keeps fee",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT019",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "huge age zeroes fee",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT020",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "age 10 below domain: only WFEE zeroed",
+     "tags": []
+    }
+   ],
+   "description": "WAGE >= 10 zeroes the fee; WAGE 9 keeps it; negative WAGE keeps it",
+   "routine": "INSRATE",
+   "status": "PASS"
+  },
+  "RT-BAND1": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "RT002",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "first boundary",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT003",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "day before band 2",
+     "tags": []
+    }
+   ],
+   "description": "TDATE 19000101..19991231 -> rate 125 bps, fee 700 bps",
+   "routine": "INSRATE",
+   "status": "PASS"
+  },
+  "RT-BAND2": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "RT004",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "band 2 start",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT005",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "day before band 3",
+     "tags": []
+    }
+   ],
+   "description": "TDATE 20000101..20191231 -> rate 175, fee 600",
+   "routine": "INSRATE",
+   "status": "PASS"
+  },
+  "RT-BAND3": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "RT006",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "band 3 start",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT007",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "day before band 4",
+     "tags": []
+    }
+   ],
+   "description": "TDATE 20200101..20231231 -> rate 225, fee 500",
+   "routine": "INSRATE",
+   "status": "PASS"
+  },
+  "RT-BAND4": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "RT008",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "band 4 start",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT009",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "day before band 5",
+     "tags": []
+    }
+   ],
+   "description": "TDATE 20240101..20241231 -> rate 300, fee 400",
+   "routine": "INSRATE",
+   "status": "PASS"
+  },
+  "RT-BAND5": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "RT010",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "band 5 start",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT011",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "last contract day",
+     "tags": []
+    }
+   ],
+   "description": "TDATE >= 20250101 -> rate 325, fee 350 (open-ended, e.g. 20991231 and beyond)",
+   "routine": "INSRATE",
+   "status": "PASS"
+  },
+  "RT-DOMAIN": {
+   "cases": [
+    {
+     "hand_worked": false,
+     "id": "RT001",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "below first boundary: nothing written",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "RT012",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "raw invalid date: INSRATE does not validate",
+     "tags": []
+    },
+    {
+     "hand_worked": false,
+     "id": "RT013",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "zero date: nothing written",
+     "tags": []
+    },
+    {
+     "hand_worked": false,
+     "id": "RT014",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative date: nothing written",
+     "tags": []
+    }
+   ],
+   "description": "direct domain is the binary fullword TDATE and WAGE only: INSRATE does not validate dates; a raw invalid date such as 20241399 is banded by numeric comparison and TDATE < 19000101 writes neither WRATE nor WFEE",
+   "routine": "INSRATE",
+   "status": "PASS"
+  },
+  "VL-DATE": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL022",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SISSUE invalid 30 Feb",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL023",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SDATE invalid",
+     "tags": []
+    }
+   ],
+   "description": "SISSUE and SDATE must both be valid dates (INSDATE rules)",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-FIRST": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL025",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "seq 0 with nonzero SLAST",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL026",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "seq 0 with SDATE after SISSUE",
+     "tags": []
+    }
+   ],
+   "description": "SSEQ=0 requires SLAST all zero and SDATE=SISSUE",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-HIST": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL027",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SLAST id differs",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL028",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SLAST seq differs",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL029",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SLAST date differs",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL030",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SLAST tail bytes are not checked",
+     "tags": []
+    }
+   ],
+   "description": "SSEQ>0 requires SLAST to carry SID, SSEQ and SDATE (historical checkpoint)",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-ID": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL003",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SID byte 0 is CP037 'A'",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL004",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SID byte 7 is CP037 '/'",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL005",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SID byte 3 is binary zero",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL006",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SID all blanks",
+     "tags": []
+    }
+   ],
+   "description": "SID must be eight CP037 digits F0-F9; blanks, letters, lower nibble > 9 and X'00' reject",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-LOAN": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL020",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SLOAN above SCASH",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL021",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SLOAN equal to SCASH",
+     "tags": []
+    }
+   ],
+   "description": "SLOAN may equal but not exceed SCASH",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-MAX": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL017",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SFACE above MAXAMT",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL018",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SFACE at MAXAMT",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL019",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SCASH above MAXAMT",
+     "tags": []
+    }
+   ],
+   "description": "amounts 0..99999999999 cents; MAXAMT accepted, MAXAMT+1 rejected",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-NEG": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL014",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SFACE negative",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL015",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SFACE negative zero accepted",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL016",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SCASH sign F accepted",
+     "tags": []
+    }
+   ],
+   "description": "negative face, cash or loan rejects (D sign with nonzero digits); negative zero is numerically zero",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-OK": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL001",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "first state, all invariants hold",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL002",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "historical state with matching SLAST",
+     "tags": []
+    }
+   ],
+   "description": "well-formed first-state and continued-state masters validate (R15=0, WVALID=0)",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-ORDER": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL024",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SDATE before SISSUE",
+     "tags": []
+    }
+   ],
+   "description": "SDATE must not precede SISSUE",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-PACK": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL011",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SFACE malformed digit",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL012",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SCASH bad sign A",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL013",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SLOAN all ones",
+     "tags": []
+    }
+   ],
+   "description": "SFACE, SCASH and SLOAN must be valid packed decimal (sign and digit nibbles)",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-PAD": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL007",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "SPAD last byte nonzero",
+     "tags": []
+    }
+   ],
+   "description": "SPAD (7 reserved bytes) must be zero",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-PREC": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL031",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "bad id AND bad issue date: no INSDATE call (WDATE untouched)",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL032",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "loan>cash AND bad dates: date check never reached",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL033",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "valid issue, invalid SDATE: WDATE holds SDATE",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL034",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative seq AND bad pad: same R15",
+     "tags": []
+    }
+   ],
+   "description": "when several validations fail, R15 is still 8 and no scratch other than WDATE/WYEAR/WMD/WORD/WVALID changes",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-SEQ": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL009",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "negative sequence",
+     "tags": []
+    },
+    {
+     "hand_worked": true,
+     "id": "VL010",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "max sequence with matching history",
+     "tags": []
+    }
+   ],
+   "description": "SSEQ must be >= 0 (negative fullword rejects); large positive accepted",
+   "routine": "INSVAL",
+   "status": "PASS"
+  },
+  "VL-TAIL": {
+   "cases": [
+    {
+     "hand_worked": true,
+     "id": "VL008",
+     "measured": {
+      "as370-ld370": "PASS"
+     },
+     "note": "STAIL last byte nonzero",
+     "tags": []
+    }
+   ],
+   "description": "STAIL (40 trailing bytes) must be zero",
+   "routine": "INSVAL",
+   "status": "PASS"
+  }
+ },
+ "rules_without_cases": [],
+ "runs": {
+  "as370-ld370": {
+   "backend": "as370-ld370",
+   "comparison_harness_identity": {
+    "compare.py": "b1be51e2bf065ee4a286ca7b1d60140a010557f15fcf2836d8ac61f390ecca3f",
+    "contract.py": "f5a2831484b7cb5fda7d8dd1b513f25ffe44001ff7c016219c76b666a96f2100",
+    "fixtures.py": "b687a4d785980892ae062d6108a949cc38cf96a7697bda46b1c6812bedf94af8",
+    "layout.py": "15e708ebc6418dc109b4dd9f60f06e106d0931b97728c84ce79c5af4e5e5bfa7",
+    "observe.py": "927d82951780467d518089bfd52f4c7db3ff0b2c9609638c37ea913a55e16503"
+   },
+   "fixture_manifest_at_run": "e0aea975d978e9c1692ae30fe99f9deca030e53d1886d8f7091e12d2b5bf71c9",
+   "fixture_manifest_matches_run": false,
+   "folder": "../evidence/as370-ld370",
+   "jobs": {
+    "allocate": {
+     "job_id": "JOB00021",
+     "steps": [
+      [
+       "ALLOC",
+       "0000"
+      ]
+     ]
+    },
+    "import": {
+     "job_id": "JOB00022",
+     "steps": [
+      [
+       "C001",
+       "0000"
+      ]
+     ]
+    },
+    "run": {
+     "job_id": "JOB00024",
+     "steps": [
+      [
+       "DRV",
+       "0000"
+      ]
+     ]
+    }
+   },
+   "prefix": "INSR.L1",
+   "problems": [],
+   "valid": true
+  }
+ },
+ "schema": "insurance-routines-coverage-v2",
+ "unmeasured_paths": [
+  "INSBAT/INSSMOK internal control flow beyond RC, POLOUT and RESOUT bytes (job-level only)",
+  "INSCALC behaviour for TDATE below 19000101 with a valid state (unreachable: INSVAL requires SDATE >= 19000101 and ORDR precedes rating)",
+  "OPEN failure RC16 in INSBAT (requires a DD-level fault the harness does not inject)"
+ ],
+ "valid": true
+}
