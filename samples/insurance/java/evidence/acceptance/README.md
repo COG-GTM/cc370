@@ -96,6 +96,14 @@ as its own `INSRUN` job on the same guest, load library `IBMUSER.INSJ4.I`
 `polin.bin`/`txnin.bin` submitted, the `polout.bin`/`resout.bin` read back,
 and `receipt.json` (job id, RCs, hashes, observed statuses).
 `targeted/authority/capture.json` is the summary, `capture.log` the console.
+The receipts are in the legacy `insurance-run-v1` shape, rederived by
+`targeted_a3.py rederive` from the unchanged raw guest `result.json` of each
+job (`derived_from` names it and pins the capture-time receipt's SHA-256) so
+they carry the seven hashes the legacy validator checks; the build/guest
+manifests they reference are `targeted/provenance/{build,guest}.json`.
+Positive cases go through unchanged `compare.validate_receipt`; the four
+RC=12 controls through the explicit fail-closed control validator
+(`guest_receipt_validated` per case in the targeted reports).
 
 | case | tx | observed statuses (guest) | Java batch / http-gen / http-json |
 |---|---|---|---|
@@ -316,10 +324,10 @@ Last full verification (working directory `samples/insurance/java`, Java
 21.0.12, offline Maven): `./mvnw spotless:check`, `./mvnw checkstyle:check`,
 `./mvnw test` (106 tests, 0 failures, 0 errors, 0 skipped: 7 + 21 + 33 + 45),
 `./mvnw package` → `ledger-app-0.1.0-SNAPSHOT.jar` SHA-256
-`JAR_SHA_PLACEHOLDER` — the
+`c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af` — the
 JAR every report in `reports/`, `routines/` and `../fast/` was produced with
-(`source_commit` `SRC_PLACEHOLDER`, whose Java sources are identical to the
-head that carries the reports; the later commit adds only evidence and docs).
+(`source_commit` `b755414b`, whose Java sources are identical to the head that
+carries the reports; the later commit adds only evidence and docs).
 `runtime/` is written by the Maven test run itself (`ServiceKillTest`,
 `HttpBoundaryTest` from the test classpath), not by the JAR.
 

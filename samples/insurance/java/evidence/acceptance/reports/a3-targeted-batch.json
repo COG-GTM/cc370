@@ -1,7 +1,18 @@
 {
   "authority": {
-    "dir": "/home/ubuntu/a3/targeted/authority",
-    "kind": "a3-targeted"
+    "cases_dir": "/home/ubuntu/a3/targeted-cases",
+    "dir": "/home/ubuntu/repos/cc370/samples/insurance/java/evidence/acceptance/targeted/authority",
+    "kind": "a3-targeted",
+    "provenance": {
+      "backend": "ifox-iewl",
+      "build_manifest": "/home/ubuntu/repos/cc370/samples/insurance/java/evidence/acceptance/targeted/provenance/build.json",
+      "build_manifest_sha256": "390bdbf96bfac1c366ce4b626787f662581b49eeafa0e7aae5ad42ed8323ac45",
+      "guest_manifest": "/home/ubuntu/repos/cc370/samples/insurance/java/evidence/acceptance/targeted/provenance/guest.json",
+      "guest_manifest_sha256": "a22e4dac164384047fa1671c250d5973a17c901642605d967c4aa3a02f2820c3",
+      "load_prefix": "IBMUSER.INSJ4.I",
+      "rates_json": "/home/ubuntu/repos/cc370/samples/insurance/golden/v1/rates.json",
+      "rates_sha256": "263661876e7a8d2ac7ab5675aeef280498f490df64ace24d0f07930bc993d4c0"
+    }
   },
   "cases": [
     {
@@ -10,11 +21,12 @@
       "description": "cash 73000 @325bps: 1 day = 6.5 -> 7; 5 days = 32.5 -> 33; cash 14600, 25 days = 32.5 -> 33",
       "errors": [],
       "guest_job_id": "JOB00168",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "43d8d8fa0fc27562864d9ce6e26c388ce7aa1b013c5f15758854c0798c9bf0a3",
         "generation": "t01-run",
         "mode": "batch",
@@ -33,7 +45,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "interest-tie",
         "transactions_count": 3,
         "txnin_sha256": "32fcf04b1717f8179ed4bd02a98496c97e55bd7f357ad347d04e6d9bbe70528e",
@@ -66,11 +78,12 @@
       "description": "cash 99,999,999,999 from 1900-01-01 to 2025-01-01 (45,656 days @325bps): interest 406,526,027,393 > MAXAMT -> OVER; sibling policy proves a 1-day interval on the same cash is OVER via cash+interest; third policy shows cash exactly MAXAMT with a 0-day interval is OKAY",
       "errors": [],
       "guest_job_id": "JOB00171",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "0a73fa9b1fed489a6e1781437895b434f159844d521233d17dc531f3180339d5",
         "generation": "t02-run",
         "mode": "batch",
@@ -89,7 +102,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "quotient-over",
         "transactions_count": 3,
         "txnin_sha256": "d06732b865dc571c044c937e957b988a436a75573fffcb3008ead427210056ec",
@@ -122,11 +135,12 @@
       "description": "cash 96,800,000,000 over 2024 (366 days @325bps) -> interest 3,154,619,178, cash 99,954,619,178 OKAY; premium 45,380,821 (0 days) -> cash exactly MAXAMT OKAY; premium 1 -> OVER",
       "errors": [],
       "guest_job_id": "JOB00174",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "13f4d8d576928b60fed9f2c2ed091f92d730fe7edf9bad789ee9201d9fb27660",
         "generation": "t03-run",
         "mode": "batch",
@@ -145,7 +159,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "cash-max-boundary",
         "transactions_count": 3,
         "txnin_sha256": "03a967f4a220cdc4ae3f5b86c150e58c66ad492ec74d996dfab158a6615bb9f8",
@@ -178,11 +192,12 @@
       "description": "0-day premium into cash 0 @350bps: cash 300 -> charge 10.5 -> 11 (half-even 10); cash 100 -> 3.5 -> 4; @400bps (2024) cash 125 -> 5.0 exact; cash 1125 -> 45.0; cash 375 -> 15.0",
       "errors": [],
       "guest_job_id": "JOB00177",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "6aeaafe005e9ac94de75a99cf30aad2241c95fee0d416d16a820e85f3a5bb2f6",
         "generation": "t04-run",
         "mode": "batch",
@@ -201,7 +216,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "charge-tie",
         "transactions_count": 5,
         "txnin_sha256": "f521d5e8f4fe0498ebd4a011113992d0cb9ab76fe6a4289a3709188f5ee225e4",
@@ -238,11 +253,12 @@
       "description": "1900-01-01 lower bound OKAY; 2099-12-31 upper bound OKAY (age 199); 2100-01-01 DATE; 1900-02-29 DATE (not leap); 2000-02-29 OKAY; 2025-04-31 DATE; 2025-13-01 DATE; 0 DATE; negative DATE; 999990101 DATE; date before SDATE DATE",
       "errors": [],
       "guest_job_id": "JOB00180",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "66a203c5ad85a7ed2d3e43625ce9d308634d9425dd139b8623e286c213e8cd02",
         "generation": "t05-run",
         "mode": "batch",
@@ -261,7 +277,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "date-bounds",
         "transactions_count": 13,
         "txnin_sha256": "d490b42b58f7b23d27a648798426aece78855d32e30144af0c5f4ac65d05d613",
@@ -314,11 +330,12 @@
       "description": "issue 2015-06-01: quotes on every rate-band edge (2019-12-31 175/600, 2020-01-01 225/500, 2023-12-31 225/500, 2024-01-01 300/400, 2024-12-31 300/400, 2025-01-01 325/350), age 9 with fee on 2025-05-31, age 10 fee waived on 2025-06-01; issue 2024-02-29: 2025-02-28 age 0, 2025-03-01 age 1",
       "errors": [],
       "guest_job_id": "JOB00183",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "09f8250765156c6052b39eee2c3d26a2a287c31f93064547b605b772933f2e80",
         "generation": "t06-run",
         "mode": "batch",
@@ -337,7 +354,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "age-rate-bands",
         "transactions_count": 10,
         "txnin_sha256": "887bcf3fec96463b66e772ff1d1cdba66b4cf29479dc847e6144987856a9fcce",
@@ -384,11 +401,12 @@
       "description": "P 12345 with F sign OKAY; P negative-zero (0000000D) OKAY as 0 and SLAST keeps the D nibble; exact replay of the negative-zero record DUPL; same seq with C-sign zero CNFL; W 1 with F sign OKAY; P -5 NEGA; W -0 (negative zero, seq 4) OKAY",
       "errors": [],
       "guest_job_id": "JOB00186",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "bc8365463181684d8033de1d388e6cd465e547c3f97525b2ffea4f2f38c210ad",
         "generation": "t07-run",
         "mode": "batch",
@@ -407,7 +425,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "packed-signs",
         "transactions_count": 7,
         "txnin_sha256": "1c1f63daed7f9f47ffa160bd12d653a46c2d5538213e9c118ebdc9a2194db591",
@@ -448,11 +466,12 @@
       "description": "PACK digit nibble A; PACK sign nibble 0; PACK sign E; FORM nonzero TPAD; FORM nonzero TTAIL; TYPE op X; TYPE lowercase p; AMNT Q 1; AMNT D 1; FORM before PACK; PACK before TYPE; NEGA before DATE; OVER (amount > MAXAMT) before TYPE; DATE before TYPE; TYPE before FUND-size amount",
       "errors": [],
       "guest_job_id": "JOB00189",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "6932d2c34ee7aad027bf2f8c2eb5a4deced1bbcaaa9b8d6742a5ea7e066d4318",
         "generation": "t08-run",
         "mode": "batch",
@@ -471,7 +490,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "malformed",
         "transactions_count": 15,
         "txnin_sha256": "19c9c1696bcad52c6a97f26313cab325c1a9f75630385b6e79d793be27143e78",
@@ -528,11 +547,12 @@
       "description": "seq 0 ORDR; seq -1 ORDR; seq 1 OKAY; exact replay DUPL; same seq other amount CNFL; same seq with FORM defect CNFL (CNFL precedes FORM); seq 0 with bad packed ORDR; gap to seq 5 OKAY; seq 3 ORDR; seq 7 DATE-rejected then seq 7 OKAY (rejection did not advance SSEQ); unknown policy NPOL; unknown policy with malformed bytes NPOL; second policy untouched",
       "errors": [],
       "guest_job_id": "JOB00192",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "7c329d6f233612cddacc2ccb8d5edb56d1bba4bb5a94568f3da85040f0973088",
         "generation": "t09-run",
         "mode": "batch",
@@ -551,7 +571,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "sequence-matrix",
         "transactions_count": 13,
         "txnin_sha256": "da8ed7e7c1b1007ee2364e6ee33b91d6b9443dc7cc3e2397ccea7ca9b898a7d9",
@@ -604,11 +624,12 @@
       "description": "W > cash FUND; L > cash FUND; L = cash OKAY; R > loan FUND; W leaving cash < loan FUND; R full OKAY; D 0 OKAY (does not close); Q after D OKAY; P MAXAMT into cash 0 (0 days) OKAY; then Q one day later OVER (cash+interest); W MAXAMT back to 0 OKAY",
       "errors": [],
       "guest_job_id": "JOB00195",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "04559511a75fc07ecaa308ac99ef56b4e30c2e54824fa2a5249672d736e0cd5e",
         "generation": "t10-run",
         "mode": "batch",
@@ -627,7 +648,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "funds-ops",
         "transactions_count": 11,
         "txnin_sha256": "1fdffdf00a02d68f3b13ce32c63ed691090fb9d91e1d9516b84352665f2e5109",
@@ -676,11 +697,12 @@
       "description": "two policies, zero transactions: unchanged master, zero results",
       "errors": [],
       "guest_job_id": "JOB00198",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "07891b0a35b7ec7ff06e934eb07548dc07fcf46ce4caeea5a812fad2ccce85f8",
         "generation": "t11-run",
         "mode": "batch",
@@ -699,7 +721,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "empty-txnin",
         "transactions_count": 0,
         "txnin_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -724,11 +746,12 @@
       "description": "no policies, three transactions: NPOL each, empty POLOUT",
       "errors": [],
       "guest_job_id": "JOB00201",
+      "guest_receipt_validated": "legacy",
       "guest_step_rc": {
         "RUN": 0
       },
       "java_receipt": {
-        "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+        "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
         "expected_manifest_sha256": "6cd1857dae47840c4b5892eec4ee76664b6c6ceb509e7bdbc393a7b3ea28f046",
         "generation": "t12-run",
         "mode": "batch",
@@ -747,7 +770,7 @@
         "return_code": 0,
         "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
         "schema": "insurance-java-run-v1",
-        "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e",
+        "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c",
         "stage": "empty-polin",
         "transactions_count": 3,
         "txnin_sha256": "add9ca2e2ae324e5fda6e310cdf211c2086e43cffee8d315fc7f6996ed81e078",
@@ -780,6 +803,7 @@
       "description": "master with loan > cash: INSVAL rejects at load, RC=12",
       "errors": [],
       "guest_job_id": "JOB00204",
+      "guest_receipt_validated": "control",
       "guest_rejected": true,
       "guest_step_rc": {
         "RUN": 12
@@ -797,6 +821,7 @@
       "description": "master IDs out of order: RC=12",
       "errors": [],
       "guest_job_id": "JOB00207",
+      "guest_receipt_validated": "control",
       "guest_rejected": true,
       "guest_step_rc": {
         "RUN": 12
@@ -814,6 +839,7 @@
       "description": "duplicate master IDs: RC=12",
       "errors": [],
       "guest_job_id": "JOB00210",
+      "guest_receipt_validated": "control",
       "guest_rejected": true,
       "guest_step_rc": {
         "RUN": 12
@@ -831,6 +857,7 @@
       "description": "513 policies: RC=12",
       "errors": [],
       "guest_job_id": "JOB00213",
+      "guest_receipt_validated": "control",
       "guest_rejected": true,
       "guest_step_rc": {
         "RUN": 12
@@ -845,10 +872,10 @@
   ],
   "cases_passed": 16,
   "cases_total": 16,
-  "jar_sha256": "f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+  "jar_sha256": "c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
   "mode": "batch",
   "passed": true,
   "results_compared": 86,
-  "schema": "insurance-java-targeted-parity-v1",
-  "source_commit": "f20edae3bd13f7dc1bfb68c713859ceb1b1f4d8e"
+  "schema": "insurance-java-targeted-parity-v2",
+  "source_commit": "b755414bb4f778a566aba2159731cb4857a5bd5c"
 }

@@ -170,7 +170,7 @@
  },
  "fixture_cases_sha256": "8f97f1c50b76aa94dd9a30f1359ba39f9d49f64c7ea98d01db7576f795b2329f",
  "java": {
-  "build_identity": "jar:sha256:f1e4d54cbe8f8526686889aad4aec3c82f28112d26f5b5fc220ff3d876aff0db",
+  "build_identity": "jar:sha256:c29ebc45e70d2b8f02761e062da8b8ce0e7841a0df5f56d812953669fc34a5af",
   "runtime_identity": "Ubuntu 21.0.12+8-1-22.04-Ubuntu (OpenJDK 64-Bit Server VM)",
   "rate_table_sha256": "2d76ae426a69bfa551603679ed09c77318f4119242f65a8f89066dc8366bc72a"
  }
