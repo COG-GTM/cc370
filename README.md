@@ -24,10 +24,14 @@ step — no IFOX00, no IEWL, no IEBCOPY, no JCL round-trip.
 | **ar370** | object decks → `.a` archive with an ESD symbol index | `ar370/src/ar370.c` |
 | **file370** | read-only inspector — identify + analyze any of the formats above (`file`/`objdump` for the toolchain) | `file370/src/file370.c` |
 | **xmit370** | host directory → TSO TRANSMIT file holding a source PDS (samplib, JCL, macros); also lists + extracts XMIT files | `xmit370/src/xmit370.c` |
+| **cmplmd370** | read-only — compares an object deck byte-for-byte against a CSECT in a load module or DLIB element | `cmplmd370/src/cmplmd370.c` |
+| **dasm370** | read-only — disassembles one CSECT of an object deck to `.s` that `as370` re-assembles to the same bytes | `dasm370/src/dasm370.c` |
+| **idrdump370** | read-only — dumps a load module's IDR chain and decodes its HMASPZAP entries | `idrdump370/src/idrdump370.c` |
 
 `cc370` is the single front-end; `as370`/`ld370`/`ar370` are ordinary binaries it
 drives (and which you can also run standalone); `file370` is a standalone
-inspector that reads the formats the others write, and `xmit370` packs the
+inspector that reads the formats the others write (as are `cmplmd370`, `dasm370`
+and `idrdump370`, used to verify and recover existing modules), and `xmit370` packs the
 non-code half of a distribution — sample JCL, parameter members, macros — into
 the same TSO TRANSMIT envelope `ld370` ships load modules in. The C library it links against is
 **[libc370](https://github.com/mvslovers/libc370)**, installed into the cc370
@@ -39,8 +43,8 @@ GCC 3.4.6 is old K&R-ish C; a modern clang/gcc host must be told not to error on
 it. The top-level `Makefile` wraps the whole thing:
 
 ```sh
-make            # build the whole toolchain: cc370 + as370/ld370/ar370 + man pages
-make tools      # only the three tools (fast; skips the slow compiler build)
+make            # build the whole toolchain: cc370 + the eight standalone tools + man pages
+make tools      # only the eight standalone tools (fast; skips the slow compiler build)
 make compiler   # just the driver (cc370) + the compiler proper (cc1), out-of-tree in build/
 make install    # build (if needed) + install everything under $(PREFIX) (default ~/.local)
 ```
@@ -99,12 +103,16 @@ ld370/   src/ tests/            ld370 — host-native linker (replaces IEWL)
 ar370/   src/                   ar370 — .a archiver (ld370 autocalls against it)
 file370/ src/                   file370 — format inspector (file/objdump for the formats above)
 xmit370/ src/ tests/            xmit370 — TSO TRANSMIT for source PDSes (samplib, JCL, macros)
-common/  src/ include/          format primitives shared by the tools (CP037, CKD, NETDATA)
+cmplmd370/ src/ tests/          cmplmd370 — object deck vs load-module CSECT byte compare
+dasm370/ src/ tests/            dasm370 — object-deck disassembler (round-trips through as370)
+idrdump370/ src/ tests/         idrdump370 — load-module IDR / HMASPZAP dumper
+common/  src/ include/          shared by all tools: mvs370 (CP037, CKD, NETDATA) + obj370 (record readers)
 docs/                           object / load-module / unload / xmit formats + roadmap
 Makefile                        make (whole toolchain) / make tools / make compiler
 ```
 
-Deep dives: [`CLAUDE.md`](CLAUDE.md) (architecture + gotchas),
+Architecture overview + diagram: [`docs/architecture.md`](docs/architecture.md).
+Deep dives: [`CLAUDE.md`](CLAUDE.md) (internals + gotchas),
 [`as370/README.md`](as370/README.md), and `docs/` (the on-the-wire formats).
 
 ## Provenance
