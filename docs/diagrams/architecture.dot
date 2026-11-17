@@ -1,0 +1,89 @@
+// cc370 toolchain architecture -- source for architecture.png / architecture.svg.
+// Re-render with: sh docs/diagrams/render.sh   (needs Graphviz `dot`)
+// Redraw from: Makefile (TOOLS, install-tools), cc370/gcc/config/i370/mvspdp.h
+// (STARTFILE_SPEC, LINK_SPEC), common/include/{mvs370,obj370}.h, */src/*.c.
+digraph cc370 {
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=18, nodesep=0.35, ranksep=0.7,
+         pad=0.3, bgcolor=white, newrank=true, label="cc370 host-native MVS 3.8j cross-toolchain (main)",
+         labelloc=t];
+  node  [fontname="DejaVu Sans", fontsize=16, shape=box, style="rounded,filled",
+         fillcolor="#eef3fb", color="#4a6fa5", penwidth=1.4];
+  edge  [fontname="DejaVu Sans", fontsize=13, color="#555555", penwidth=1.3];
+
+  // ---- inputs ----
+  csrc   [label="hello.c", shape=note, fillcolor="#fff8e1", color="#b08900"];
+  asmsrc [label=".s / .asm", shape=note, fillcolor="#fff8e1", color="#b08900"];
+  srcdir [label="host directory\n(samplib, JCL, macros)", shape=folder, fillcolor="#fff8e1", color="#b08900"];
+
+  // ---- the driver ----
+  subgraph cluster_driver {
+    label="cc370 driver (GCC 3.4.6 fork, cc370/)"; style="rounded,dashed"; color="#4a6fa5"; fontsize=16;
+    cc370 [label="cc370\n(gcc driver, bin/cc370)"];
+    cc1   [label="cc1\nC -> i370 HLASM\n(gcc/config/i370/)"];
+  }
+
+  // ---- build tools ----
+  as370 [label="as370\nIFOX00 clone\n.s -> OBJ deck"];
+  ld370 [label="ld370\nIEWL replacement\n+ autocall (-l/-L)"];
+  ar370 [label="ar370\nOBJ decks -> .a\n+ ESD symbol index"];
+  xmit370 [label="xmit370\nsource PDS <-> XMIT\n(create / list / extract)"];
+
+  // ---- sysroot ----
+  sysroot [label="libc370 sysroot  <prefix>/cc370/\ninclude/  lib/libc.a  lib/crt0.o  macros/",
+           shape=cylinder, fillcolor="#e8f5e9", color="#2e7d32"];
+
+  // ---- artifacts ----
+  obj   [label="OBJ deck (.o)\n80-byte EBCDIC\nESD/TXT/RLD/END", shape=note, fillcolor="#f3e5f5", color="#7b1fa2"];
+  lmod  [label="load module\n(-o OUT)", shape=note, fillcolor="#f3e5f5", color="#7b1fa2"];
+  unl   [label="OUT.iebcopy\n(IEBCOPY unload)", shape=note, fillcolor="#f3e5f5", color="#7b1fa2"];
+  xmit  [label="OUT.xmit\n(TSO TRANSMIT / NETDATA)", shape=note, fillcolor="#f3e5f5", color="#7b1fa2"];
+  sxmit [label="SAMPLIB.xmit\n(PO / RECFM=FB 80)", shape=note, fillcolor="#f3e5f5", color="#7b1fa2"];
+
+  mvs [label="MVS 3.8j\nRECV370 / RECEIVE\n-> load library / PDS", shape=box3d, fillcolor="#ffebee", color="#c62828"];
+
+  // ---- read-only inspection / recovery tools ----
+  subgraph cluster_inspect {
+    label="read-only inspection & source-recovery tools (not driven by cc370)"; style="rounded,dashed"; color="#777777"; fontsize=16;
+    file370   [label="file370\nidentify + dump\nany format", fillcolor="#f5f5f5", color="#616161"];
+    cmplmd370 [label="cmplmd370\ndeck vs CSECT\nbyte compare", fillcolor="#f5f5f5", color="#616161"];
+    dasm370   [label="dasm370\nCSECT -> .s\n(round-trips)", fillcolor="#f5f5f5", color="#616161"];
+    idrdump370 [label="idrdump370\nIDR chain /\nSPZAP entries", fillcolor="#f5f5f5", color="#616161"];
+  }
+
+  // ---- shared code ----
+  common [label="common/\nmvs370 (CP037, CKD, NETDATA)\nobj370 (record readers)", shape=component,
+          fillcolor="#e0f7fa", color="#00838f"];
+  opc [label="as370/include/opc_table.h\n(opcode table)", shape=component, fillcolor="#e0f7fa", color="#00838f"];
+
+  // ---- main pipeline ----
+  csrc -> cc370;
+  cc370 -> cc1 [label="C"];
+  cc1 -> as370 [label="temp .s\n(tooldir as)"];
+  asmsrc -> as370;
+  as370 -> obj;
+  obj -> ld370 [label="tooldir ld\n--entry @@CRT0"];
+  obj -> ar370;
+  ar370 -> sysroot [label="libc.a", style=dashed];
+  sysroot -> cc1 [label="<stdio.h>", style=dashed];
+  sysroot -> as370 [label="macros", style=dashed];
+  sysroot -> ld370 [label="crt0.o, -lc", style=dashed];
+  ld370 -> lmod;
+  ld370 -> unl [label="-iebcopy"];
+  ld370 -> xmit [label="-xmit"];
+  srcdir -> xmit370 -> sxmit;
+  xmit -> mvs [color="#c62828"];
+  sxmit -> mvs [color="#c62828"];
+
+  // ---- inspection edges ----
+  xmit -> file370 [style=dotted, color="#9e9e9e", label="any format"];
+  obj -> cmplmd370 [style=dotted, color="#9e9e9e"];
+  lmod -> idrdump370 [style=dotted, color="#9e9e9e"];
+  obj -> dasm370 [style=dotted, color="#9e9e9e"];
+
+  // ---- shared code edges (common/ is compiled into all eight tools; drawn once) ----
+  common -> as370 [style=dashed, color="#00838f", arrowhead=odot, label="linked into\nall 8 tools", fontcolor="#00838f"];
+  opc -> {as370 dasm370} [style=dashed, color="#00838f", arrowhead=odot];
+
+  {rank=same; csrc; asmsrc; srcdir;}
+  {rank=same; lmod; unl; xmit; sxmit;}
+}

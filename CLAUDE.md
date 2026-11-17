@@ -24,11 +24,13 @@ cc370 compiles C source to IBM System/370 HLASM assembler (`.s` files) for MVS 3
 ## Build (v2.0 — C-only cross-compiler, modern macOS/Linux host)
 
 The top-level `Makefile` drives everything. The toolchain is **one driver
-(`cc370`) plus four standalone tools (`as370`/`ld370`/`ar370`/`file370`)**:
+(`cc370`) plus eight standalone tools (`as370`/`ld370`/`ar370`/`file370`/`xmit370`/
+`cmplmd370`/`dasm370`/`idrdump370`)** — the Makefile's `TOOLS`. Component map and
+diagram: [`docs/architecture.md`](docs/architecture.md).
 
 ```sh
-make            # build the WHOLE toolchain: cc370 + as370/ld370/ar370/file370
-make tools      # only the four standalone tools   [fast]
+make            # build the WHOLE toolchain: cc370 + the eight tools + man pages
+make tools      # only the eight standalone tools   [fast]
 make compiler   # configure + build the driver (cc370) and cc1   [slow]
 make install    # build (if needed) + install into $(PREFIX) (default ~/.local)
 ```
@@ -36,13 +38,14 @@ make install    # build (if needed) + install into $(PREFIX) (default ~/.local)
 Install layout (clean cc370-branded, under `$(PREFIX)`): everything for the target
 lives in one `cc370/` tree; only the user-facing binaries sit on PATH.
 
-- `bin/cc370` — the driver (the *only* driver). `bin/{as370,ld370,ar370,file370}`
+- `bin/cc370` — the driver (the *only* driver). `bin/{as370,ld370,ar370,file370,...}`
   are symlinks → `../cc370/bin/*` for PATH access.
 - `libexec/cc370/1.0.0/cc1` — the driver-private compiler proper; beside it,
   `{as,ld,ar}` symlinks → `../../../cc370/bin/*` are the driver's **tooldir** (it
-  looks up `as`/`ld`/`ar` there by short name). `file370` is *not* here — the
-  driver never invokes it (it is a standalone inspector, PATH-link only).
-- `cc370/bin/{as370,ld370,ar370,file370}` — the **real** tool binaries.
+  looks up `as`/`ld`/`ar` there by short name). `file370`, `xmit370`,
+  `cmplmd370`, `dasm370` and `idrdump370` are *not* here — the driver never
+  invokes them (standalone tools, PATH-link only).
+- `cc370/bin/*370` — the **real** binaries of all eight tools.
 - `cc370/{include,lib,macros}` — the libc370 **sysroot** (installed by
   `make -C ../libc370 install`): cc370 finds `<stdio.h>` with no `-I`, ld370 `-lc`
   pulls `libc.a`, and as370 (real in `cc370/bin`) finds the macros via its
@@ -87,7 +90,7 @@ No host-side unit tests for the compiler. Validation is on MVS via the ecosystem
 
 ## Architecture
 
-Standard GCC pipeline: C source → lexer/parser → RTL → optimization → assembler output. Output is EBCDIC, HLASM syntax, MVS calling conventions (`COPY PDPTOP` / `PDPPRLG` / `PDPEPIL`), crent370-compatible.
+Inside `cc1`, the standard GCC pipeline: C source → lexer/parser → RTL → optimization → assembler output; the driver then runs as370 and ld370 (see [`docs/architecture.md`](docs/architecture.md) for the whole toolchain). Output is EBCDIC, HLASM syntax, MVS calling conventions (`COPY PDPTOP` / `PDPPRLG` / `PDPEPIL`), crent370-compatible.
 
 ### Key directories
 
@@ -136,13 +139,13 @@ which path the source travelled first.
 
 ## Important Notes
 
-- `cc370/gcc/c-parse.c` is generated from `c-parse.in`; a pre-generated parser / dummy Makefile rule avoids running yacc.
+- The C parser source is `cc370/gcc/c-parse.in`; `make compiler` generates `c-parse.y` and then `c-parse.c` (bison) in the out-of-tree `build/gcc/`. No generated parser is committed.
 - Symbol names in address constants must be emitted via `output_addr_const` (not `ASM_OUTPUT_LABELREF` on the raw `XSTR`) so the leading `*` of an `asm()`-named extern is stripped — taking the **address** of an asm-named extern otherwise emits invalid `=V(*NAME)` → IFOX IFO161 (fixed in v2.0).
 - Output uses EBCDIC encoding and HLASM syntax with MVS calling conventions.
 
 ## as370 — Host-Native MVS Assembler
 
-`as370/src/as370.c` is a single-file (~1900 lines) host-native MVS **Assembler-XF (IFOX00)** clone: macro preprocessor + two-pass core + OS/360 OBJ writer (80-byte EBCDIC ESD/TXT/RLD/END cards). It runs on macOS/Linux and produces object decks **byte-identical to IFOX00**.
+`as370/src/as370.c` is a single-file (~7100 lines) host-native MVS **Assembler-XF (IFOX00)** clone: macro preprocessor + two-pass core + OS/360 OBJ writer (80-byte EBCDIC ESD/TXT/RLD/END cards). It runs on macOS/Linux and produces object decks **byte-identical to IFOX00**.
 
 - **Identity:** tool name `as370`, product id `ASM370`, version `V1.0`. `as370 -v` → `as370 V1.0 - <build date>`.
 - **Build:** `gcc -O2 -Wall -Wextra -Werror -Ias370/include -o as370/as370 as370/src/as370.c` (warning-clean under gcc-14 + clang).
@@ -151,21 +154,21 @@ which path the source travelled first.
 - **Validation = byte-identity to IFOX00**, the authoritative oracle. 950 ecosystem modules reproduce exactly: libc370 (formerly crent370) 736/736, rexx370 81/81, UFSD 20/20, HTTPD 105/105, 9 samples. The END card's translator IDR (`15741SC103`+date) is IFOX-specific and intentionally not reproduced; "byte-identical" means ESD/TXT/RLD content. The full patched IFOX source is the reference (NOT committed — IBM proprietary; see memory `ifox-source-reference`).
 - **`-a` listing:** ASCII, column-exact to IFOX SYSPRINT for the ESD + SOURCE + RLD sections. Cross-reference / literal-xref / diagnostics / statistics pages not yet produced (see open points).
 
-### cc370 → as370 integration (current: stopgap wrapper)
+### cc370 → as370 integration
 
-The GCC driver invokes an assembler literally named `as`, found in its own exec dir before PATH. A shell wrapper at `~/.local/libexec/gcc/i370-ibm-mvspdp/3.4.6/as` execs `as370` with the macro `-I` paths, so `cc370 -c x.c` runs cc1 → temp `.s` → as370 → `x.o`. **This is a stopgap:** the crent370 macro path is hardcoded in the wrapper and `/tmp/sys1mac` is ephemeral. The clean design (a real `as1` engine shared by standalone `as370` and the driver, with the macro path passed properly) is an open point.
+The GCC driver invokes an assembler literally named `as` (and a linker named `ld`), found in its tooldir before PATH. `make install-tools` makes `libexec/cc370/1.0.0/{as,ld,ar}` symlinks to the real `cc370/bin/{as370,ld370,ar370}`, so `cc370 -c x.c` runs cc1 → temp `.s` → as370 → `x.o` with no wrapper. as370 finds macros in `-I` dirs, then `$AS370_MACLIB` (colon-separated), then `<exedir>/../macros` — the installed libc370 sysroot `cc370/macros/`. (The earlier shell wrapper with a hardcoded crent370 path and `/tmp/sys1mac` is gone.)
 
 ## Goal & Roadmap (Open Points)
 
-**Goal:** a fully host-native MVS cross-toolchain — compile (cc370) + assemble (as370) + **link (ld, planned)** on the host, so only the final load module touches MVS. Today cc370+as370 are proven end-to-end (ctest links + runs on MVS, RC=0); `ld` is the missing piece.
+**Goal:** a fully host-native MVS cross-toolchain — compile (cc370) + assemble (as370) + **link (ld370)** on the host, so only the final load module touches MVS. All three run on the host today: `as370→ld370→-xmit` → RECV370 → runs on real MVS (see the ld370 row above).
 
 **as370 remaining work:**
 - **More listing options** — `-a` sub-letters (g/i/m/s/x) are no-ops/provisional; add the CROSS-REFERENCE, LITERAL XREF, DIAGNOSTICS, STATISTICS pages.
-- **Better driver / cc370 integration** — replace the stopgap shell wrapper with a proper `as370`/`as1` split; stop hardcoding the crent370 macro path; give SYS1.MACLIB + crent maclib/sysmac a permanent, configurable home (the `/tmp/sys1mac` dependency must go).
+- **Better driver / cc370 integration** — done: the driver reaches as370 through its tooldir symlink and macros resolve via `-I` / `$AS370_MACLIB` / `<exedir>/../macros` (no wrapper, no `/tmp/sys1mac`). Still open from the original plan: a proper `as370`/`as1` engine split.
 - **Assembler options from IFOX00 sources** — derive the real `PARM=` option set + RC/severity semantics from the IFOX source (`~/repos/mvs/ifox-src/all/`).
 
 **cc370 / packaging work:**
-- **Done:** carved into its own `mvslovers/cc370` repo (this one); the top-level `Makefile` builds the driver as **`cc370`** and installs as370/ld370/ar370 as ordinary tools; `c2asm370` v1.x is frozen as the fallback.
+- **Done:** carved into its own `mvslovers/cc370` repo (this one); the top-level `Makefile` builds the driver as **`cc370`** and installs the eight standalone tools as ordinary binaries; `c2asm370` v1.x is frozen as the fallback.
 - **cc370 cosmetics** — banners say `cc370 V1.0`; still open: the doubled `cpu`/`machine` `#assert` warnings (`cc370/gcc/config/i370/mvspdp.h:84-85` re-assert what `i370.h:34-35` already does → harmless "re-asserted" cpp warnings); align `-v`/`--help` wording with as370.
 
 **Cross-cutting (additions):**
@@ -184,7 +187,7 @@ The GCC driver invokes an assembler literally named `as`, found in its own exec 
 
 **`--norent` / `--noreus` — clear the RENT/REUS attributes (2026-06-24).** The template marks every linked module RENT+REUS (`PDS2ATR1` 0xC0); a REXX370 module with modifiable storage must not be RENT. `--norent` clears `PDS2RENT` (0x80), `--noreus` clears `PDS2REUS` (0x40); RENT implies REUS so `--norent` alone leaves a serially-reusable module, both clear it entirely. Applied at the build/link path (like `--ac`); a `--pack` of a `-iebcopy` member keeps its OWN attributes (set at its build), so per-member RENT/REUS mix in one library. `run.sh` checks ATR1 = C3/43/83/03 for default/`--norent`/`--noreus`/both + pack-preservation.
 
-**Dropped-text / S106-0F on FETCH of large modules — FIXED (2026-06-24).** A large ld370-linked module (REXX370 `IRX#HELO`) abended **S106 reason 0F** in program fetch before running. Two corrections to the bug report: (1) **0F = `RCIOERR` "permanent I/O error", NOT "invalid record"** (`IEWFETCH.ASM:238`; bad-record is 0D, bad-addr 0E) — so fetch couldn't physically read the member, the records weren't malformed. (2) ld370 was **silently dropping ~241 KB of text.** The control+text packer walked sections in **gid order** (G[] creation ≈ ESDID order) but the greedy chunker *assumed increasing-origin order*. `ISTSO` is referenced early (low gid) but **defined in the LAST linked object** (`asm/istso.asm`) → low gid, near-highest origin (248944); at that out-of-order section `origin − chunkstart > MAXTEXT`, so the packer closed the chunk early and **skipped every section between** (19 sections incl. 66 KB/41 KB/38 KB CSECTs). The half-loaded module looked self-consistent but couldn't be fetched. IRXDBG worked only because its gid order == origin order. **Fix:** `gidx` (the packer's index, used ONLY there) is now **origin-sorted** instead of gid→G[], and the ID/length list emits each section's true `G[gi].gid`; byte-identical when gid order already equals origin order (suite green). Validated: synthetic early-ref/late-def reproducer drops 20 KB pre-fix / complete post-fix; real IRX#HELO objects now emit text == modlen, no hole (was 241 KB gap); `run.sh` `dropped-text` test. **CONFIRMED on MVS: IRX#HELO + IRXINIT run after the user's clean rebuild + redeploy.**
+**Dropped-text / S106-0F on FETCH of large modules — FIXED (2026-06-24).** A large ld370-linked module (REXX370 `IRX#HELO`) abended **S106 reason 0F** in program fetch before running. Two corrections to the bug report: (1) **0F = `RCIOERR` "permanent I/O error", NOT "invalid record"** (`IEWFETCH.ASM:238`; bad-record is 0D, bad-addr 0E) — so fetch couldn't physically read the member, the records weren't malformed. (2) ld370 was **silently dropping ~241 KB of text.** The control+text packer walked sections in **gid order** (G[] creation ≈ ESDID order) but the greedy chunker *assumed increasing-origin order*. `ISTSO` is referenced early (low gid) but **defined in the LAST linked object** (REXX370's `asm/istso.asm`, not a file in this repo) → low gid, near-highest origin (248944); at that out-of-order section `origin − chunkstart > MAXTEXT`, so the packer closed the chunk early and **skipped every section between** (19 sections incl. 66 KB/41 KB/38 KB CSECTs). The half-loaded module looked self-consistent but couldn't be fetched. IRXDBG worked only because its gid order == origin order. **Fix:** `gidx` (the packer's index, used ONLY there) is now **origin-sorted** instead of gid→G[], and the ID/length list emits each section's true `G[gi].gid`; byte-identical when gid order already equals origin order (suite green). Validated: synthetic early-ref/late-def reproducer drops 20 KB pre-fix / complete post-fix; real IRX#HELO objects now emit text == modlen, no hole (was 241 KB gap); `run.sh` `dropped-text` test. **CONFIRMED on MVS: IRX#HELO + IRXINIT run after the user's clean rebuild + redeploy.**
 
 **Over-packed unload tracks / S106-0F on FETCH of small RLD modules — FIXED & MVS-CONFIRMED (2026-06-24).** A SECOND, independent S106-0F cause, found after IRX#HELO worked: the tiny REXX370 parameter modules (IRXTSPRM/IRXISPRM/IRXPARMS — pure data + internal A-cons, single text block + RLD) abended S106-0F on FETCH after the multi-member deploy, while a single-member deploy of the **byte-identical** member fetched fine and IEWL's own copy fetched fine. Key proof: **all 12 ld370 members are byte-for-byte identical to the IEWL reference** (so the dropped-text fix is perfect and the member content is correct), and a single-member deploy of IRXTSPRM ran (S0C1 = fetched then ran the data) while the 12-member pack S106'd. Root cause: `emit_unload`'s contiguous packing decided "track full" by BLKSIZE (15040) + a 12-byte per-record overhead (the unload count field), but a real 3350 track holds **19069** bytes with **~185** B/record gap+count overhead. Tracks with many small records claimed 50+ records / up to 24901 "real" bytes on a 19069 B track — physically-impossible CKD geometry. **mvsMF/BPAM still read such a member** (directory-driven, lenient) — which is why the bytes round-tripped and misled the diagnosis — but program FETCH's EXCP channel program, which positions by each record's on-disk count field, rejected it (RCIOERR). Big modules (few large records/track), single-member packs (one block/track) and the `e2e2` oracle (~12 records/track) never over-pack. **Fix:** `#define TRK_CAP_3350 19069` / `TRK_OVH_3350 185`; drive the track-full decision from real 3350 geometry (185 + data per record), not BLKSIZE/12+data. Only the track-boundary accounting changes — member bytes + directory are identical, so **redeploy (no recompile/relink) picks it up**. After: 0 tracks over capacity (was 10), max 46 records/track. **MVS-confirmed end-to-end** (deploy all 12 + EXEC PGM): IRXTSPRM/IRXPARMS now S0C1 (fetch OK) instead of S106; IRXDBG still RC=0.
 
