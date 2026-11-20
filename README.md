@@ -35,12 +35,38 @@ sysroot — see *Sysroot* below.
 
 ## Build & install
 
+### Prerequisites
+
+A clean host needs a C compiler, `make`, `flex` and `bison` (the GCC 3.4.6 build
+regenerates `gengtype-lex.c`/`gengtype-yacc.c` and fails with "No such file or
+directory" without them), and `perl` for `pod2man` (man pages). The libc370
+sysroot step below also needs `git` and `python3`. On Debian/Ubuntu:
+
+```sh
+sudo apt-get install build-essential flex bison git python3
+```
+
+The standalone tools build with `-Werror`. GCC 13 (the Ubuntu 24.04 default)
+builds them clean; GCC 11 (the Ubuntu 22.04 default) and GCC 12 stop on
+`-Wformat-truncation` in `ar370`. On such a host, use a newer compiler or drop
+`-Werror`:
+
+```sh
+make HOSTCC=gcc-13                       # a newer host compiler
+make CFLAGS="-O2 -Wall -Wextra"          # keep the warnings, don't fail on them
+```
+
+`make install` puts everything under `~/.local` by default; put its `bin` on
+`PATH` (`export PATH="$HOME/.local/bin:$PATH"`) before running `cc370`.
+
+### Building
+
 GCC 3.4.6 is old K&R-ish C; a modern clang/gcc host must be told not to error on
 it. The top-level `Makefile` wraps the whole thing:
 
 ```sh
-make            # build the whole toolchain: cc370 + as370/ld370/ar370 + man pages
-make tools      # only the three tools (fast; skips the slow compiler build)
+make            # build the whole toolchain: cc370 + the standalone tools + man pages
+make tools      # only the standalone tools (fast; skips the slow compiler build)
 make compiler   # just the driver (cc370) + the compiler proper (cc1), out-of-tree in build/
 make install    # build (if needed) + install everything under $(PREFIX) (default ~/.local)
 ```
@@ -50,10 +76,11 @@ Knobs: `PREFIX` (default `~/.local`), `TRIPLE` (default `cc370`),
 
 ```
 <prefix>/bin/cc370                          the driver
-<prefix>/bin/{as370,ld370,ar370}            symlinks -> ../cc370/bin/* (PATH access)
+<prefix>/bin/{as370,ld370,ar370,file370,...} symlinks -> ../cc370/bin/* (PATH access)
 <prefix>/libexec/cc370/1.0.0/cc1            the compiler proper (driver-private)
 <prefix>/libexec/cc370/1.0.0/{as,ld,ar}     symlinks beside cc1; the driver's tooldir
-<prefix>/cc370/bin/{as370,ld370,ar370}      the real tool binaries
+<prefix>/cc370/bin/{as370,ld370,ar370,...}  the real tool binaries (also file370,
+                                            xmit370, cmplmd370, dasm370, idrdump370)
 <prefix>/cc370/{include,lib,macros}         the libc370 sysroot (headers, libc.a, crt*.o, macros)
 <prefix>/lib/cc370/1.0.0/                    empty: GCC's libsubdir, but required (see below)
 ```
@@ -74,10 +101,20 @@ all under `<prefix>/cc370/` (`include`, `lib`, `macros`); as370, whose real bina
 lives in `<prefix>/cc370/bin`, finds the macros via its `<exedir>/../macros`
 default. After that the toolchain is self-contained:
 
+This tree is cc370 **1.0.0**, so it needs a libc370 from the **2.0.x** line.
+libc370 2.1.0 and later expect CC/370 1.1.0 or later (2.8+ need 1.6.0, and every
+header stops with `#error "libc370 needs cc370 1.6.0 or later"`), so a default
+clone of libc370's `main` does not build against this compiler. Clone the
+matching tag next to this repo:
+
 ```sh
+git clone -b v2.0.0 https://github.com/mvslovers/libc370 ../libc370
 make -C ../libc370 install                   # populate the sysroot once
 cc370 hello.c -o hello -flinker-output=xmit  # no -I, no -L, no -lc needed
 ```
+
+Without the sysroot, `cc370 -S` still works, but assembling stops with
+`COPY member PDPTOP not found` because the prologue macros come from libc370.
 
 ## Optimization: `-O1` only
 
